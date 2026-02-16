@@ -1,0 +1,60 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserDoc() {
+      return firestore.get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function hasUserPermission(requiredPerm) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && getUserDoc() != null
+        && getUserDoc().data.permissions != null
+        && requiredPerm in getUserDoc().data.permissions;
+    }
+
+    function isAdmin() {
+      return hasUserPermission('SUPERADMIN') || hasUserPermission('ADMIN');
+    }
+
+    function isValidUpload(MB, contentType) {
+      return request.resource != null
+        && request.resource.size < MB * 1024 * 1024
+        && (contentType == null
+          || (request.resource.contentType != null
+            && request.resource.contentType.matches(contentType)));
+    }
+
+    // ====== PUBLIC ======
+    match /public/{path=**} {
+      allow read: if true;
+      allow write: if isAdmin() && !path.matches('user/.*') && isValidUpload(100, null);
+      allow delete: if isAdmin() && !path.matches('user/.*');
+    }
+    
+    // ====== USER  ======
+    match /user/{userId}/{path=**} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if isSignedIn() && request.auth.uid == userId && isValidUpload(10, null);
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }    
+    
+    // ====== PUBLIC/USER ======
+    match /public/user/{userId}/{path=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == userId && isValidUpload(10, null);
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Catch-all
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

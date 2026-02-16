@@ -6,17 +6,43 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "i:o": "npm uninstall cic-kit && npm install cic-kit@latest",
+    "only-deploy": "firebase deploy --only hosting,firestore,functions,storage",
+    "deploy": "npm run build && npx cic-bump && npx cic-push && npm run only-deploy",
+    "deploy-no-push": "npm run build && npx cic-bump && npm run only-deploy",
+    "start": "docker compose -f docker-compose.emu.yml up",
+    "stop": "docker compose -f docker-compose.emu.yml down",
+    "emu:start": "node ./.firebase-emulators/emu.js start",
+    "emu:help": "node ./.firebase-emulators/emu.js help",
+    "emu:save": "node ./.firebase-emulators/emu.js save",
+    "cic": "npx cic-index"
   },
-  "dependencies": {
-    "vue": "^3.5.25"
+  "dependencies": {    
+    "@vee-validate/yup": "^4.15.1",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "@wdns/vue-code-block": "^2.3.5",
+    "bootstrap": "^5.3.8",
+    "cic-kit": "^0.0.25",
+    "firebase": "^12.0.0",
+    "vee-validate": "^4.15.1",
+    "vue": "^3.5.25",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
+    "@inquirer/select": "^5.0.4",
+    "@types/bootstrap": "^5.2.10",
     "@types/node": "^24.10.1",
     "@vitejs/plugin-vue": "^6.0.2",
     "@vue/tsconfig": "^0.8.1",
+    "firebase-secrets-cli": "^1.0.2",
+    "inquirer": "^13.2.1",
+    "sass": "^1.97.3",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.3",
     "vite": "^7.3.1",
-    "vue-tsc": "^3.1.5"
+    "vite-plugin-pwa": "^1.2.0",
+    "vue-tsc": "^3.1.5",
+    "yup": "^1.7.1"
   }
 }
