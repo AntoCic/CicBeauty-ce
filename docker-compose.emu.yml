@@ -6,7 +6,6 @@ services:
     working_dir: /workspace
     volumes:
       - .:/workspace
-      - ../cic-kit:/cic-kit:ro
       - emu_node_modules:/workspace/node_modules
       - emu_functions_node_modules:/workspace/functions/node_modules
       - emu_cache:/root/.cache/firebase/emulators

@@ -32,10 +32,21 @@ service firebase.storage {
     }
 
     // ====== PUBLIC ======
+    match /public/treatments/{treatmentId}/{path=**} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidUpload(20, 'image/.*');
+      allow delete: if isAdmin();
+    }
+
     match /public/{path=**} {
       allow read: if true;
-      allow write: if isAdmin() && !path.matches('user/.*') && isValidUpload(100, null);
-      allow delete: if isAdmin() && !path.matches('user/.*');
+      allow write: if isAdmin()
+        && !path.matches('user/.*')
+        && !path.matches('treatments/.*')
+        && isValidUpload(100, null);
+      allow delete: if isAdmin()
+        && !path.matches('user/.*')
+        && !path.matches('treatments/.*');
     }
     
     // ====== USER  ======

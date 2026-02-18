@@ -2,13 +2,23 @@ import type { OffcanvasTab } from "cic-kit";
 
 export const toolbarOffcanvasTabs: OffcanvasTab[] = [
   {
-    name: 'Products',
-    icon: 'dropper_eye',
+    name: 'Prodotti',
+    icon: 'shopping_bag',
     to: { name: 'ProductsView' },
   },
   {
-    name: 'Product',
-    icon: 'dropper_eye',
-    to: { name: 'ProductView' },
+    name: 'Trattamenti',
+    icon: 'bolt',
+    to: { name: 'TreatmentsView' },
+  },
+  {
+    name: 'Tipi di spesa',
+    icon: 'payments',
+    to: { name: 'TypeExpensesView' },
+  },
+  {
+    name: 'Avvisi',
+    icon: 'notifications',
+    to: { name: 'AnnouncementsView' },
   },
 ];

@@ -1,7 +1,7 @@
 {
   "name": "cicbeauty-ce",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,19 +11,24 @@
     "only-deploy": "firebase deploy --only hosting,firestore,functions,storage",
     "deploy": "npm run build && npx cic-bump && npx cic-push && npm run only-deploy",
     "deploy-no-push": "npm run build && npx cic-bump && npm run only-deploy",
+    "docker:build": "docker compose -f docker-compose.emu.yml build --no-cache",
+    "docker:c": "docker compose -f docker-compose.emu.yml exec firebase-emulator sh",
     "start": "docker compose -f docker-compose.emu.yml up",
     "stop": "docker compose -f docker-compose.emu.yml down",
     "emu:start": "node ./.firebase-emulators/emu.js start",
     "emu:help": "node ./.firebase-emulators/emu.js help",
     "emu:save": "node ./.firebase-emulators/emu.js save",
+    "emu:save-c": "docker compose -f docker-compose.emu.yml exec firebase-emulator node ./.firebase-emulators/emu.js save",
+    "emu:list": "node ./.firebase-emulators/emu.js list",
+    "emu:delete": "node ./.firebase-emulators/emu.js delete",
     "cic": "npx cic-index"
   },
-  "dependencies": {    
+  "dependencies": {
     "@vee-validate/yup": "^4.15.1",
     "@vitejs/plugin-vue": "^5.0.4",
     "@wdns/vue-code-block": "^2.3.5",
     "bootstrap": "^5.3.8",
-    "cic-kit": "^0.0.25",
+    "cic-kit": "^0.0.26",
     "firebase": "^12.0.0",
     "vee-validate": "^4.15.1",
     "vue": "^3.5.25",

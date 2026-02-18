@@ -54,6 +54,7 @@ npm run dev -- --host 0.0.0.0 --port 5173 &
 VITE_PID=$!
 
 firebase emulators:start \
+  --only auth,firestore,functions,storage,hosting \
   --import ./.firebase-emulators/state \
   --export-on-exit ./.firebase-emulators/state &
 EMU_PID=$!

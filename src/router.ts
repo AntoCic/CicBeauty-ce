@@ -9,6 +9,8 @@ import HomeView from './views/HomeView.vue';
 import TreatmentsView from './views/treatments/TreatmentsView.vue';
 import TreatmentView from './views/treatments/TreatmentView.vue';
 import TreatmentEditView from './views/treatments/TreatmentEditView.vue';
+import TypeExpensesView from './views/type-expenses/TypeExpensesView.vue';
+import AnnouncementsView from './views/announcements/AnnouncementsView.vue';
 
 
 // ===================================================================================================
@@ -16,13 +18,15 @@ export const routes: RouteRecordRaw[] = [
   // public
   { path: '/', name: 'home', component: HomeView },
   { path: '/treatments', name: 'TreatmentsView', component: TreatmentsView },
-  { path: '/treatment', name: 'TreatmentView', component: TreatmentView },
+  { path: '/treatment/:id', name: 'TreatmentView', component: TreatmentView },
   { path: '/products', name: 'ProductsView', component: ProductsView },
   { path: '/product/:id', name: 'ProductView', component: ProductView },
+  { path: '/type-expenses', name: 'TypeExpensesView', component: TypeExpensesView, meta: { loginStatus: true } },
+  { path: '/announcements', name: 'AnnouncementsView', component: AnnouncementsView },
 
   // -------------------------------------------------------------------------------------------------
   // auth
-  { path: '/treatment/:id/edit', name: 'TreatmentEditView', component: TreatmentEditView },
+  { path: '/treatment/:id/edit', name: 'TreatmentEditView', component: TreatmentEditView, meta: { loginStatus: true } },
   { path: '/product/:id/edit', name: 'ProductEditView', component: ProductEditView, meta: { loginStatus: true } },
 ];
 

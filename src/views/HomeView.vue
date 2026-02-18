@@ -15,11 +15,11 @@ useHideHeader();
             <img class="home-logo" src="/img/logo/logo.png" alt="Cic Beauty logo" />
             <p class="home-soon fs-6 mb-4">coming soon...</p>
 
-            <RouterLink v-if="!Auth.isLoggedIn" :to="{ name: 'TreatmentsView' }"
+            <RouterLink :to="{ name: 'TreatmentsView' }"
                 class="col-10 col-md-6 col-lg-4 text-center my-2 home-link main-btn">
                 Treatments Catalog
             </RouterLink>
-            <RouterLink v-if="!Auth.isLoggedIn" :to="{ name: 'ProductsView' }"
+            <RouterLink :to="{ name: 'ProductsView' }"
                 class="col-10 col-md-6 col-lg-4 text-center my-2 home-link main-btn">
                 Products Catalog
             </RouterLink>

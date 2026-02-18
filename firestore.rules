@@ -49,6 +49,36 @@ service cloud.firestore {
       allow write: if isSignedIn() && hasUserPermission('SUPERADMIN');
     }
 
+    match /appointments/{userId} {
+      allow read: if isSignedIn() && isAdmin();
+      allow write: if isSignedIn() && isAdmin();
+    }
+
+    match /clients/{id} {
+      allow read: if isSignedIn() && isAdmin();
+      allow write:  if isSignedIn() && isAdmin();
+    }
+    
+    match /expenses/{id} {
+      allow read: if isSignedIn() && isAdmin();
+      allow write: if isSignedIn() && isAdmin();
+    }
+    
+    match /products/{id} {
+      allow read: if true;
+      allow write:  if isSignedIn() && isAdmin();
+    }
+    
+    match /treatments/{id} {
+      allow read: if true;
+      allow write: if isSignedIn() && isAdmin();
+    }
+    
+    match /typeExpenses/{id} {
+      allow read: if isSignedIn() && isAdmin();
+      allow write: if isSignedIn() && isAdmin();
+    }
+
     match /public_users/{userId} {
       allow read: if isSignedIn();
       allow write: if false;
