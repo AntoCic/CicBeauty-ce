@@ -24,7 +24,7 @@ headerStore.title = 'Cnc Beauty';
 headerStore.defaultLogoUrl = 'img/logo/logo.svg';
 headerStore.logoUrl = 'img/logo/logo.svg';
 headerStore.userBtnDefault = false;
-headerStore.userBtn = true;
+headerStore.userBtn = false;
 
 toolbarStore.show = false
 
