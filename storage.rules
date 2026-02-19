@@ -8,13 +8,12 @@ service firebase.storage {
     }
 
     function getUserDoc() {
-      return firestore.get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid));
     }
 
     function hasUserPermission(requiredPerm) {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && getUserDoc() != null
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
         && getUserDoc().data.permissions != null
         && requiredPerm in getUserDoc().data.permissions;
     }
@@ -32,6 +31,12 @@ service firebase.storage {
     }
 
     // ====== PUBLIC ======
+    match /public/products/{productId}/{path=**} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidUpload(20, 'image/.*');
+      allow delete: if isAdmin();
+    }
+
     match /public/treatments/{treatmentId}/{path=**} {
       allow read: if true;
       allow write: if isAdmin() && isValidUpload(20, 'image/.*');
@@ -42,10 +47,12 @@ service firebase.storage {
       allow read: if true;
       allow write: if isAdmin()
         && !path.matches('user/.*')
+        && !path.matches('products/.*')
         && !path.matches('treatments/.*')
         && isValidUpload(100, null);
       allow delete: if isAdmin()
         && !path.matches('user/.*')
+        && !path.matches('products/.*')
         && !path.matches('treatments/.*');
     }
     

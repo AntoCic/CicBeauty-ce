@@ -85,6 +85,6 @@ useHideHeader();
 
 .home-footer {
     position: absolute;
-    bottom: 108px;
+    bottom: 8px;
 }
 </style>

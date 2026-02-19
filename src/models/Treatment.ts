@@ -4,20 +4,20 @@ import { FirestoreModel, type Timestampble } from 'cic-kit'
 export interface TreatmentData extends Partial<Timestampble> {
   id: string
   title: string
-  subtitle: string
-  icon: string
+  subtitle?: string
+  icon?: string
   color: string
   type_expense_id: string
   duration: number
   price: number
-  description: string
-  imgUrls: string[]
-  storeOrder: number
-  tag: string[]
-  imgDescriptionUrls: string[]
-  tipiDiPelle: string
-  prodottiConsigliatiIds: string[]
-  ingredienti: string
+  description?: string
+  imgUrls?: string[]
+  storeOrder?: number
+  tag?: string[]
+  imgDescriptionUrls?: string[]
+  tipiDiPelle?: string
+  prodottiConsigliatiIds?: string[]
+  ingredienti?: string
   storeVisible: boolean
   storeDisabeld: string
   updateBy: string
@@ -27,20 +27,20 @@ export class Treatment extends FirestoreModel<TreatmentData> {
   static collectionName = 'treatments'
 
   title: string
-  subtitle: string
-  icon: string
+  subtitle?: string
+  icon?: string
   color: string
   type_expense_id: string
   duration: number
   price: number
-  description: string
-  imgUrls: string[]
-  storeOrder: number
-  tag: string[]
-  imgDescriptionUrls: string[]
-  tipiDiPelle: string
-  prodottiConsigliatiIds: string[]
-  ingredienti: string
+  description?: string
+  imgUrls?: string[]
+  storeOrder?: number
+  tag?: string[]
+  imgDescriptionUrls?: string[]
+  tipiDiPelle?: string
+  prodottiConsigliatiIds?: string[]
+  ingredienti?: string
   storeVisible: boolean
   storeDisabeld: string
   updateBy: string

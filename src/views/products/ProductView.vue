@@ -1,28 +1,18 @@
 <script setup lang="ts">
 import { Btn, cicKitStore, toast, useChangeHeader } from "cic-kit";
-import { Form, Field, ErrorMessage } from "vee-validate";
-import { toTypedSchema } from "@vee-validate/yup";
-import * as yup from "yup";
 import { computed, onMounted, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import { productStore } from "../../stores/productStore";
 import type { Product } from "../../models/Product";
 import { Auth } from "../../main";
 
 useChangeHeader("Dettaglio prodotto", { name: "ProductsView" });
-
 const route = useRoute();
-const router = useRouter();
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle());
 const item = ref<Product | undefined>(undefined);
 const isLoading = ref(false);
 const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin);
-
-const jumpSchema = toTypedSchema(
-  yup.object({
-    id: yup.string().required("ID obbligatorio"),
-  }),
-);
+const priceFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 
 async function loadItem() {
   const id = String(route.params.id ?? "");
@@ -42,20 +32,13 @@ async function loadItem() {
   }
 }
 
-function asDateString(value: unknown) {
-  if (!value) return "-";
-  if (value instanceof Date) return value.toLocaleString();
-  if (typeof value === "object" && value !== null && "toDate" in value) {
-    const date = (value as { toDate: () => Date }).toDate();
-    return date.toLocaleString();
-  }
-  return String(value);
+function formatPrice(value: number | undefined) {
+  if (typeof value !== "number" || Number.isNaN(value)) return "-";
+  return priceFormatter.format(value);
 }
 
-function jumpToId(values: Record<string, unknown>) {
-  const id = String(values.id ?? "").trim();
-  if (!id) return;
-  router.push({ name: "ProductView", params: { id } });
+function primaryImage(urls: string[] | undefined) {
+  return urls?.find((url) => !!url) ?? "";
 }
 
 onMounted(() => {
@@ -67,7 +50,6 @@ watch(() => route.params.id, loadItem);
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h1 class="h5 mb-0">Dettaglio prodotto</h1>
       <Btn
         v-if="canManage"
         color="dark"
@@ -78,49 +60,69 @@ watch(() => route.params.id, loadItem);
       </Btn>
     </div>
 
-    <Form
-      class="card border-0 shadow-sm p-3 mb-3"
-      :validation-schema="jumpSchema"
-      :initial-values="{ id: String(route.params.id ?? '') }"
-      @submit="jumpToId"
-    >
-      <label class="form-label mb-1">Apri un altro prodotto tramite ID</label>
-      <div class="d-flex gap-2">
-        <Field name="id" class="form-control" placeholder="id prodotto" />
-        <Btn type="submit" color="secondary" icon="search">Apri</Btn>
-      </div>
-      <ErrorMessage name="id" class="text-danger small mt-1 d-block" />
-    </Form>
-
     <div v-if="isLoading" class="text-muted small">Caricamento...</div>
 
-    <div v-else-if="item" class="card border-0 shadow-sm p-3">
-      <h2 class="h6 mb-1">{{ item.title }}</h2>
-      <p class="text-muted mb-3">{{ item.subtitle }}</p>
-
-      <div class="row g-2 small">
-        <div class="col-12 col-md-6"><strong>Prezzo:</strong> {{ item.price }} EUR</div>
-        <div class="col-12 col-md-6"><strong>Durata:</strong> {{ item.duration }} min</div>
-        <div class="col-12 col-md-6"><strong>ID tipo di spesa:</strong> {{ item.type_expense_id }}</div>
-        <div class="col-12 col-md-6"><strong>Ordine vetrina:</strong> {{ item.storeOrder }}</div>
-        <div class="col-12 col-md-6"><strong>Tipo di pelle:</strong> {{ item.tipiDiPelle }}</div>
-        <div class="col-12 col-md-6"><strong>Visibile:</strong> {{ item.storeVisible ? "si" : "no" }}</div>
-        <div class="col-12"><strong>Descrizione:</strong> {{ item.description || "-" }}</div>
-        <div class="col-12"><strong>Consigli uso:</strong> {{ item.consigliUso || "-" }}</div>
-        <div class="col-12"><strong>Ingredienti:</strong> {{ item.ingredienti || "-" }}</div>
-        <div class="col-12"><strong>Tag:</strong> {{ item.tag.join(", ") || "-" }}</div>
-        <div class="col-12"><strong>URL immagini:</strong> {{ item.imgUrls.join(", ") || "-" }}</div>
-        <div class="col-12">
-          <strong>URL descrizioni immagini:</strong> {{ item.imgDescriptionUrls.join(", ") || "-" }}
+    <article v-else-if="item" class="detail-card">
+      <div class="row g-4 align-items-start">
+        <div v-if="primaryImage(item.imgUrls)" class="col-12 col-lg-6">
+          <div class="detail-media">
+            <img :src="primaryImage(item.imgUrls)" :alt="item.title" class="detail-image" />
+          </div>
         </div>
-        <div class="col-12">
-          <strong>ID trattamenti consigliati:</strong> {{ item.trattamentiConsogliatiIds.join(", ") || "-" }}
+        <div :class="primaryImage(item.imgUrls) ? 'col-12 col-lg-6' : 'col-12'">
+          <h2 class="detail-title">{{ item.title }}</h2>
+          <p v-if="item.subtitle" class="detail-subtitle">{{ item.subtitle }}</p>
+          <p v-if="item.description" class="detail-description">{{ item.description }}</p>
+          <p class="detail-price">{{ formatPrice(item.price) }}</p>
         </div>
-        <div class="col-12 col-md-6"><strong>Aggiornato da:</strong> {{ item.updateBy }}</div>
-        <div class="col-12 col-md-6"><strong>Aggiornato il:</strong> {{ asDateString(item.updatedAt) }}</div>
       </div>
-    </div>
+    </article>
 
     <p v-else class="text-muted small mb-0">Prodotto non trovato.</p>
   </div>
 </template>
+
+<style scoped>
+.detail-card {
+  padding: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.detail-media {
+  background: rgba(0, 0, 0, 0.03);
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+}
+
+.detail-image {
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+}
+
+.detail-title {
+  margin-bottom: 0.4rem;
+  font-size: clamp(1.45rem, 2.6vw, 2.25rem);
+  font-weight: 700;
+}
+
+.detail-subtitle {
+  margin-bottom: 1rem;
+  font-size: 1.05rem;
+  color: rgba(0, 0, 0, 0.66);
+}
+
+.detail-description {
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.detail-price {
+  margin-bottom: 0;
+  font-size: clamp(1.35rem, 2.8vw, 2rem);
+  font-weight: 700;
+}
+</style>

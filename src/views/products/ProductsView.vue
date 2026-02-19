@@ -4,6 +4,7 @@ import { Form, Field } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/yup";
 import * as yup from "yup";
 import { computed } from "vue";
+import CatalogCard from "../../components/CatalogCard.vue";
 import { productStore } from "../../stores/productStore";
 import { Auth } from "../../main";
 
@@ -18,7 +19,6 @@ useStoreWatch([
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle());
 const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin);
-const priceFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 
 const filterSchema = toTypedSchema(
   yup.object({
@@ -39,15 +39,6 @@ function filteredItems(search: string | undefined) {
   );
 }
 
-function primaryImage(urls: string[] | undefined) {
-  return urls?.find((url) => !!url) ?? "";
-}
-
-function formatPrice(price: number | undefined) {
-  if (typeof price !== "number" || Number.isNaN(price)) return "-";
-  return priceFormatter.format(price);
-}
-
 useHeaderExtra((Btn), {
   to: { name: 'ProductEditView', params: { id: 'new' } },
   variant: "ghost", icon: "add",
@@ -63,20 +54,15 @@ useHeaderExtra((Btn), {
       </div>
 
       <div class="row g-3 g-lg-4 mt-1">
-        <div v-for="item in filteredItems(values.search)" :key="item.id" class="col-12 col-md-6 col-xl-4">
-          <article class="catalog-card h-100">
-            <div class="catalog-media">
-              <img v-if="primaryImage(item.imgUrls)" :src="primaryImage(item.imgUrls)" :alt="item.title" class="img-fluid catalog-img" />
-              <div v-else class="catalog-media-placeholder">Nessuna immagine</div>
-            </div>
-
-            <div class="catalog-info">
-              <h2 class="catalog-title">{{ item.title }}</h2>
-              <p class="catalog-subtitle">{{ item.subtitle || "-" }}</p>
-              <p class="catalog-price">{{ formatPrice(item.price) }}</p>
-            </div>
-
-            <div class="catalog-actions">
+        <div v-for="item in filteredItems(values.search)" :key="item.id" class="col-6 col-md-4 col-xl-3">
+          <CatalogCard
+            :title="item.title"
+            :subtitle="item.subtitle"
+            :price="item.price"
+            :img-urls="item.imgUrls ?? []"
+            :store-disabeld="item.storeDisabeld"
+          >
+            <template #actions>
               <Btn color="dark" icon="visibility" class="w-100" :to="{ name: 'ProductView', params: { id: item.id } }">
                 Apri prodotto
               </Btn>
@@ -84,8 +70,8 @@ useHeaderExtra((Btn), {
                 :to="{ name: 'ProductEditView', params: { id: item.id } }">
                 Modifica
               </Btn>
-            </div>
-          </article>
+            </template>
+          </CatalogCard>
         </div>
       </div>
 
@@ -100,7 +86,9 @@ useHeaderExtra((Btn), {
 }
 
 .catalog-search-wrap {
+  width: 100%;
   max-width: 28rem;
+  margin: 0 auto;
 }
 
 .catalog-search-input {
@@ -118,65 +106,5 @@ useHeaderExtra((Btn), {
 
 .catalog-search-input:focus-visible {
   outline: none;
-}
-
-.catalog-card {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.1rem;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background-color: rgba(255, 255, 255, 0.42);
-}
-
-.catalog-media {
-  min-height: 12.5rem;
-  display: grid;
-  place-items: center;
-}
-
-.catalog-img {
-  max-height: 12.5rem;
-  object-fit: contain;
-}
-
-.catalog-media-placeholder {
-  font-size: 0.85rem;
-  color: rgba(0, 0, 0, 0.62);
-}
-
-.catalog-info {
-  text-align: center;
-}
-
-.catalog-title {
-  margin-bottom: 0.35rem;
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-.catalog-subtitle {
-  margin-bottom: 0.35rem;
-  color: rgba(0, 0, 0, 0.72);
-}
-
-.catalog-price {
-  margin-bottom: 0;
-  font-weight: 600;
-}
-
-.catalog-actions {
-  margin-top: auto;
-  display: grid;
-  gap: 0.55rem;
-}
-
-:deep(.catalog-actions .btn) {
-  border-radius: 0;
-  box-shadow: none;
-}
-
-:deep(.catalog-actions .btn:focus-visible) {
-  box-shadow: none;
 }
 </style>

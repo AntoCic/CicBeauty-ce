@@ -4,23 +4,22 @@ import { FirestoreModel, type Timestampble } from 'cic-kit'
 export interface ProductData extends Partial<Timestampble> {
   id: string
   title: string
-  subtitle: string
-  icon: string
+  subtitle?: string
+  icon?: string
   color: string
   type_expense_id: string
-  duration: number
   price: number
-  description: string
-  imgUrls: string[]
-  storeOrder: number
-  tag: string[]
-  imgDescriptionUrls: string[]
-  tipiDiPelle: string
-  consigliUso: string
-  ingredienti: string
+  description?: string
+  imgUrls?: string[]
+  storeOrder?: number
+  tag?: string[]
+  imgDescriptionUrls?: string[]
+  tipiDiPelle?: string
+  consigliUso?: string
+  ingredienti?: string
   storeVisible: boolean
   storeDisabeld: string
-  trattamentiConsogliatiIds: string[]
+  trattamentiConsogliatiIds?: string[]
   updateBy: string
 }
 
@@ -28,23 +27,22 @@ export class Product extends FirestoreModel<ProductData> {
   static collectionName = 'products'
 
   title: string
-  subtitle: string
-  icon: string
+  subtitle?: string
+  icon?: string
   color: string
   type_expense_id: string
-  duration: number
   price: number
-  description: string
-  imgUrls: string[]
-  storeOrder: number
-  tag: string[]
-  imgDescriptionUrls: string[]
-  tipiDiPelle: string
-  consigliUso: string
-  ingredienti: string
+  description?: string
+  imgUrls?: string[]
+  storeOrder?: number
+  tag?: string[]
+  imgDescriptionUrls?: string[]
+  tipiDiPelle?: string
+  consigliUso?: string
+  ingredienti?: string
   storeVisible: boolean
   storeDisabeld: string
-  trattamentiConsogliatiIds: string[]
+  trattamentiConsogliatiIds?: string[]
   updateBy: string
 
   constructor(data: ProductData) {
@@ -54,7 +52,6 @@ export class Product extends FirestoreModel<ProductData> {
     this.icon = data.icon
     this.color = data.color
     this.type_expense_id = data.type_expense_id
-    this.duration = data.duration
     this.price = data.price
     this.description = data.description
     this.imgUrls = data.imgUrls
@@ -78,7 +75,6 @@ export class Product extends FirestoreModel<ProductData> {
       icon: this.icon,
       color: this.color,
       type_expense_id: this.type_expense_id,
-      duration: this.duration,
       price: this.price,
       description: this.description,
       imgUrls: this.imgUrls,

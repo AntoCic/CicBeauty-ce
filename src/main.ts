@@ -16,7 +16,8 @@ initCicKitStore({
         colorAccent: '#e8b3be',
         colorSoft: '#F7F1F2'
     },
-    loginCode: '5555'
+    loginCode: '5555',
+    debugFirestore:true
 });
 
 headerStore.defaultTitle = 'Cnc Beauty';

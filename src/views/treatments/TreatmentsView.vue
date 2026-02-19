@@ -4,6 +4,7 @@ import { Form, Field } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/yup";
 import * as yup from "yup";
 import { computed } from "vue";
+import CatalogCard from "../../components/CatalogCard.vue";
 import { treatmentStore } from "../../stores/treatmentStore";
 import { Auth } from "../../main";
 
@@ -18,7 +19,6 @@ useStoreWatch([
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle());
 const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin);
-const priceFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 
 const filterSchema = toTypedSchema(
   yup.object({
@@ -39,11 +39,6 @@ function filteredItems(search: string | undefined) {
   );
 }
 
-function formatPrice(price: number | undefined) {
-  if (typeof price !== "number" || Number.isNaN(price)) return "-";
-  return priceFormatter.format(price);
-}
-
 useHeaderExtra((Btn), {
   to: { name: 'TreatmentEditView', params: { id: 'new' } },
   variant: "ghost", icon: "add",
@@ -59,16 +54,9 @@ useHeaderExtra((Btn), {
       </div>
 
       <div class="row g-3 g-lg-4 mt-1">
-        <div v-for="item in filteredItems(values.search)" :key="item.id" class="col-12 col-md-6 col-xl-4">
-          <article class="catalog-card h-100">
-            <div class="catalog-info">
-              <h2 class="catalog-title">{{ item.title }}</h2>
-              <p class="catalog-subtitle">{{ item.subtitle || "-" }}</p>
-              <p class="catalog-meta">Durata {{ item.duration || 0 }} min</p>
-              <p class="catalog-price">{{ formatPrice(item.price) }}</p>
-            </div>
-
-            <div class="catalog-actions">
+        <div v-for="item in filteredItems(values.search)" :key="item.id" class="col-6 col-md-4 col-xl-3">
+          <CatalogCard :title="item.title" :subtitle="item.subtitle" :price="item.price" :store-disabeld="item.storeDisabeld">
+            <template #actions>
               <Btn color="dark" icon="visibility" class="w-100" :to="{ name: 'TreatmentView', params: { id: item.id } }">
                 Apri trattamento
               </Btn>
@@ -76,8 +64,8 @@ useHeaderExtra((Btn), {
                 :to="{ name: 'TreatmentEditView', params: { id: item.id } }">
                 Modifica
               </Btn>
-            </div>
-          </article>
+            </template>
+          </CatalogCard>
         </div>
       </div>
 
@@ -92,7 +80,9 @@ useHeaderExtra((Btn), {
 }
 
 .catalog-search-wrap {
+  width: 100%;
   max-width: 28rem;
+  margin: 0 auto;
 }
 
 .catalog-search-input {
@@ -110,55 +100,5 @@ useHeaderExtra((Btn), {
 
 .catalog-search-input:focus-visible {
   outline: none;
-}
-
-.catalog-card {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.2rem;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background-color: rgba(255, 255, 255, 0.42);
-}
-
-.catalog-info {
-  text-align: center;
-}
-
-.catalog-title {
-  margin-bottom: 0.35rem;
-  font-size: 1.05rem;
-  font-weight: 500;
-}
-
-.catalog-subtitle {
-  margin-bottom: 0.35rem;
-  color: rgba(0, 0, 0, 0.72);
-}
-
-.catalog-meta {
-  margin-bottom: 0.35rem;
-  font-size: 0.9rem;
-  color: rgba(0, 0, 0, 0.64);
-}
-
-.catalog-price {
-  margin-bottom: 0;
-  font-weight: 600;
-}
-
-.catalog-actions {
-  margin-top: auto;
-  display: grid;
-  gap: 0.55rem;
-}
-
-:deep(.catalog-actions .btn) {
-  border-radius: 0;
-  box-shadow: none;
-}
-
-:deep(.catalog-actions .btn:focus-visible) {
-  box-shadow: none;
 }
 </style>
