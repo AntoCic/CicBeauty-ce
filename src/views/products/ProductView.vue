@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Btn, cicKitStore, toast, useChangeHeader } from "cic-kit";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { productStore } from "../../stores/productStore";
 import type { Product } from "../../models/Product";
@@ -14,7 +14,10 @@ const item = ref<Product | undefined>(undefined);
 const isLoading = ref(false);
 const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin);
 const priceFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
-const heroImage = computed(() => primaryImage(item.value?.imgUrls));
+const imageUrls = computed(() => (item.value?.imgUrls ?? []).filter((url): url is string => !!url));
+const hasImages = computed(() => imageUrls.value.length > 0);
+const currentImageIndex = ref(0);
+let carouselTimer: ReturnType<typeof setInterval> | undefined;
 
 async function loadItem() {
   const id = String(route.params.id ?? "");
@@ -39,14 +42,63 @@ function formatPrice(value: number | undefined) {
   return priceFormatter.format(value);
 }
 
-function primaryImage(urls: string[] | undefined) {
-  return urls?.find((url) => !!url) ?? "";
+function stopCarousel() {
+  if (!carouselTimer) return;
+  clearInterval(carouselTimer);
+  carouselTimer = undefined;
+}
+
+function startCarousel() {
+  stopCarousel();
+  if (imageUrls.value.length <= 1) return;
+
+  carouselTimer = setInterval(() => {
+    currentImageIndex.value = (currentImageIndex.value + 1) % imageUrls.value.length;
+  }, 3200);
+}
+
+function setCurrentImage(index: number) {
+  if (!imageUrls.value.length) return;
+  const total = imageUrls.value.length;
+  currentImageIndex.value = ((index % total) + total) % total;
+  startCarousel();
+}
+
+function prevImage() {
+  setCurrentImage(currentImageIndex.value - 1);
+}
+
+function nextImage() {
+  setCurrentImage(currentImageIndex.value + 1);
 }
 
 onMounted(() => {
   loadItem();
 });
+
 watch(() => route.params.id, loadItem);
+
+watch(
+  imageUrls,
+  (urls) => {
+    if (!urls.length) {
+      stopCarousel();
+      currentImageIndex.value = 0;
+      return;
+    }
+
+    if (currentImageIndex.value >= urls.length) {
+      currentImageIndex.value = 0;
+    }
+
+    startCarousel();
+  },
+  { immediate: true }
+);
+
+onBeforeUnmount(() => {
+  stopCarousel();
+});
 </script>
 
 <template>
@@ -68,13 +120,58 @@ watch(() => route.params.id, loadItem);
 
       <article v-else-if="item" class="detail-card">
         <div class="row g-4 g-xl-5 align-items-start">
-          <div v-if="heroImage" class="col-12 col-lg-6">
+          <div v-if="hasImages" class="col-12 col-lg-6">
             <div class="detail-media">
-              <img :src="heroImage" :alt="item.title" class="detail-image" />
+              <div class="detail-carousel" @mouseenter="stopCarousel" @mouseleave="startCarousel">
+                <img
+                  v-for="(img, index) in imageUrls"
+                  :key="`${img}-${index}`"
+                  :src="img"
+                  :alt="`${item.title} ${index + 1}`"
+                  class="detail-image"
+                  :class="{ 'is-active': index === currentImageIndex }"
+                />
+
+                <button
+                  v-if="imageUrls.length > 1"
+                  type="button"
+                  class="carousel-btn carousel-btn--prev"
+                  aria-label="Immagine precedente"
+                  @click="prevImage"
+                >
+                  <svg viewBox="0 -960 960 960" aria-hidden="true">
+                    <path d="M561-240 321-480l240-240 56 56-184 184 184 184-56 56Z" />
+                  </svg>
+                </button>
+
+                <button
+                  v-if="imageUrls.length > 1"
+                  type="button"
+                  class="carousel-btn carousel-btn--next"
+                  aria-label="Immagine successiva"
+                  @click="nextImage"
+                >
+                  <svg viewBox="0 -960 960 960" aria-hidden="true">
+                    <path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z" />
+                  </svg>
+                </button>
+              </div>
+
+              <div v-if="imageUrls.length > 1" class="carousel-dots">
+                <button
+                  v-for="(img, index) in imageUrls"
+                  :key="`dot-${img}-${index}`"
+                  type="button"
+                  class="carousel-dot"
+                  :class="{ 'is-active': index === currentImageIndex }"
+                  :aria-label="`Mostra immagine ${index + 1}`"
+                  @click="setCurrentImage(index)"
+                />
+              </div>
             </div>
           </div>
 
-          <div :class="heroImage ? 'col-12 col-lg-6 d-flex flex-column' : 'col-12 d-flex flex-column'">
+          <div :class="hasImages ? 'col-12 col-lg-6 d-flex flex-column' : 'col-12 d-flex flex-column'">
             <p class="detail-kicker">
               <svg class="g-icon g-icon--kicker" viewBox="0 -960 960 960" aria-hidden="true">
                 <path d="M280-120q-33 0-56.5-23.5T200-200v-520q0-33 23.5-56.5T280-800h400q33 0 56.5 23.5T760-720v520q0 33-23.5 56.5T680-120H280Zm200-280q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm-120-200h240v-80H360v80Z"/>
@@ -176,18 +273,94 @@ watch(() => route.params.id, loadItem);
 
 .detail-media {
   min-height: min(52vw, 440px);
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   padding: clamp(0.8rem, 2vw, 1.2rem);
   border: 1px solid rgba(84, 44, 58, 0.12);
   border-radius: 2px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0.24));
 }
 
-.detail-image {
+.detail-carousel {
+  position: relative;
   width: 100%;
-  max-height: min(48vw, 420px);
+  height: clamp(240px, 48vw, 420px);
+  overflow: hidden;
+}
+
+.detail-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.55s ease;
+}
+
+.detail-image.is-active {
+  opacity: 1;
+}
+
+.carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(84, 44, 58, 0.24);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.58);
+  color: #542c3a;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.carousel-btn:hover {
+  background: rgba(232, 179, 190, 0.72);
+  color: #3d1f29;
+}
+
+.carousel-btn--prev {
+  left: 0.5rem;
+}
+
+.carousel-btn--next {
+  right: 0.5rem;
+}
+
+.carousel-btn svg {
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.7rem;
+}
+
+.carousel-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(84, 44, 58, 0.28);
+  transition: width 0.22s ease, background 0.22s ease;
+}
+
+.carousel-dot.is-active {
+  width: 1.1rem;
+  background: rgba(84, 44, 58, 0.72);
 }
 
 .detail-kicker {
@@ -318,6 +491,10 @@ watch(() => route.params.id, loadItem);
 
   .detail-subtitle {
     font-size: 0.9rem;
+  }
+
+  .detail-carousel {
+    height: clamp(210px, 64vw, 320px);
   }
 
   .detail-heading {

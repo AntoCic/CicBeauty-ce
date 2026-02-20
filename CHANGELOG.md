@@ -1,3 +1,9 @@
+## v0.0.7 - 2026-02-20
+
+prima version stabile
+
+---
+
 ## v0.0.6 - 2026-02-20
 
 Nessuna descrizione fornita.
