@@ -2,9 +2,6 @@
   "buckets": [
     {
       "id": "cncbeauty-ce.appspot.com"
-    },
-    {
-      "id": "cncbeauty-ce.firebasestorage.app"
     }
   ]
 }
