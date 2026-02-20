@@ -1,3 +1,9 @@
+## v0.0.6 - 2026-02-20
+
+Nessuna descrizione fornita.
+
+---
+
 ## v0.0.5 - 2026-02-19
 
 fix update filers...

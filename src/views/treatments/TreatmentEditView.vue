@@ -9,6 +9,7 @@ import type { Treatment, TreatmentData } from "../../models/Treatment";
 import { Auth } from "../../main";
 import { treatmentStore } from "../../stores/treatmentStore";
 import { typeExpenseStore } from "../../stores/typeExpenseStore";
+import HeaderApp from "../../components/HeaderApp.vue";
 
 type TreatmentForm = {
   title: string;
@@ -177,9 +178,10 @@ watch(() => route.params.id, loadItem);
 
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
+    <HeaderApp :title="isCreateMode ? 'Nuovo trattamento' : 'Modifica trattamento'" />
+
     <div class="edit-wrapper mx-auto py-3 py-md-4">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h5 mb-0">{{ isCreateMode ? "Nuovo trattamento" : "Modifica trattamento" }}</h1>
         <Btn v-if="!isCreateMode" color="secondary" icon="visibility" :to="{ name: 'TreatmentView', params: { id: route.params.id } }">
           Apri
         </Btn>

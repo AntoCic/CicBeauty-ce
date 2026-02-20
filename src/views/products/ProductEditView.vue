@@ -20,6 +20,7 @@ import type { Product, ProductData } from "../../models/Product";
 import { Auth } from "../../main";
 import { productStore } from "../../stores/productStore";
 import { typeExpenseStore } from "../../stores/typeExpenseStore";
+import HeaderApp from "../../components/HeaderApp.vue";
 
 type ProductForm = {
   title: string;
@@ -266,9 +267,10 @@ watch(() => route.params.id, loadItem);
 
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
+    <HeaderApp :title="isCreateMode ? 'Nuovo prodotto' : 'Modifica prodotto'" />
+
     <div class="edit-wrapper mx-auto py-3 py-md-4">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h5 mb-0">{{ isCreateMode ? "Nuovo prodotto" : "Modifica prodotto" }}</h1>
         <Btn v-if="!isCreateMode" color="secondary" icon="visibility"
           :to="{ name: 'ProductView', params: { id: route.params.id } }">
           Apri

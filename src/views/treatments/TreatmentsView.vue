@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, useChangeHeader, useHeaderExtra, useStoreWatch } from "cic-kit";
-import { Form, Field } from "vee-validate";
-import { toTypedSchema } from "@vee-validate/yup";
-import * as yup from "yup";
-import { computed } from "vue";
+import { Btn, cicKitStore, useStoreWatch } from "cic-kit";
+import { computed, ref } from "vue";
 import CatalogCard from "../../components/CatalogCard.vue";
 import { treatmentStore } from "../../stores/treatmentStore";
 import { Auth } from "../../main";
+import HeaderApp from "../../components/HeaderApp.vue";
 
-useChangeHeader("Trattamenti", "/");
 useStoreWatch([
   {
     store: treatmentStore,
@@ -19,17 +16,13 @@ useStoreWatch([
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle());
 const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin);
+const search = ref("");
 
-const filterSchema = toTypedSchema(
-  yup.object({
-    search: yup.string().default(""),
-  }),
-);
-
-function filteredItems(search: string | undefined) {
-  const term = (search ?? "").trim().toLowerCase();
-  if (!term) return treatmentStore.itemsActiveArray;
-
+const filteredItems = computed(() => {
+  const term = search.value.trim().toLowerCase();
+  if (!term) {
+    return treatmentStore.itemsActiveArray;
+  }
   return treatmentStore.itemsActiveArray.filter((item) =>
     [item.title, item.subtitle, item.type_expense_id].some((value) =>
       String(value ?? "")
@@ -37,31 +30,37 @@ function filteredItems(search: string | undefined) {
         .includes(term),
     ),
   );
-}
-
-useHeaderExtra((Btn), {
-  to: { name: 'TreatmentEditView', params: { id: 'new' } },
-  variant: "ghost", icon: "add",
-  class: canManage.value ? '': 'd-none'
-})
+});
 </script>
 
 <template>
   <div class="container-fluid pb-t pt-3 pt-md-4 overflow-auto h-100" :style="bgStyle">
-    <Form :validation-schema="filterSchema" :initial-values="{ search: '' }" v-slot="{ values }" class="catalog-view">
-      <div class="catalog-search-wrap">
-        <Field name="search" class="form-control catalog-search-input" placeholder="Cerca trattamenti..." />
+    <HeaderApp title="Trattamenti" v-model="search" search-placeholder="Cerca trattamenti..." />
+
+    <section class="catalog-view">
+      <div v-if="canManage" class="catalog-toolbar">
+        <Btn
+          type="button"
+          :to="{ name: 'TreatmentEditView', params: { id: 'new' } }"
+          variant="outline"
+          color="success"
+          icon="add"
+        >
+          aggiungi
+        </Btn>
       </div>
 
       <div class="row g-3 g-lg-4 mt-1">
-        <div v-for="item in filteredItems(values.search)" :key="item.id" class="col-6 col-md-4 col-xl-3">
-          <CatalogCard :title="item.title" :subtitle="item.subtitle" :price="item.price" :store-disabeld="item.storeDisabeld">
-            <template #actions>
-              <Btn color="dark" icon="visibility" class="w-100" :to="{ name: 'TreatmentView', params: { id: item.id } }">
-                Apri trattamento
-              </Btn>
-              <Btn v-if="canManage" color="secondary" icon="edit" class="w-100"
-                :to="{ name: 'TreatmentEditView', params: { id: item.id } }">
+        <div v-for="item in filteredItems" :key="item.id" class="col-6 col-md-4 col-xl-3">
+          <CatalogCard
+            :title="item.title"
+            :subtitle="item.subtitle"
+            :price="item.price"
+            :store-disabeld="item.storeDisabeld"
+            :to="{ name: 'TreatmentView', params: { id: item.id } }"
+          >
+            <template v-if="canManage" #actions>
+              <Btn color="secondary" icon="edit" class="w-100" :to="{ name: 'TreatmentEditView', params: { id: item.id } }">
                 Modifica
               </Btn>
             </template>
@@ -69,36 +68,40 @@ useHeaderExtra((Btn), {
         </div>
       </div>
 
-      <p v-if="!filteredItems(values.search).length" class="text-muted small mt-4 mb-0">Nessun trattamento trovato.</p>
-    </Form>
+      <p v-if="!filteredItems.length" class="text-muted small mt-4 mb-0 text-center">
+        Nessun trattamento trovato.
+      </p>
+    </section>
   </div>
 </template>
 
 <style scoped>
+
 .catalog-view {
-  padding-bottom: 1.5rem;
+  padding: 0 12px 1.5rem;
 }
 
-.catalog-search-wrap {
-  width: 100%;
-  max-width: 28rem;
-  margin: 0 auto;
+.catalog-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
 }
 
-.catalog-search-input {
-  min-height: 3rem;
-  border-radius: 0;
-  border-color: rgba(0, 0, 0, 0.25);
-  background-color: rgba(255, 255, 255, 0.88);
+@media (max-width: 575.98px) {
+  .catalog-view {
+    padding: 0 10px 1.25rem;
+  }
+
+  .catalog-toolbar {
+    margin-bottom: 0.5rem;
+  }
 }
 
-.catalog-search-input:focus {
-  border-color: #111;
+:deep(.catalog-toolbar .btn) {
+  border-radius: 2px;
+}
+
+:deep(.catalog-toolbar .btn:focus-visible) {
   box-shadow: none;
-  outline: none;
-}
-
-.catalog-search-input:focus-visible {
-  outline: none;
 }
 </style>
