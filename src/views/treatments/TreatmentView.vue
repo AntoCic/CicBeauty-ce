@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, toast, useChangeHeader } from "cic-kit";
+import {  cicKitStore, toast, useChangeHeader } from "cic-kit";
 import { computed, onMounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { treatmentStore } from "../../stores/treatmentStore";
 import type { Treatment } from "../../models/Treatment";
 import { Auth } from "../../main";
@@ -10,6 +10,7 @@ import HeaderApp from "../../components/HeaderApp.vue";
 useChangeHeader("Dettaglio trattamento", { name: "TreatmentsView" });
 
 const route = useRoute();
+const router = useRouter();
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle());
 const item = ref<Treatment | undefined>(undefined);
 const isLoading = ref(false);
@@ -48,22 +49,17 @@ onMounted(() => {
   loadItem();
 });
 watch(() => route.params.id, loadItem);
+
+function goPageEdit() {
+  router.push({ name: 'TreatmentEditView', params: { id: route.params.id } });
+}
 </script>
 
 <template>
   <div class="detail-page container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp title="Dettaglio trattamento" />
+    <HeaderApp title="Dettaglio trattamento" :btn-icon="canManage ? 'edit' : undefined" @btn-click="goPageEdit" />
 
     <section class="detail-shell">
-      <div v-if="canManage" class="detail-toolbar">
-        <Btn
-          color="secondary"
-          icon="edit"
-          :to="{ name: 'TreatmentEditView', params: { id: route.params.id } }"
-        >
-          Modifica
-        </Btn>
-      </div>
 
       <div v-if="isLoading" class="detail-state">Caricamento...</div>
 
@@ -72,7 +68,8 @@ watch(() => route.params.id, loadItem);
           <div class="col-12 d-flex flex-column">
             <p class="detail-kicker">
               <svg class="g-icon g-icon--kicker" viewBox="0 -960 960 960" aria-hidden="true">
-                <path d="M480-80q-82 0-155-31t-127-85q-54-54-85-127T82-478q0-79 29-149t81-124l53 53q-42 43-64.5 99T158-478q0 134 94 228t228 94q134 0 228-94t94-228q0-134-94-228t-228-94q-23 0-45 2.5T392-790l88 88H280v-200l53 53q35-15 72-23t75-8q82 0 155 31t127 85q54 54 85 127t31 155q0 82-31 155T762-196q-54 54-127 85T480-80Zm-40-200q-17 0-28.5-11.5T400-320q0-17 11.5-28.5T440-360h80q17 0 28.5 11.5T560-320q0 17-11.5 28.5T520-280h-80Z"/>
+                <path
+                  d="M480-80q-82 0-155-31t-127-85q-54-54-85-127T82-478q0-79 29-149t81-124l53 53q-42 43-64.5 99T158-478q0 134 94 228t228 94q134 0 228-94t94-228q0-134-94-228t-228-94q-23 0-45 2.5T392-790l88 88H280v-200l53 53q35-15 72-23t75-8q82 0 155 31t127 85q54 54 85 127t31 155q0 82-31 155T762-196q-54 54-127 85T480-80Zm-40-200q-17 0-28.5-11.5T400-320q0-17 11.5-28.5T440-360h80q17 0 28.5 11.5T560-320q0 17-11.5 28.5T520-280h-80Z" />
               </svg>
               Trattamento
             </p>
@@ -89,14 +86,16 @@ watch(() => route.params.id, loadItem);
             <div class="detail-badges">
               <span class="detail-badge">
                 <svg class="g-icon" viewBox="0 -960 960 960" aria-hidden="true">
-                  <path d="M480-80q-83 0-156-31.5T197-197Q112-282 80-364.5T48-520q0-83 31.5-156T197-803q85-85 167.5-116T480-950q83 0 156 31.5T763-803q85 85 116.5 167.5T911-520q0 83-31.5 156T763-197q-85 85-167.5 116.5T480-80Zm1-439 167 99 30-50-137-81v-209h-60v241Z"/>
+                  <path
+                    d="M480-80q-83 0-156-31.5T197-197Q112-282 80-364.5T48-520q0-83 31.5-156T197-803q85-85 167.5-116T480-950q83 0 156 31.5T763-803q85 85 116.5 167.5T911-520q0 83-31.5 156T763-197q-85 85-167.5 116.5T480-80Zm1-439 167 99 30-50-137-81v-209h-60v241Z" />
                 </svg>
                 Durata: {{ formatDuration(item.duration) }}
               </span>
 
               <span v-if="item.storeDisabeld" class="detail-badge detail-badge--warn">
                 <svg class="g-icon" viewBox="0 -960 960 960" aria-hidden="true">
-                  <path d="M480-280q17 0 28.5-11.5T520-320q0-17-11.5-28.5T480-360q-17 0-28.5 11.5T440-320q0 17 11.5 28.5T480-280Zm-40-160h80v-240h-80v240Zm40 360q-139 0-236.5-97.5T146-414q0-139 97.5-236.5T480-748q139 0 236.5 97.5T814-414q0 139-97.5 236.5T480-80Z"/>
+                  <path
+                    d="M480-280q17 0 28.5-11.5T520-320q0-17-11.5-28.5T480-360q-17 0-28.5 11.5T440-320q0 17 11.5 28.5T480-280Zm-40-160h80v-240h-80v240Zm40 360q-139 0-236.5-97.5T146-414q0-139 97.5-236.5T480-748q139 0 236.5 97.5T814-414q0 139-97.5 236.5T480-80Z" />
                 </svg>
                 Non disponibile: {{ item.storeDisabeld }}
               </span>
@@ -108,7 +107,8 @@ watch(() => route.params.id, loadItem);
               <p v-if="item.tipiDiPelle" class="detail-extra-item">
                 <strong class="detail-extra-label">
                   <svg class="g-icon" viewBox="0 -960 960 960" aria-hidden="true">
-                    <path d="M480-80q-83 0-156-31.5T197-197Q112-282 80-364.5T48-520q0-83 31.5-156T197-803q85-85 167.5-116T480-950q83 0 156 31.5T763-803q85 85 116.5 167.5T911-520q0 83-31.5 156T763-197q-85 85-167.5 116.5T480-80Zm0-80q117 0 198.5-81.5T760-440q0-117-81.5-198.5T480-720q-117 0-198.5 81.5T200-440q0 117 81.5 198.5T480-160Zm-80-200h160q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360Zm-40-120q17 0 28.5-11.5T400-520q0-17-11.5-28.5T360-560q-17 0-28.5 11.5T320-520q0 17 11.5 28.5T360-480Zm240 0q17 0 28.5-11.5T640-520q0-17-11.5-28.5T600-560q-17 0-28.5 11.5T560-520q0 17 11.5 28.5T600-480Z"/>
+                    <path
+                      d="M480-80q-83 0-156-31.5T197-197Q112-282 80-364.5T48-520q0-83 31.5-156T197-803q85-85 167.5-116T480-950q83 0 156 31.5T763-803q85 85 116.5 167.5T911-520q0 83-31.5 156T763-197q-85 85-167.5 116.5T480-80Zm0-80q117 0 198.5-81.5T760-440q0-117-81.5-198.5T480-720q-117 0-198.5 81.5T200-440q0 117 81.5 198.5T480-160Zm-80-200h160q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360Zm-40-120q17 0 28.5-11.5T400-520q0-17-11.5-28.5T360-560q-17 0-28.5 11.5T320-520q0 17 11.5 28.5T360-480Zm240 0q17 0 28.5-11.5T640-520q0-17-11.5-28.5T600-560q-17 0-28.5 11.5T560-520q0 17 11.5 28.5T600-480Z" />
                   </svg>
                   Tipi di pelle:
                 </strong>
@@ -118,7 +118,8 @@ watch(() => route.params.id, loadItem);
               <p v-if="item.ingredienti" class="detail-extra-item">
                 <strong class="detail-extra-label">
                   <svg class="g-icon" viewBox="0 -960 960 960" aria-hidden="true">
-                    <path d="M480-120q-100-92-166-186.5T248-500q0-89 59.5-148.5T456-708q25 0 48.5 7.5T548-678q22-22 47-35t53-13q89 0 148.5 59.5T856-518q0 99-66 193.5T624-138q-27 23-62.5 20.5T480-120Zm0-82q73-71 124.5-149.5T656-500q0-56-36-92t-92-36q-23 0-44.5 9T446-592h-80q-16-18-37.5-27T284-628q-56 0-92 36t-36 92q0 70 51.5 148.5T480-202Zm0-213Z"/>
+                    <path
+                      d="M480-120q-100-92-166-186.5T248-500q0-89 59.5-148.5T456-708q25 0 48.5 7.5T548-678q22-22 47-35t53-13q89 0 148.5 59.5T856-518q0 99-66 193.5T624-138q-27 23-62.5 20.5T480-120Zm0-82q73-71 124.5-149.5T656-500q0-56-36-92t-92-36q-23 0-44.5 9T446-592h-80q-16-18-37.5-27T284-628q-56 0-92 36t-36 92q0 70 51.5 148.5T480-202Zm0-213Z" />
                   </svg>
                   Ingredienti:
                 </strong>

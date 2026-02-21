@@ -12,6 +12,7 @@ const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin);
 useStoreWatch(canManage.value ? [{ store: typeExpenseStore, getOpts: { forceLocalSet: true } }] : []);
 
 type TypeExpenseForm = {
+  emoji: string;
   name: string;
   description: string;
   updateBy: string;
@@ -23,24 +24,100 @@ const isSeedingDefaults = ref(false);
 
 const categories = [
   {
-    name: "Unghie",
+    name: "Cerette",
+    emoji: "🍯",
     description:
-      "Include tutte le spese legate ai trattamenti per mani e piedi, come manicure e pedicure. Comprende ad esempio smalti semipermanenti, gel, acrilico, lime, frese, lampade UV/LED, solventi, prodotti per la ricostruzione e strumenti professionali per la cura e la decorazione delle unghie."
+      "Spese legate ai trattamenti di epilazione con cera tradizionale. Include cere a caldo e a freddo, rulli, spatole, strisce TNT, scaldacera, oli post-epilazione, talco, prodotti pre e post trattamento e materiale monouso specifico."
   },
   {
-    name: "Ciglia e Sopracciglia",
+    name: "Laser Epilazione",
+    emoji: "🔦",
     description:
-      "Include tutte le spese relative ai trattamenti per ciglia e sopracciglia, come laminazione, extension, tintura e definizione. Comprende ad esempio prodotti per laminazione, colle per extension, tinture specifiche, patch occhi, primer, remover e strumenti professionali come pinzette e microbrush."
+      "Spese relative ai trattamenti di epilazione laser o luce pulsata. Include manutenzione macchinari, manipoli, gel conduttori, occhiali protettivi, prodotti pre e post trattamento e materiali di consumo specifici."
   },
   {
-    name: "Trattamenti Speciali",
+    name: "Massaggi",
+    emoji: "💆‍♀️",
     description:
-      "Include le spese relative a trattamenti specifici non facilmente categorizzabili in altre aree, come trattamenti anti-smagliature, schiarenti o rigeneranti. Ad esempio sieri schiarenti, prodotti anti-macchia, cosmetici professionali per trattamenti intensivi, fanghi, bendaggi e attivi specifici."
+      "Spese legate ai trattamenti di massoterapia e relax. Include oli da massaggio, creme, candele, lettini, coprilettini monouso, asciugamani, diffusori di aromi e prodotti per massaggi drenanti, decontratturanti o modellanti."
   },
   {
-    name: "Spese Generali",
+    name: "Trattamenti Viso",
+    emoji: "✨",
     description:
-      "Include tutte le spese non direttamente collegate a un trattamento specifico ma necessarie per il funzionamento dell'attivita. Ad esempio affitto del locale, bollette, detergenti, prodotti per la sanificazione, materiale monouso, cancelleria, marketing e manutenzione delle attrezzature."
+      "Spese per trattamenti estetici viso. Include detergenti professionali, peeling, maschere, sieri, tonici, vaporizzatori, spatole ultrasuoni, prodotti anti-age, anti-acne, idratanti e attivi specifici."
+  },
+  {
+    name: "Trattamenti Corpo",
+    emoji: "🧴",
+    description:
+      "Spese per trattamenti estetici corpo. Include fanghi, bendaggi, creme riducenti, scrub, oli specifici, macchinari corpo e prodotti rassodanti o drenanti."
+  },
+  {
+    name: "Unghie & Pedicure",
+    emoji: "💅",
+    description:
+      "Include tutte le spese legate ai trattamenti per mani e piedi. Smalti semipermanenti, gel, acrilico, lime, frese, punte, lampade UV/LED, solventi, primer, tip, decorazioni e strumenti professionali."
+  },
+  {
+    name: "Ciglia",
+    emoji: "👁️",
+    description:
+      "Spese per extension ciglia, laminazione e trattamenti specifici. Include colle, patch, primer, remover, lash lift kit, pinzette professionali e microbrush."
+  },
+  {
+    name: "Sopracciglia",
+    emoji: "🖌️",
+    description:
+      "Spese per trattamenti sopracciglia. Include tinture, henné, pinzette, cere specifiche, prodotti per laminazione sopracciglia e strumenti di precisione."
+  },
+  {
+    name: "Materiale Monouso",
+    emoji: "🧼",
+    description:
+      "Prodotti e strumenti per la pulizia, guanti, mascherine, lenzuolini, carta, cotton fioc, spatole monouso, slip monouso e tutto il materiale usa e getta."
+  },
+  {
+    name: "Prodotti Rivendita",
+    emoji: "🛍️",
+    description:
+      "Prodotti acquistati per la rivendita al cliente, come creme, sieri, shampoo, integratori, kit skincare e prodotti professionali retail."
+  },
+  {
+    name: "Formazione",
+    emoji: "🎓",
+    description:
+      "Corsi di aggiornamento, masterclass, certificazioni, workshop, trasferte per formazione e materiali didattici."
+  },
+  {
+    name: "Marketing e Pubblicità",
+    emoji: "📣",
+    description:
+      "Spese per sponsorizzazioni social, volantini, sito web, grafica, campagne pubblicitarie, shooting fotografici e branding."
+  },
+  {
+    name: "Affitto",
+    emoji: "🏢",
+    description:
+      "Canone di locazione del locale commerciale."
+  },
+  {
+    name: "Utenze",
+    emoji: "💡",
+    description:
+      "Luce, acqua, gas, internet, telefono e altre utenze necessarie al funzionamento dell'attività. Interventi di manutenzione ordinaria e straordinaria del centro estetico."
+  },
+  {
+    name: "Personale",
+    emoji: "👩‍💼",
+    description:
+      "Stipendi, contributi, consulente del lavoro, assicurazioni dipendenti e collaboratori."
+  },
+  {
+    name: "Assicurazioni e Consulenze",
+    emoji: "📑",
+    description:
+      "Polizze assicurative, commercialista, consulente fiscale e legale."
   }
 ];
 
@@ -54,6 +131,7 @@ const defaultUpdateBy = computed(() => {
 
 const schema = toTypedSchema(
   yup.object({
+    emoji: yup.string().default(""),
     name: yup.string().required("Campo obbligatorio"),
     description: yup.string().required("Campo obbligatorio"),
     updateBy: yup.string().required("Campo obbligatorio"),
@@ -61,6 +139,7 @@ const schema = toTypedSchema(
 );
 
 const defaultValues = computed<TypeExpenseForm>(() => ({
+  emoji: "",
   name: "",
   description: "",
   updateBy: defaultUpdateBy.value,
@@ -68,6 +147,7 @@ const defaultValues = computed<TypeExpenseForm>(() => ({
 
 async function onSubmit(values: Record<string, unknown>) {
   const payload: TypeExpenseForm = {
+    emoji: String(values.emoji ?? "").trim(),
     name: String(values.name ?? ""),
     description: String(values.description ?? ""),
     updateBy: String(values.updateBy ?? ""),
@@ -75,6 +155,7 @@ async function onSubmit(values: Record<string, unknown>) {
 
   try {
     await typeExpenseStore.add({
+      emoji: payload.emoji,
       name: payload.name,
       description: payload.description,
       updateBy: payload.updateBy,
@@ -94,6 +175,7 @@ async function addDefaultCategories() {
   try {
     for (const category of categories) {
       await typeExpenseStore.add({
+        emoji: category.emoji,
         name: category.name,
         description: category.description,
         updateBy: defaultUpdateBy.value,
@@ -108,6 +190,12 @@ async function addDefaultCategories() {
   }
 }
 
+function typeExpenseLabel(typeExpense: { emoji?: string; name: string }) {
+  const emoji = String(typeExpense.emoji ?? "").trim();
+  const name = String(typeExpense.name ?? "").trim();
+  return [emoji, name].filter(Boolean).join(" ");
+}
+
 </script>
 
 <template>
@@ -119,12 +207,17 @@ async function addDefaultCategories() {
     <Form v-if="canManage" :key="formKey" class="card border-0 shadow-sm p-3 my-3" :validation-schema="schema"
       :initial-values="defaultValues" @submit="onSubmit" v-slot="{ isSubmitting }">
       <div class="row g-3">
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-3">
+          <label class="form-label">Emoji</label>
+          <Field name="emoji" class="form-control" placeholder="💅" />
+          <ErrorMessage name="emoji" class="text-danger small" />
+        </div>
+        <div class="col-12 col-md-5">
           <label class="form-label">Nome</label>
           <Field name="name" class="form-control" />
           <ErrorMessage name="name" class="text-danger small" />
         </div>
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-4">
           <label class="form-label">Aggiornato da</label>
           <Field name="updateBy" class="form-control" />
           <ErrorMessage name="updateBy" class="text-danger small" />
@@ -147,7 +240,7 @@ async function addDefaultCategories() {
     <div v-if="canManage" class="vstack gap-2">
       <div v-for="item in typeExpenseStore.itemsActiveArray" :key="item.id" class="card border-0 shadow-sm p-3">
         <div class="d-flex justify-content-between align-items-center mb-1">
-          <strong>{{ item.name }}</strong>
+          <strong>{{ typeExpenseLabel(item) }}</strong>
           <small class="text-muted">{{ item.updateBy }}</small>
         </div>
         <p class="mb-0">{{ item.description }}</p>

@@ -12,8 +12,8 @@ useHideHeader();
 <template>
     <div class="home-page" :style="bgStyle">
         <section class="home-main">
-            <img class="home-logo" src="/img/logo/logo.png" alt="Cic Beauty logo" />
-            <p class="home-soon">coming soon...</p>
+            <img v-if="!Auth.isLoggedIn" class="home-logo" src="/img/logo/logo.png" alt="Cic Beauty logo" />
+            <img v-else class="home-logo" src="/img/qr.png" alt="Cic Beauty logo" />
 
             <div class="home-actions">
                 <RouterLink :to="{ name: 'TreatmentsView' }" class="home-link home-btn home-btn--one">
@@ -38,7 +38,7 @@ useHideHeader();
     --rose-dark: #542c3a;
     --rose-accent: #e8b3be;
     position: relative;
-    min-height: 100%;
+    height: 100%;
     width: 100%;
     display: grid;
     place-items: center;
@@ -46,23 +46,6 @@ useHideHeader();
     overflow-x: hidden;
     overflow-y: auto;
     isolation: isolate;
-}
-
-.home-page::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-    background:
-        radial-gradient(circle at 12% 14%, rgba(232, 179, 190, 0.46), transparent 42%),
-        radial-gradient(circle at 88% 74%, rgba(84, 44, 58, 0.24), transparent 44%),
-        linear-gradient(155deg, rgba(255, 251, 252, 0.9), rgba(247, 241, 242, 0.8)),
-        repeating-linear-gradient(120deg,
-            rgba(255, 255, 255, 0.14) 0px,
-            rgba(255, 255, 255, 0.14) 1px,
-            transparent 1px,
-            transparent 14px);
 }
 
 .home-main {
@@ -79,15 +62,6 @@ useHideHeader();
     height: auto;
     margin-bottom: 12px;
     filter: drop-shadow(0 10px 24px rgba(84, 44, 58, 0.18));
-}
-
-.home-soon {
-    margin: 0;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    color: var(--rose-dark);
-    opacity: 0.84;
 }
 
 .home-actions {

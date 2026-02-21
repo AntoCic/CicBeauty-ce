@@ -75,6 +75,12 @@ const initialValues = computed<ProductForm>(() => ({
   storeDisabeld: current.value?.storeDisabeld ?? "",
 }));
 
+function typeExpenseLabel(typeExpense: { emoji?: string; name: string }) {
+  const emoji = String(typeExpense.emoji ?? "").trim();
+  const name = String(typeExpense.name ?? "").trim();
+  return [emoji, name].filter(Boolean).join(" ");
+}
+
 function normalizeString(value: unknown, fallback = "") {
   const normalized = String(value ?? "").trim();
   return normalized || fallback;
@@ -155,13 +161,24 @@ function resetFileSelection() {
   fileValue.value = [];
 }
 
-function removeExistingImage(index: number) {
-  existingImgUrls.value = existingImgUrls.value.filter((_, currentIndex) => currentIndex !== index);
+async function removeExistingImage(index: number) {
+  existingImgUrls.value = existingImgUrls.value.filter((url, currentIndex) => {
+    const ok = currentIndex !== index
+    if (!ok) {
+      productStore.storageFolder?.removeFromUrl(url)
+    }
+    return ok
+  });
+
+  if (!current.value) return;
+  await current.value.update({
+    imgUrls: existingImgUrls.value,
+    updateBy: defaultUpdateBy.value,
+  });
+
+  toast.success("Img prodotto aggiornate");
 }
 
-function clearExistingImages() {
-  existingImgUrls.value = [];
-}
 
 async function loadItem() {
   if (isCreateMode.value) {
@@ -223,7 +240,7 @@ async function onSubmit(values: Record<string, unknown>) {
       }
 
       toast.success("Prodotto creato");
-      await router.replace({ name: "ProductEditView", params: { id: created.id } });
+      await router.replace({ name: "ProductsView" });
       return;
     }
 
@@ -249,7 +266,7 @@ async function onSubmit(values: Record<string, unknown>) {
     });
 
     toast.success("Prodotto aggiornato");
-    await loadItem();
+    await router.replace({ name: "ProductsView" });
   } catch (error) {
     console.error(error);
     toast.error("Errore salvataggio prodotto");
@@ -257,6 +274,11 @@ async function onSubmit(values: Record<string, unknown>) {
     isUploadingImage.value = false;
     resetFileSelection();
   }
+}
+
+
+function goPageDettaglio() {
+  router.push({ name: 'ProductView', params: { id: route.params.id } });
 }
 
 onMounted(() => {
@@ -267,15 +289,10 @@ watch(() => route.params.id, loadItem);
 
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp :title="isCreateMode ? 'Nuovo prodotto' : 'Modifica prodotto'" />
+    <HeaderApp :title="isCreateMode ? 'Nuovo prodotto' : 'Modifica prodotto'" btn-icon="visibility"
+      @btn-click="goPageDettaglio" />
 
     <div class="edit-wrapper mx-auto py-3 py-md-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <Btn v-if="!isCreateMode" color="secondary" icon="visibility"
-          :to="{ name: 'ProductView', params: { id: route.params.id } }">
-          Apri
-        </Btn>
-      </div>
 
       <div v-if="isLoading" class="text-muted small">Caricamento...</div>
 
@@ -299,7 +316,7 @@ watch(() => route.params.id, loadItem);
               <Field name="type_expense_id" as="select" class="form-select">
                 <option value="">Seleziona tipo di spesa</option>
                 <option v-for="option in typeExpenseOptions" :key="option.id" :value="option.id">
-                  {{ option.name }}
+                  {{ typeExpenseLabel(option) }}
                 </option>
               </Field>
               <ErrorMessage name="type_expense_id" class="text-danger small" />
@@ -367,9 +384,6 @@ watch(() => route.params.id, loadItem);
                   </button>
                 </article>
               </div>
-              <button type="button" class="btn btn-sm btn-outline-secondary mt-2" @click="clearExistingImages">
-                Rimuovi tutte le immagini esistenti
-              </button>
             </div>
           </div>
 

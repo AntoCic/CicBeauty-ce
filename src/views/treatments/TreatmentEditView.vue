@@ -64,6 +64,12 @@ const initialValues = computed<TreatmentForm>(() => ({
   storeDisabeld: current.value?.storeDisabeld ?? "",
 }));
 
+function typeExpenseLabel(typeExpense: { emoji?: string; name: string }) {
+  const emoji = String(typeExpense.emoji ?? "").trim();
+  const name = String(typeExpense.name ?? "").trim();
+  return [emoji, name].filter(Boolean).join(" ");
+}
+
 function normalizeString(value: unknown, fallback = "") {
   const normalized = String(value ?? "").trim();
   return normalized || fallback;
@@ -153,9 +159,9 @@ async function onSubmit(values: Record<string, unknown>) {
 
   try {
     if (isCreateMode.value) {
-      const created = await treatmentStore.add(buildCreatePayload(form));
+      await treatmentStore.add(buildCreatePayload(form));
       toast.success("Trattamento creato");
-      await router.replace({ name: "TreatmentEditView", params: { id: created.id } });
+      await router.replace({ name: "TreatmentsView" });
       return;
     }
 
@@ -163,7 +169,7 @@ async function onSubmit(values: Record<string, unknown>) {
 
     await current.value.update(updatePayload);
     toast.success("Trattamento aggiornato");
-    await loadItem();
+    await router.replace({ name: "TreatmentsView" });
   } catch (error) {
     console.error(error);
     toast.error("Errore salvataggio trattamento");
@@ -174,18 +180,19 @@ onMounted(() => {
   loadItem();
 });
 watch(() => route.params.id, loadItem);
+
+function goPageDettaglio() {
+  router.push({ name: 'TreatmentView', params: { id: route.params.id } });
+}
+
 </script>
 
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp :title="isCreateMode ? 'Nuovo trattamento' : 'Modifica trattamento'" />
+    <HeaderApp :title="isCreateMode ? 'Nuovo trattamento' : 'Modifica trattamento'"  btn-icon="visibility"
+      @btn-click="goPageDettaglio" />
 
     <div class="edit-wrapper mx-auto py-3 py-md-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <Btn v-if="!isCreateMode" color="secondary" icon="visibility" :to="{ name: 'TreatmentView', params: { id: route.params.id } }">
-          Apri
-        </Btn>
-      </div>
 
       <div v-if="isLoading" class="text-muted small">Caricamento...</div>
 
@@ -215,7 +222,7 @@ watch(() => route.params.id, loadItem);
               <Field name="type_expense_id" as="select" class="form-select">
                 <option value="">Seleziona tipo di spesa</option>
                 <option v-for="option in typeExpenseOptions" :key="option.id" :value="option.id">
-                  {{ option.name }}
+                  {{ typeExpenseLabel(option) }}
                 </option>
               </Field>
               <ErrorMessage name="type_expense_id" class="text-danger small" />

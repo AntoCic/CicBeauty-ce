@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, toast, useChangeHeader } from "cic-kit";
+import { cicKitStore, toast, useChangeHeader } from "cic-kit";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { productStore } from "../../stores/productStore";
 import type { Product } from "../../models/Product";
 import { Auth } from "../../main";
@@ -9,6 +9,7 @@ import HeaderApp from "../../components/HeaderApp.vue";
 
 useChangeHeader("Dettaglio prodotto", { name: "ProductsView" });
 const route = useRoute();
+const router = useRouter();
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle());
 const item = ref<Product | undefined>(undefined);
 const isLoading = ref(false);
@@ -99,22 +100,17 @@ watch(
 onBeforeUnmount(() => {
   stopCarousel();
 });
+
+function goPageEdit() {
+  router.push({ name: 'ProductEditView', params: { id: route.params.id } });
+}
 </script>
 
 <template>
   <div class="detail-page container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp title="Dettaglio prodotto" />
+    <HeaderApp title="Dettaglio prodotto" :btn-icon="canManage ? 'edit' : undefined" @btn-click="goPageEdit" />
 
     <section class="detail-shell">
-      <div v-if="canManage" class="detail-toolbar">
-        <Btn
-          color="secondary"
-          icon="edit"
-          :to="{ name: 'ProductEditView', params: { id: route.params.id } }"
-        >
-          Modifica
-        </Btn>
-      </div>
 
       <div v-if="isLoading" class="detail-state">Caricamento...</div>
 
@@ -123,34 +119,19 @@ onBeforeUnmount(() => {
           <div v-if="hasImages" class="col-12 col-lg-6">
             <div class="detail-media">
               <div class="detail-carousel" @mouseenter="stopCarousel" @mouseleave="startCarousel">
-                <img
-                  v-for="(img, index) in imageUrls"
-                  :key="`${img}-${index}`"
-                  :src="img"
-                  :alt="`${item.title} ${index + 1}`"
-                  class="detail-image"
-                  :class="{ 'is-active': index === currentImageIndex }"
-                />
+                <img v-for="(img, index) in imageUrls" :key="`${img}-${index}`" :src="img"
+                  :alt="`${item.title} ${index + 1}`" class="detail-image"
+                  :class="{ 'is-active': index === currentImageIndex }" />
 
-                <button
-                  v-if="imageUrls.length > 1"
-                  type="button"
-                  class="carousel-btn carousel-btn--prev"
-                  aria-label="Immagine precedente"
-                  @click="prevImage"
-                >
+                <button v-if="imageUrls.length > 1" type="button" class="carousel-btn carousel-btn--prev"
+                  aria-label="Immagine precedente" @click="prevImage">
                   <svg viewBox="0 -960 960 960" aria-hidden="true">
                     <path d="M561-240 321-480l240-240 56 56-184 184 184 184-56 56Z" />
                   </svg>
                 </button>
 
-                <button
-                  v-if="imageUrls.length > 1"
-                  type="button"
-                  class="carousel-btn carousel-btn--next"
-                  aria-label="Immagine successiva"
-                  @click="nextImage"
-                >
+                <button v-if="imageUrls.length > 1" type="button" class="carousel-btn carousel-btn--next"
+                  aria-label="Immagine successiva" @click="nextImage">
                   <svg viewBox="0 -960 960 960" aria-hidden="true">
                     <path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z" />
                   </svg>
@@ -158,15 +139,9 @@ onBeforeUnmount(() => {
               </div>
 
               <div v-if="imageUrls.length > 1" class="carousel-dots">
-                <button
-                  v-for="(img, index) in imageUrls"
-                  :key="`dot-${img}-${index}`"
-                  type="button"
-                  class="carousel-dot"
-                  :class="{ 'is-active': index === currentImageIndex }"
-                  :aria-label="`Mostra immagine ${index + 1}`"
-                  @click="setCurrentImage(index)"
-                />
+                <button v-for="(img, index) in imageUrls" :key="`dot-${img}-${index}`" type="button"
+                  class="carousel-dot" :class="{ 'is-active': index === currentImageIndex }"
+                  :aria-label="`Mostra immagine ${index + 1}`" @click="setCurrentImage(index)" />
               </div>
             </div>
           </div>
@@ -174,7 +149,8 @@ onBeforeUnmount(() => {
           <div :class="hasImages ? 'col-12 col-lg-6 d-flex flex-column' : 'col-12 d-flex flex-column'">
             <p class="detail-kicker">
               <svg class="g-icon g-icon--kicker" viewBox="0 -960 960 960" aria-hidden="true">
-                <path d="M280-120q-33 0-56.5-23.5T200-200v-520q0-33 23.5-56.5T280-800h400q33 0 56.5 23.5T760-720v520q0 33-23.5 56.5T680-120H280Zm200-280q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm-120-200h240v-80H360v80Z"/>
+                <path
+                  d="M280-120q-33 0-56.5-23.5T200-200v-520q0-33 23.5-56.5T280-800h400q33 0 56.5 23.5T760-720v520q0 33-23.5 56.5T680-120H280Zm200-280q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm-120-200h240v-80H360v80Z" />
               </svg>
               Prodotto
             </p>
@@ -191,7 +167,8 @@ onBeforeUnmount(() => {
             <div class="detail-badges">
               <span v-if="item.storeDisabeld" class="detail-badge detail-badge--warn">
                 <svg class="g-icon" viewBox="0 -960 960 960" aria-hidden="true">
-                  <path d="M480-280q17 0 28.5-11.5T520-320q0-17-11.5-28.5T480-360q-17 0-28.5 11.5T440-320q0 17 11.5 28.5T480-280Zm-40-160h80v-240h-80v240Zm40 360q-139 0-236.5-97.5T146-414q0-139 97.5-236.5T480-748q139 0 236.5 97.5T814-414q0 139-97.5 236.5T480-80Z"/>
+                  <path
+                    d="M480-280q17 0 28.5-11.5T520-320q0-17-11.5-28.5T480-360q-17 0-28.5 11.5T440-320q0 17 11.5 28.5T480-280Zm-40-160h80v-240h-80v240Zm40 360q-139 0-236.5-97.5T146-414q0-139 97.5-236.5T480-748q139 0 236.5 97.5T814-414q0 139-97.5 236.5T480-80Z" />
                 </svg>
                 Non disponibile: {{ item.storeDisabeld }}
               </span>
@@ -203,7 +180,8 @@ onBeforeUnmount(() => {
               <p v-if="item.consigliUso" class="detail-extra-item">
                 <strong class="detail-extra-label">
                   <svg class="g-icon" viewBox="0 -960 960 960" aria-hidden="true">
-                    <path d="M480-80q-83 0-156-31.5T197-197Q112-282 80-364.5T48-520q0-89 34.5-169T180-828q-11-39-2.5-73t33.5-59q25-25 59-33.5t73 2.5q73-63 153-97t169-34q89 0 169 34t153 97q39-11 73 2.5t59 33.5q25 25 33.5 59t-2.5 73q63 73 97 153t34 169q0 83-31.5 156T763-197q-85 85-167.5 116T480-80Zm0-80q117 0 198.5-81.5T760-440q0-117-81.5-198.5T480-720q-117 0-198.5 81.5T200-440q0 117 81.5 198.5T480-160Zm0-120q50 0 85-35t35-85h-80q0 17-11.5 28.5T480-360q-17 0-28.5-11.5T440-400h-80q0 50 35 85t85 35ZM320-480q17 0 28.5-11.5T360-520q0-17-11.5-28.5T320-560q-17 0-28.5 11.5T280-520q0 17 11.5 28.5T320-480Zm320 0q17 0 28.5-11.5T680-520q0-17-11.5-28.5T640-560q-17 0-28.5 11.5T600-520q0 17 11.5 28.5T640-480Z"/>
+                    <path
+                      d="M480-80q-83 0-156-31.5T197-197Q112-282 80-364.5T48-520q0-89 34.5-169T180-828q-11-39-2.5-73t33.5-59q25-25 59-33.5t73 2.5q73-63 153-97t169-34q89 0 169 34t153 97q39-11 73 2.5t59 33.5q25 25 33.5 59t-2.5 73q63 73 97 153t34 169q0 83-31.5 156T763-197q-85 85-167.5 116T480-80Zm0-80q117 0 198.5-81.5T760-440q0-117-81.5-198.5T480-720q-117 0-198.5 81.5T200-440q0 117 81.5 198.5T480-160Zm0-120q50 0 85-35t35-85h-80q0 17-11.5 28.5T480-360q-17 0-28.5-11.5T440-400h-80q0 50 35 85t85 35ZM320-480q17 0 28.5-11.5T360-520q0-17-11.5-28.5T320-560q-17 0-28.5 11.5T280-520q0 17 11.5 28.5T320-480Zm320 0q17 0 28.5-11.5T680-520q0-17-11.5-28.5T640-560q-17 0-28.5 11.5T600-520q0 17 11.5 28.5T640-480Z" />
                   </svg>
                   Consigli d'uso:
                 </strong>
@@ -212,7 +190,8 @@ onBeforeUnmount(() => {
               <p v-if="item.ingredienti" class="detail-extra-item">
                 <strong class="detail-extra-label">
                   <svg class="g-icon" viewBox="0 -960 960 960" aria-hidden="true">
-                    <path d="M480-120q-100-92-166-186.5T248-500q0-89 59.5-148.5T456-708q25 0 48.5 7.5T548-678q22-22 47-35t53-13q89 0 148.5 59.5T856-518q0 99-66 193.5T624-138q-27 23-62.5 20.5T480-120Zm0-82q73-71 124.5-149.5T656-500q0-56-36-92t-92-36q-23 0-44.5 9T446-592h-80q-16-18-37.5-27T284-628q-56 0-92 36t-36 92q0 70 51.5 148.5T480-202Zm0-213Z"/>
+                    <path
+                      d="M480-120q-100-92-166-186.5T248-500q0-89 59.5-148.5T456-708q25 0 48.5 7.5T548-678q22-22 47-35t53-13q89 0 148.5 59.5T856-518q0 99-66 193.5T624-138q-27 23-62.5 20.5T480-120Zm0-82q73-71 124.5-149.5T656-500q0-56-36-92t-92-36q-23 0-44.5 9T446-592h-80q-16-18-37.5-27T284-628q-56 0-92 36t-36 92q0 70 51.5 148.5T480-202Zm0-213Z" />
                   </svg>
                   Ingredienti:
                 </strong>

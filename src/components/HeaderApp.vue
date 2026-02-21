@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Btn } from "cic-kit";
 import { computed, getCurrentInstance } from "vue";
 import { useRouter } from "vue-router";
 
@@ -7,6 +8,8 @@ const props = withDefaults(
     title: string;
     modelValue?: string;
     searchPlaceholder?: string;
+    btnIcon?: string;
+    btn2Icon?: string;
   }>(),
   {
     searchPlaceholder: "Search...",
@@ -15,7 +18,17 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: string): void;
+  (e: "btnClick", ev?: MouseEvent): void;
+  (e: "btn2Click", ev?: MouseEvent): void;
 }>();
+
+
+function btnClick(ev: MouseEvent) {
+  emit("btnClick", ev);
+}
+function btn2Click(ev: MouseEvent) {
+  emit("btn2Click", ev);
+}
 
 const router = useRouter();
 const instance = getCurrentInstance();
@@ -56,14 +69,11 @@ function goBack() {
 
       <h1 class="app-header__title">{{ title }}</h1>
 
-      <div v-if="showSearch" class="app-header__right">
-        <input
-          v-model="searchValue"
-          class="app-header__search"
-          type="search"
-          :placeholder="searchPlaceholder"
-          aria-label="Search"
-        />
+      <div v-if="showSearch || btnIcon || btn2Icon" class="app-header__right">
+        <input v-if="showSearch" v-model="searchValue" class="app-header__search" type="search"
+          :placeholder="searchPlaceholder" aria-label="Search" />
+        <Btn v-if="btnIcon" :icon="btnIcon" @click="btnClick" variant="ghost" />
+        <Btn v-if="btn2Icon" :icon="btn2Icon" @click="btn2Click" variant="ghost" />
       </div>
 
       <span class="app-header__ghost" aria-hidden="true"></span>
@@ -117,8 +127,8 @@ function goBack() {
 }
 
 .app-header__logo {
-  width: 100px;
-  height: 100px;
+  width: 60px;
+  height: 60px;
   object-fit: contain;
 }
 

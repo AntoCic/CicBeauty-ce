@@ -140,19 +140,19 @@ function onCardKeydown(event: KeyboardEvent) {
 }
 
 .catalog-media {
-  min-height: 11.75rem;
+  width: 100%;  
+  aspect-ratio: 4/3;
   display: grid;
   place-items: center;
-  padding: 0.45rem;
-  border: 1px solid rgba(84, 44, 58, 0.12);
   border-radius: 2px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.22));
+  border-radius: 2px;
 }
 
 .catalog-media-stack {
   position: relative;
   width: 100%;
-  min-height: 11.25rem;
+  height: 100%;
 }
 
 .catalog-img {
@@ -160,8 +160,8 @@ function onCardKeydown(event: KeyboardEvent) {
   inset: 0;
   margin: auto;
   max-width: 100%;
-  max-height: 11.25rem;
-  object-fit: contain;
+  height: 100%;
+  object-fit: cover;
   transition: opacity 360ms ease, transform 360ms ease;
 }
 

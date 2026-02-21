@@ -1,3 +1,21 @@
+## v0.0.10 - 2026-02-21
+
+add delete img on storage on remove from form
+
+---
+
+## v0.0.9 - 2026-02-20
+
+Nessuna descrizione fornita.
+
+---
+
+## v0.0.8 - 2026-02-20
+
+Nessuna descrizione fornita.
+
+---
+
 ## v0.0.7 - 2026-02-20
 
 prima version stabile
