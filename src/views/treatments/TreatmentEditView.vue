@@ -30,6 +30,7 @@ const router = useRouter();
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle());
 const current = ref<Treatment | undefined>(undefined);
 const isLoading = ref(false);
+const isDeleting = ref(false);
 
 const routeId = computed(() => String(route.params.id ?? "").trim());
 const isCreateMode = computed(() => !routeId.value || routeId.value === "new");
@@ -176,12 +177,34 @@ async function onSubmit(values: Record<string, unknown>) {
   }
 }
 
+async function onDeleteTreatment() {
+  if (isCreateMode.value || !current.value || isDeleting.value) return;
+
+  const treatment = current.value;
+  const treatmentLabel = normalizeString(treatment.title, "questo trattamento");
+  const confirmDelete = window.confirm(`Eliminare definitivamente "${treatmentLabel}"?`);
+  if (!confirmDelete) return;
+
+  isDeleting.value = true;
+  try {
+    await treatment.delete(treatmentStore);
+    toast.success("Trattamento eliminato");
+    await router.replace({ name: "TreatmentsView" });
+  } catch (error) {
+    console.error(error);
+    toast.error("Errore eliminazione trattamento");
+  } finally {
+    isDeleting.value = false;
+  }
+}
+
 onMounted(() => {
   loadItem();
 });
 watch(() => route.params.id, loadItem);
 
 function goPageDettaglio() {
+  if (isCreateMode.value) return;
   router.push({ name: 'TreatmentView', params: { id: route.params.id } });
 }
 
@@ -189,21 +212,15 @@ function goPageDettaglio() {
 
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp :title="isCreateMode ? 'Nuovo trattamento' : 'Modifica trattamento'"  btn-icon="visibility"
-      @btn-click="goPageDettaglio" />
+    <HeaderApp :title="isCreateMode ? 'Nuovo trattamento' : 'Modifica trattamento'"
+      :btn-icon="!isCreateMode ? 'visibility' : undefined" @btn-click="goPageDettaglio" />
 
     <div class="edit-wrapper mx-auto py-3 py-md-4">
 
       <div v-if="isLoading" class="text-muted small">Caricamento...</div>
 
-      <Form
-        v-else-if="current || isCreateMode"
-        :key="formKey"
-        :validation-schema="schema"
-        :initial-values="initialValues"
-        @submit="onSubmit"
-        v-slot="{ isSubmitting }"
-      >
+      <Form v-else-if="current || isCreateMode" :key="formKey" :validation-schema="schema"
+        :initial-values="initialValues" @submit="onSubmit" v-slot="{ isSubmitting }">
         <div class="card border-0 shadow-sm p-3 p-md-4">
           <div class="row g-3">
             <div class="col-12">
@@ -261,10 +278,16 @@ function goPageDettaglio() {
           </div>
 
           <div class="d-flex gap-2 mt-4">
-            <Btn type="submit" color="dark" icon="save" :loading="isSubmitting">
+            <Btn type="submit" color="dark" icon="save" :loading="isSubmitting || isDeleting" :disabled="isDeleting">
               {{ isCreateMode ? "Crea" : "Salva" }}
             </Btn>
-            <Btn color="secondary" icon="sync" @click="loadItem">Ricarica</Btn>
+            <Btn color="secondary" icon="sync" :disabled="isSubmitting || isDeleting" @click="loadItem">
+              Ricarica
+            </Btn>
+            <Btn v-if="!isCreateMode" type="button" color="danger" variant="outline" icon="delete" :loading="isDeleting"
+              :disabled="isSubmitting || isDeleting" @click="onDeleteTreatment">
+              Elimina
+            </Btn>
           </div>
         </div>
       </Form>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Btn } from "cic-kit";
+import type { BtnColor } from "cic-kit";
 import { computed, getCurrentInstance } from "vue";
 import { useRouter } from "vue-router";
 
@@ -9,7 +10,9 @@ const props = withDefaults(
     modelValue?: string;
     searchPlaceholder?: string;
     btnIcon?: string;
+    btnColor?: BtnColor;
     btn2Icon?: string;
+    btn2Color?: BtnColor;
   }>(),
   {
     searchPlaceholder: "Search...",
@@ -72,8 +75,8 @@ function goBack() {
       <div v-if="showSearch || btnIcon || btn2Icon" class="app-header__right">
         <input v-if="showSearch" v-model="searchValue" class="app-header__search" type="search"
           :placeholder="searchPlaceholder" aria-label="Search" />
-        <Btn v-if="btnIcon" :icon="btnIcon" @click="btnClick" variant="ghost" />
-        <Btn v-if="btn2Icon" :icon="btn2Icon" @click="btn2Click" variant="ghost" />
+        <Btn v-if="btnIcon" :icon="btnIcon" variant="ghost" :color="btnColor" @click="btnClick" />
+        <Btn v-if="btn2Icon" :icon="btn2Icon" variant="ghost" :color="btn2Color" @click="btn2Click" />
       </div>
 
       <span class="app-header__ghost" aria-hidden="true"></span>

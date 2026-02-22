@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, useStoreWatch } from "cic-kit";
+import { cicKitStore, useStoreWatch } from "cic-kit";
 import { computed, ref } from "vue";
 import CatalogCard from "../../components/CatalogCard.vue";
 import { productStore } from "../../stores/productStore";
@@ -49,14 +49,7 @@ function goPageAdd() {
       <div class="row g-3 g-lg-4 mt-1">
         <div v-for="item in filteredItems" :key="item.id" class="col-6 col-md-4 col-xl-3">
           <CatalogCard :title="item.title" :subtitle="item.subtitle" :price="item.price" :img-urls="item.imgUrls ?? []"
-            :store-disabeld="item.storeDisabeld" :to="{ name: 'ProductView', params: { id: item.id } }">
-            <template v-if="canManage" #actions>
-              <Btn color="secondary" icon="edit" class="w-100"
-                :to="{ name: 'ProductEditView', params: { id: item.id } }">
-                Modifica
-              </Btn>
-            </template>
-          </CatalogCard>
+            :store-disabeld="item.storeDisabeld" :to="{ name: 'ProductView', params: { id: item.id } }" />
         </div>
       </div>
 

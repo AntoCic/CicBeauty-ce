@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { cicKitStore, toast, useChangeHeader } from "cic-kit";
+import { cicKitStore, loading, toast, useChangeHeader } from "cic-kit";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { productStore } from "../../stores/productStore";
@@ -19,6 +19,10 @@ const imageUrls = computed(() => (item.value?.imgUrls ?? []).filter((url): url i
 const hasImages = computed(() => imageUrls.value.length > 0);
 const currentImageIndex = ref(0);
 let carouselTimer: ReturnType<typeof setInterval> | undefined;
+
+function collectProductImageUrls(product: { imgUrls?: string[]; imgDescriptionUrls?: string[] }) {
+  return [...(product.imgUrls ?? []), ...(product.imgDescriptionUrls ?? [])];
+}
 
 async function loadItem() {
   const id = String(route.params.id ?? "");
@@ -104,11 +108,38 @@ onBeforeUnmount(() => {
 function goPageEdit() {
   router.push({ name: 'ProductEditView', params: { id: route.params.id } });
 }
+
+async function onDeleteItem() {
+  if (!canManage.value || !item.value) return;
+  const confirmDelete = window.confirm(
+    `Eliminare definitivamente "${item.value.title}"? Verranno eliminate anche le immagini collegate.`,
+  );
+  if (!confirmDelete) return;
+  loading.on('deliting:item');
+  try {
+    await Promise.allSettled(
+      collectProductImageUrls(item.value)
+        .map((url) => String(url ?? "").trim())
+        .filter(Boolean)
+        .map((url) => productStore.storageFolder?.removeFromUrl(url)),
+    );
+    await item.value.delete(productStore);
+    toast.success("Prodotto eliminato");
+    await router.replace({ name: "ProductsView" });
+  } catch (error) {
+    console.error(error);
+    toast.error("Errore eliminazione prodotto");
+  } finally {
+    loading.off('deliting:item');
+    router.push({ name: 'ProductsView' });
+  }
+}
 </script>
 
 <template>
   <div class="detail-page container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp title="Dettaglio prodotto" :btn-icon="canManage ? 'edit' : undefined" @btn-click="goPageEdit" />
+    <HeaderApp title="Dettaglio prodotto" :btn-icon="canManage ? 'edit' : undefined" @btn-click="goPageEdit"
+      :btn2Icon="canManage ? 'delete' : undefined" @btn2-click="onDeleteItem" btn2-color="danger" />
 
     <section class="detail-shell">
 

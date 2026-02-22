@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {  cicKitStore, toast, useChangeHeader } from "cic-kit";
+import { cicKitStore, loading, toast, useChangeHeader } from "cic-kit";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { treatmentStore } from "../../stores/treatmentStore";
@@ -53,11 +53,30 @@ watch(() => route.params.id, loadItem);
 function goPageEdit() {
   router.push({ name: 'TreatmentEditView', params: { id: route.params.id } });
 }
+
+async function onDeleteItem() {
+  if (!canManage.value || !item.value) return;
+  const confirmDelete = window.confirm(`Eliminare definitivamente "${item.value.title}"?`);
+  if (!confirmDelete) return;
+  loading.on('deliting:item');
+  try {
+    await item.value.delete(treatmentStore);
+    toast.success("Trattamento eliminato");
+    await router.replace({ name: "TreatmentsView" });
+  } catch (error) {
+    console.error(error);
+    toast.error("Errore eliminazione trattamento");
+  } finally {
+    loading.off('deliting:item');
+    router.push({ name: 'TreatmentsView' });
+  }
+}
 </script>
 
 <template>
   <div class="detail-page container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp title="Dettaglio trattamento" :btn-icon="canManage ? 'edit' : undefined" @btn-click="goPageEdit" />
+    <HeaderApp title="Dettaglio trattamento" :btn-icon="canManage ? 'edit' : undefined" @btn-click="goPageEdit"
+      :btn2Icon="canManage ? 'delete' : undefined" @btn2-click="onDeleteItem" btn2Color="danger" />
 
     <section class="detail-shell">
 

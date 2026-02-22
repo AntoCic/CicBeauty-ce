@@ -41,6 +41,7 @@ const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle());
 const current = ref<Product | undefined>(undefined);
 const isLoading = ref(false);
 const isUploadingImage = ref(false);
+const isDeleting = ref(false);
 const fileValue = ref<FieldFileValue>([]);
 const existingImgUrls = ref<string[]>([]);
 
@@ -276,8 +277,43 @@ async function onSubmit(values: Record<string, unknown>) {
   }
 }
 
+function collectProductImageUrls(product: { imgUrls?: string[]; imgDescriptionUrls?: string[] }) {
+  const currentImgUrls = Array.isArray(product.imgUrls) ? product.imgUrls : [];
+  const imageUrls = existingImgUrls.value.length ? existingImgUrls.value : currentImgUrls;
+  return [...imageUrls, ...(product.imgDescriptionUrls ?? [])];
+}
+
+async function onDeleteProduct() {
+  if (isCreateMode.value || !current.value || isDeleting.value) return;
+
+  const product = current.value;
+  const productLabel = normalizeString(product.title, "questo prodotto");
+  const confirmDelete = window.confirm(
+    `Eliminare definitivamente "${productLabel}"? Verranno eliminate anche le immagini collegate.`,
+  );
+  if (!confirmDelete) return;
+
+  isDeleting.value = true;
+  try {
+    await Promise.allSettled(
+      collectProductImageUrls(product)
+        .map((url) => String(url ?? "").trim())
+        .filter(Boolean)
+        .map((url) => productStore.storageFolder?.removeFromUrl(url)),
+    );
+    await product.delete(productStore);
+    toast.success("Prodotto eliminato");
+    await router.replace({ name: "ProductsView" });
+  } catch (error) {
+    console.error(error);
+    toast.error("Errore eliminazione prodotto");
+  } finally {
+    isDeleting.value = false;
+  }
+}
 
 function goPageDettaglio() {
+  if (isCreateMode.value) return;
   router.push({ name: 'ProductView', params: { id: route.params.id } });
 }
 
@@ -289,8 +325,8 @@ watch(() => route.params.id, loadItem);
 
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp :title="isCreateMode ? 'Nuovo prodotto' : 'Modifica prodotto'" btn-icon="visibility"
-      @btn-click="goPageDettaglio" />
+    <HeaderApp :title="isCreateMode ? 'Nuovo prodotto' : 'Modifica prodotto'"
+      :btn-icon="!isCreateMode ? 'visibility' : undefined" @btn-click="goPageDettaglio" />
 
     <div class="edit-wrapper mx-auto py-3 py-md-4">
 
@@ -388,10 +424,19 @@ watch(() => route.params.id, loadItem);
           </div>
 
           <div class="d-flex gap-2 mt-4">
-            <Btn type="submit" color="dark" icon="save" :loading="isSubmitting || isUploadingImage">
+            <Btn type="submit" color="dark" icon="save" :loading="isSubmitting || isUploadingImage || isDeleting"
+              :disabled="isDeleting">
               {{ isCreateMode ? "Crea" : "Salva" }}
             </Btn>
-            <Btn color="secondary" icon="sync" @click="loadItem">Ricarica</Btn>
+            <Btn color="secondary" icon="sync" :disabled="isSubmitting || isUploadingImage || isDeleting"
+              @click="loadItem">
+              Ricarica
+            </Btn>
+            <Btn v-if="!isCreateMode" type="button" color="danger" variant="outline" icon="delete"
+              :loading="isDeleting" :disabled="isSubmitting || isUploadingImage || isDeleting"
+              @click="onDeleteProduct">
+              Elimina
+            </Btn>
           </div>
         </div>
       </Form>
