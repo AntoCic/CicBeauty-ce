@@ -5,6 +5,7 @@ import CatalogCard from "../../components/CatalogCard.vue";
 import { treatmentStore } from "../../stores/treatmentStore";
 import { Auth } from "../../main";
 import HeaderApp from "../../components/HeaderApp.vue";
+import { useRouter } from "vue-router";
 
 useStoreWatch([
   {
@@ -14,6 +15,7 @@ useStoreWatch([
   },
 ]);
 
+const router = useRouter();
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle());
 const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin);
 const search = ref("");
@@ -31,36 +33,25 @@ const filteredItems = computed(() => {
     ),
   );
 });
+
+function goPageAdd() {
+  router.push({ name: 'TreatmentEditView', params: { id: 'new' } });
+}
 </script>
 
 <template>
   <div class="container-fluid pb-t pt-3 pt-md-4 overflow-auto h-100" :style="bgStyle">
-    <HeaderApp title="Trattamenti" v-model="search" search-placeholder="Cerca trattamenti..." />
+    <HeaderApp title="Trattamenti" v-model="search" search-placeholder="Cerca trattamenti..."
+      :btn-icon="canManage ? 'add' : undefined" @btn-click="goPageAdd" />
 
     <section class="catalog-view">
-      <div v-if="canManage" class="catalog-toolbar">
-        <Btn
-          type="button"
-          :to="{ name: 'TreatmentEditView', params: { id: 'new' } }"
-          variant="outline"
-          color="success"
-          icon="add"
-        >
-          aggiungi
-        </Btn>
-      </div>
-
       <div class="row g-3 g-lg-4 mt-1">
         <div v-for="item in filteredItems" :key="item.id" class="col-6 col-md-4 col-xl-3">
-          <CatalogCard
-            :title="item.title"
-            :subtitle="item.subtitle"
-            :price="item.price"
-            :store-disabeld="item.storeDisabeld"
-            :to="{ name: 'TreatmentView', params: { id: item.id } }"
-          >
+          <CatalogCard :title="item.title" :subtitle="item.subtitle" :price="item.price"
+            :store-disabeld="item.storeDisabeld" :to="{ name: 'TreatmentView', params: { id: item.id } }">
             <template v-if="canManage" #actions>
-              <Btn color="secondary" icon="edit" class="w-100" :to="{ name: 'TreatmentEditView', params: { id: item.id } }">
+              <Btn color="secondary" icon="edit" class="w-100"
+                :to="{ name: 'TreatmentEditView', params: { id: item.id } }">
                 Modifica
               </Btn>
             </template>
@@ -76,7 +67,6 @@ const filteredItems = computed(() => {
 </template>
 
 <style scoped>
-
 .catalog-view {
   padding: 0 12px 1.5rem;
 }

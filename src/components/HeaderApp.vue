@@ -85,7 +85,7 @@ function goBack() {
 .app-header {
   position: sticky;
   top: 0;
-  z-index: 1100;
+  z-index: 1011;
   width: 100%;
   padding: 8px 12px;
 }
