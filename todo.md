@@ -1,2 +1,24 @@
-dare la possibilità di eliminare prodotti e gestire eliminazione foto e anche per trattamenti
-dare la possibilità di ordinare
+categorie di trattamenti
+[
+  "Laser",
+  "Trattamenti viso",
+  "Trattamenti corpo",
+  "Massaggi",
+  "Ceretta",
+  "Manicure e Pedicure",
+  "Laminazione ciglia e sopracciglia",
+]
+
+categorie di prodotti
+[
+  "Pelle Secca",
+  "Pelle Acneica",
+  "Pelle Grassa",
+  "Pelle Sensibile",
+  "Pelle Spenta",
+  "Pelle Matura",
+  "Corpo",
+]
+
+categoryIds
+3eiDCBxOF7CH2eUckLER

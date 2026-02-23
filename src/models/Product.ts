@@ -8,6 +8,7 @@ export interface ProductData extends Partial<Timestampble> {
   icon?: string
   color: string
   type_expense_id: string
+  categoryIds?: string[]
   price: number
   description?: string
   imgUrls?: string[]
@@ -31,6 +32,7 @@ export class Product extends FirestoreModel<ProductData> {
   icon?: string
   color: string
   type_expense_id: string
+  categoryIds: string[]
   price: number
   description?: string
   imgUrls?: string[]
@@ -52,6 +54,9 @@ export class Product extends FirestoreModel<ProductData> {
     this.icon = data.icon
     this.color = data.color
     this.type_expense_id = data.type_expense_id
+    this.categoryIds = Array.isArray(data.categoryIds)
+      ? data.categoryIds.map((id) => String(id ?? '').trim()).filter(Boolean)
+      : []
     this.price = data.price
     this.description = data.description
     this.imgUrls = data.imgUrls
@@ -75,6 +80,7 @@ export class Product extends FirestoreModel<ProductData> {
       icon: this.icon,
       color: this.color,
       type_expense_id: this.type_expense_id,
+      categoryIds: this.categoryIds,
       price: this.price,
       description: this.description,
       imgUrls: this.imgUrls,

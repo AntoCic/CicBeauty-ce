@@ -8,6 +8,7 @@ export interface TreatmentData extends Partial<Timestampble> {
   icon?: string
   color: string
   type_expense_id: string
+  categoryIds?: string[]
   duration: number
   price: number
   description?: string
@@ -31,6 +32,7 @@ export class Treatment extends FirestoreModel<TreatmentData> {
   icon?: string
   color: string
   type_expense_id: string
+  categoryIds: string[]
   duration: number
   price: number
   description?: string
@@ -52,6 +54,9 @@ export class Treatment extends FirestoreModel<TreatmentData> {
     this.icon = data.icon
     this.color = data.color
     this.type_expense_id = data.type_expense_id
+    this.categoryIds = Array.isArray(data.categoryIds)
+      ? data.categoryIds.map((id) => String(id ?? '').trim()).filter(Boolean)
+      : []
     this.duration = data.duration
     this.price = data.price
     this.description = data.description
@@ -75,6 +80,7 @@ export class Treatment extends FirestoreModel<TreatmentData> {
       icon: this.icon,
       color: this.color,
       type_expense_id: this.type_expense_id,
+      categoryIds: this.categoryIds,
       duration: this.duration,
       price: this.price,
       description: this.description,

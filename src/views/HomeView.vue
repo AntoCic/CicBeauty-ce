@@ -16,10 +16,10 @@ useHideHeader();
             <img v-else class="home-logo" src="/img/qr.png" alt="Cic Beauty logo" />
 
             <div class="home-actions">
-                <RouterLink :to="{ name: 'TreatmentsView' }" class="home-link home-btn home-btn--one">
+                <RouterLink :to="{ name: 'TreatmentCategoriesView' }" class="home-link home-btn home-btn--one">
                     Treatments Catalog
                 </RouterLink>
-                <RouterLink :to="{ name: 'ProductsView' }" class="home-link home-btn home-btn--two">
+                <RouterLink :to="{ name: 'ProductCategoriesView' }" class="home-link home-btn home-btn--two">
                     Products Catalog
                 </RouterLink>
             </div>

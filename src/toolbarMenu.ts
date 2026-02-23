@@ -4,12 +4,22 @@ export const toolbarOffcanvasTabs: OffcanvasTab[] = [
   {
     name: 'Prodotti',
     icon: 'shopping_bag',
-    to: { name: 'ProductsView' },
+    to: { name: 'ProductCategoriesView' },
   },
   {
     name: 'Trattamenti',
     icon: 'bolt',
-    to: { name: 'TreatmentsView' },
+    to: { name: 'TreatmentCategoriesView' },
+  },
+  {
+    name: 'Cat. Prodotti',
+    icon: 'edit_note',
+    to: { name: 'ProductCategoriesManageView' },
+  },
+  {
+    name: 'Cat. Trattamenti',
+    icon: 'edit_note',
+    to: { name: 'TreatmentCategoriesManageView' },
   },
   {
     name: 'Tipi di spesa',

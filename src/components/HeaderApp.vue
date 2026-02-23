@@ -2,11 +2,12 @@
 import { Btn } from "cic-kit";
 import type { BtnColor } from "cic-kit";
 import { computed, getCurrentInstance } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, type RouteLocationRaw } from "vue-router";
 
 const props = withDefaults(
   defineProps<{
     title: string;
+    to?: RouteLocationRaw;
     modelValue?: string;
     searchPlaceholder?: string;
     btnIcon?: string;
@@ -53,6 +54,10 @@ const searchValue = computed({
 });
 
 function goBack() {
+  if (props.to) {
+    router.push(props.to);
+    return;
+  }
   if (typeof window !== "undefined" && window.history.length > 1) {
     router.back();
     return;
@@ -66,7 +71,7 @@ function goBack() {
     <div class="app-header__inner">
       <div class="app-header__left">
         <button type="button" class="app-header__logo-btn" aria-label="Torna indietro" @click="goBack">
-          <img class="app-header__logo" src="/img/logo/logo.svg" alt="Cnc Beauty logo" />
+          <img class="app-header__logo" src="/img/logo/logo-bk.png" alt="Cnc Beauty logo" />
         </button>
       </div>
 
@@ -118,7 +123,7 @@ function goBack() {
 }
 
 .app-header__logo-btn {
-  width: 44px;
+  width: 88px;
   height: 44px;
   display: inline-flex;
   align-items: center;
@@ -130,8 +135,8 @@ function goBack() {
 }
 
 .app-header__logo {
-  width: 60px;
-  height: 60px;
+  width: 88px;
+  height: 44px;
   object-fit: contain;
 }
 

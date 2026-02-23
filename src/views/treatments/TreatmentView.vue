@@ -1,85 +1,137 @@
 <script setup lang="ts">
-import { cicKitStore, loading, toast, useChangeHeader } from "cic-kit";
-import { computed, onMounted, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import { treatmentStore } from "../../stores/treatmentStore";
-import type { Treatment } from "../../models/Treatment";
-import { Auth } from "../../main";
-import HeaderApp from "../../components/HeaderApp.vue";
+import { cicKitStore, loading, toast, useChangeHeader, useStoreWatch } from 'cic-kit'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { treatmentStore } from '../../stores/treatmentStore'
+import type { Treatment } from '../../models/Treatment'
+import { Auth } from '../../main'
+import HeaderApp from '../../components/HeaderApp.vue'
+import CatalogCard from '../../components/CatalogCard.vue'
+import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 
-useChangeHeader("Dettaglio trattamento", { name: "TreatmentsView" });
+useChangeHeader('Dettaglio trattamento', { name: 'TreatmentCategoriesView' })
+useStoreWatch([
+  {
+    store: treatmentStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+    checkLogin: false,
+  },
+  {
+    store: treatmentCategoryStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+    checkLogin: false,
+  },
+])
 
-const route = useRoute();
-const router = useRouter();
-const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle());
-const item = ref<Treatment | undefined>(undefined);
-const isLoading = ref(false);
-const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin);
-const priceFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
+const route = useRoute()
+const router = useRouter()
+const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
+const item = ref<Treatment | undefined>(undefined)
+const isLoading = ref(false)
+const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin)
+const priceFormatter = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' })
+
+const activeCategoryId = computed(() => {
+  const routeCategoryId = String(route.query.categoryId ?? '').trim()
+  if (routeCategoryId) return routeCategoryId
+  return item.value?.categoryIds[0] ?? ''
+})
+
+const headerTo = computed(() => {
+  if (activeCategoryId.value) {
+    return { name: 'TreatmentsView', params: { categoryId: activeCategoryId.value } }
+  }
+  return { name: 'TreatmentCategoriesView' }
+})
+
+const categoryMap = computed(() => {
+  const nextMap: Record<string, string> = {}
+  for (const category of treatmentCategoryStore.itemsActiveArray) {
+    nextMap[category.id] = category.title
+  }
+  return nextMap
+})
+
+const itemCategoryLabels = computed(() =>
+  (item.value?.categoryIds ?? [])
+    .map((categoryId) => categoryMap.value[categoryId])
+    .filter((label): label is string => Boolean(label)),
+)
+
+const recommendedTreatments = computed(() => {
+  const current = item.value
+  if (!current) return []
+  if (!current.categoryIds.length) return []
+
+  const categorySet = new Set(current.categoryIds)
+  return treatmentStore.itemsActiveArray
+    .filter((candidate) => candidate.id !== current.id)
+    .filter((candidate) => candidate.storeVisible)
+    .filter((candidate) => candidate.categoryIds.some((categoryId) => categorySet.has(categoryId)))
+    .slice(0, 4)
+})
 
 async function loadItem() {
-  const id = String(route.params.id ?? "");
-  if (!id) return;
+  const id = String(route.params.id ?? '')
+  if (!id) return
 
-  isLoading.value = true;
+  isLoading.value = true
   try {
-    item.value = await treatmentStore.ensureOne(id);
+    item.value = await treatmentStore.ensureOne(id)
     if (!item.value) {
-      toast.warning("Trattamento non trovato");
+      toast.warning('Trattamento non trovato')
     }
   } catch (error) {
-    console.error(error);
-    toast.error("Errore caricamento trattamento");
+    console.error(error)
+    toast.error('Errore caricamento trattamento')
   } finally {
-    isLoading.value = false;
+    isLoading.value = false
   }
 }
 
 function formatPrice(value: number | undefined) {
-  if (typeof value !== "number" || Number.isNaN(value)) return "-";
-  return priceFormatter.format(value);
+  if (typeof value !== 'number' || Number.isNaN(value)) return '-'
+  return priceFormatter.format(value)
 }
 
 function formatDuration(value: number | undefined) {
-  if (typeof value !== "number" || Number.isNaN(value) || value <= 0) return "-";
-  return `${Math.round(value)} min`;
+  if (typeof value !== 'number' || Number.isNaN(value) || value <= 0) return '-'
+  return `${Math.round(value)} min`
 }
 
 onMounted(() => {
-  loadItem();
-});
-watch(() => route.params.id, loadItem);
+  loadItem()
+})
+watch(() => route.params.id, loadItem)
 
 function goPageEdit() {
-  router.push({ name: 'TreatmentEditView', params: { id: route.params.id } });
+  router.push({ name: 'TreatmentEditView', params: { id: route.params.id } })
 }
 
 async function onDeleteItem() {
-  if (!canManage.value || !item.value) return;
-  const confirmDelete = window.confirm(`Eliminare definitivamente "${item.value.title}"?`);
-  if (!confirmDelete) return;
-  loading.on('deliting:item');
+  if (!canManage.value || !item.value) return
+  const confirmDelete = window.confirm(`Eliminare definitivamente "${item.value.title}"?`)
+  if (!confirmDelete) return
+  loading.on('deliting:item')
   try {
-    await item.value.delete(treatmentStore);
-    toast.success("Trattamento eliminato");
-    await router.replace({ name: "TreatmentsView" });
+    await item.value.delete(treatmentStore)
+    toast.success('Trattamento eliminato')
+    await router.replace({ name: 'TreatmentCategoriesView' })
   } catch (error) {
-    console.error(error);
-    toast.error("Errore eliminazione trattamento");
+    console.error(error)
+    toast.error('Errore eliminazione trattamento')
   } finally {
-    loading.off('deliting:item');
-    router.push({ name: 'TreatmentsView' });
+    loading.off('deliting:item')
   }
 }
 </script>
 
 <template>
   <div class="detail-page container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp title="Dettaglio trattamento" :btn-icon="canManage ? 'edit' : undefined" @btn-click="goPageEdit"
+    <HeaderApp title="Dettaglio trattamento" :to="headerTo" :btn-icon="canManage ? 'edit' : undefined" @btn-click="goPageEdit"
       :btn2Icon="canManage ? 'delete' : undefined" @btn2-click="onDeleteItem" btn2Color="danger" />
 
     <section class="detail-shell">
-
       <div v-if="isLoading" class="detail-state">Caricamento...</div>
 
       <article v-else-if="item" class="detail-card">
@@ -103,6 +155,13 @@ async function onDeleteItem() {
             <p v-if="item.subtitle" class="detail-subtitle">{{ item.subtitle }}</p>
 
             <div class="detail-badges">
+              <span v-for="label in itemCategoryLabels" :key="label" class="detail-badge">
+                <svg class="g-icon" viewBox="0 -960 960 960" aria-hidden="true">
+                  <path
+                    d="M280-120q-33 0-56.5-23.5T200-200v-560q0-33 23.5-56.5T280-840h400q33 0 56.5 23.5T760-760v560q0 33-23.5 56.5T680-120H280Zm200-360 200-120-200-120-200 120 200 120Zm0 280 200-120v-200L480-320 280-520v200l200 120Z" />
+                </svg>
+                {{ label }}
+              </span>
               <span class="detail-badge">
                 <svg class="g-icon" viewBox="0 -960 960 960" aria-hidden="true">
                   <path
@@ -149,7 +208,26 @@ async function onDeleteItem() {
         </div>
       </article>
 
-      <p v-else class="detail-state">Trattamento non trovato.</p>
+      <section v-if="item && recommendedTreatments.length" class="recommended-section">
+        <h3 class="recommended-title">Consigliati per te</h3>
+        <div class="row g-3 g-lg-4 mt-1">
+          <div v-for="treatment in recommendedTreatments" :key="treatment.id" class="col-6 col-md-4 col-xl-3">
+            <CatalogCard
+              :title="treatment.title"
+              :subtitle="treatment.subtitle"
+              :price="treatment.price"
+              :store-disabeld="treatment.storeDisabeld"
+              :to="{
+                name: 'TreatmentView',
+                params: { id: treatment.id },
+                query: { categoryId: activeCategoryId || treatment.categoryIds[0] || undefined },
+              }"
+            />
+          </div>
+        </div>
+      </section>
+
+      <p v-if="!isLoading && !item" class="detail-state">Trattamento non trovato.</p>
     </section>
   </div>
 </template>
@@ -292,6 +370,19 @@ async function onDeleteItem() {
   font-weight: 800;
   letter-spacing: 0.02em;
   white-space: nowrap;
+}
+
+.recommended-section {
+  margin-top: 1.25rem;
+}
+
+.recommended-title {
+  margin: 0 0 0.75rem;
+  color: #4b2935;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .g-icon {

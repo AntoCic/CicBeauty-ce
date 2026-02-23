@@ -34,13 +34,13 @@ export default defineConfig({
         globIgnores: [],
       },
       manifest: {
-        name: 'cic-kit',
-        short_name: 'cic-kit',
+        name: 'Cnc Beauty',
+        short_name: 'Cnc Beauty',
         start_url: '/',
         display: 'fullscreen',
         background_color: '#F7F1F2',
         theme_color: '#F7F1F2',
-        description: 'App utility generali personali',
+        description: 'App del mio centro estetico di fiducia',
         icons: [
           { src: '/img/logo/pwa.png', sizes: '192x192', type: 'image/png' },
         ],

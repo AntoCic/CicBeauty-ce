@@ -68,8 +68,18 @@ service cloud.firestore {
       allow read: if true;
       allow write:  if isSignedIn() && isAdmin();
     }
+
+    match /productsCategories {
+      allow read: if true;
+      allow write: if isSignedIn() && isAdmin();
+    }
     
     match /treatments/{id} {
+      allow read: if true;
+      allow write: if isSignedIn() && isAdmin();
+    }
+
+    match /treatmentsCategories {
       allow read: if true;
       allow write: if isSignedIn() && isAdmin();
     }
