@@ -14,7 +14,7 @@ useHideHeader();
         <section class="home-main">
             <img v-if="!Auth.isLoggedIn" class="home-logo" src="/img/logo/logo.png" alt="Cic Beauty logo" />
             <img v-else class="home-logo" src="/img/qr.png" alt="Cic Beauty logo" />
-
+<h1>ciao mondo</h1>
             <div class="home-actions">
                 <RouterLink :to="{ name: 'TreatmentCategoriesView' }" class="home-link home-btn home-btn--one">
                     Treatments Catalog
