@@ -8,6 +8,7 @@ import { Auth } from '../../main'
 import HeaderApp from '../../components/HeaderApp.vue'
 import CatalogCard from '../../components/CatalogCard.vue'
 import { productCategoryStore } from '../../stores/productCategoryStore'
+import { treatmentStore } from '../../stores/treatmentStore'
 
 useChangeHeader('Dettaglio prodotto', { name: 'ProductCategoriesView' })
 useStoreWatch([
@@ -18,6 +19,11 @@ useStoreWatch([
   },
   {
     store: productCategoryStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+    checkLogin: false,
+  },
+  {
+    store: treatmentStore,
     getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
     checkLogin: false,
   },
@@ -62,17 +68,25 @@ const itemCategoryLabels = computed(() =>
     .filter((label): label is string => Boolean(label)),
 )
 
-const recommendedProducts = computed(() => {
+function normalizeRelationIds(ids: string[] | undefined) {
+  return [...new Set((ids ?? []).map((id) => String(id ?? '').trim()).filter(Boolean))]
+}
+
+const recommendedTreatments = computed(() => {
   const current = item.value
   if (!current) return []
-  if (!current.categoryIds.length) return []
+  const linkedIds = normalizeRelationIds(current.trattamentiConsogliatiIds)
+  if (!linkedIds.length) return []
 
-  const categorySet = new Set(current.categoryIds)
-  return productStore.itemsActiveArray
-    .filter((candidate) => candidate.id !== current.id)
-    .filter((candidate) => candidate.storeVisible)
-    .filter((candidate) => candidate.categoryIds.some((categoryId) => categorySet.has(categoryId)))
-    .slice(0, 4)
+  const treatmentById = new Map(
+    treatmentStore.itemsActiveArray
+      .filter((candidate) => candidate.storeVisible)
+      .map((candidate) => [candidate.id, candidate]),
+  )
+
+  return linkedIds
+    .map((id) => treatmentById.get(id))
+    .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate))
 })
 
 function collectProductImageUrls(product: { imgUrls?: string[]; imgDescriptionUrls?: string[] }) {
@@ -198,7 +212,7 @@ async function onDeleteItem() {
     <section class="detail-shell">
       <div v-if="isLoading" class="detail-state">Caricamento...</div>
 
-      <article v-else-if="item" class="detail-card">
+      <article v-else-if="item" class="detail-card mt-3 mb-5">
         <div class="row g-4 g-xl-5 align-items-start">
           <div v-if="hasImages" class="col-12 col-lg-6">
             <div class="detail-media">
@@ -293,20 +307,19 @@ async function onDeleteItem() {
         </div>
       </article>
 
-      <section v-if="item && recommendedProducts.length" class="recommended-section">
-        <h3 class="recommended-title">Consigliati per te</h3>
-        <div class="row g-3 g-lg-4 mt-1">
-          <div v-for="product in recommendedProducts" :key="product.id" class="col-6 col-md-4 col-xl-3">
+      <section v-if="item && recommendedTreatments.length" class="recommended-section">
+        <h3 class="recommended-title mb-3">Trattamenti consigliati</h3>
+        <div class="row g-3 g-lg-4">
+          <div v-for="treatment in recommendedTreatments" :key="treatment.id" class="col-6 col-md-4 col-xl-3">
             <CatalogCard
-              :title="product.title"
-              :subtitle="product.subtitle"
-              :price="product.price"
-              :img-urls="product.imgUrls ?? []"
-              :store-disabeld="product.storeDisabeld"
+              :title="treatment.title"
+              :subtitle="treatment.subtitle"
+              :price="treatment.price"
+              :store-disabeld="treatment.storeDisabeld"
               :to="{
-                name: 'ProductView',
-                params: { id: product.id },
-                query: { categoryId: activeCategoryId || product.categoryIds[0] || undefined },
+                name: 'TreatmentView',
+                params: { id: treatment.id },
+                query: { categoryId: treatment.categoryIds[0] || undefined },
               }"
             />
           </div>
@@ -555,7 +568,6 @@ async function onDeleteItem() {
 }
 
 .recommended-title {
-  margin: 0 0 0.75rem;
   color: #4b2935;
   font-size: 1.05rem;
   font-weight: 700;

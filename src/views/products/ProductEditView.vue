@@ -21,7 +21,9 @@ import { Auth } from '../../main'
 import { productStore } from '../../stores/productStore'
 import { typeExpenseStore } from '../../stores/typeExpenseStore'
 import { productCategoryStore } from '../../stores/productCategoryStore'
+import { treatmentStore } from '../../stores/treatmentStore'
 import HeaderApp from '../../components/HeaderApp.vue'
+import CatalogCard from '../../components/CatalogCard.vue'
 
 type ProductForm = {
   title: string
@@ -40,6 +42,11 @@ useStoreWatch([
     store: productCategoryStore,
     getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
   },
+  {
+    store: treatmentStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+    checkLogin: false,
+  },
 ])
 
 const route = useRoute()
@@ -52,6 +59,7 @@ const isDeleting = ref(false)
 const fileValue = ref<FieldFileValue>([])
 const existingImgUrls = ref<string[]>([])
 const selectedCategoryIds = ref<string[]>([])
+const selectedTreatmentIds = ref<string[]>([])
 
 const routeId = computed(() => String(route.params.id ?? '').trim())
 const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
@@ -71,11 +79,20 @@ const typeExpenseOptions = computed(() =>
 const categoryOptions = computed(() =>
   [...productCategoryStore.itemsActiveArray].sort((a, b) => a.title.localeCompare(b.title, 'it')),
 )
+const treatmentOptions = computed(() =>
+  [...treatmentStore.itemsActiveArray].sort((a, b) => a.title.localeCompare(b.title, 'it')),
+)
 const selectedCategoryItems = computed(() =>
   selectedCategoryIds.value
     .map((id) => productCategoryStore.findItemsById(id))
     .filter((item): item is NonNullable<typeof item> => Boolean(item)),
 )
+const selectedTreatmentItems = computed(() =>
+  selectedTreatmentIds.value
+    .map((id) => treatmentStore.findItemsById(id))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+)
+const previewImgUrls = computed(() => existingImgUrls.value.filter(Boolean).slice(0, 2))
 const defaultUpdateBy = computed(() => String(Auth.uid ?? '').trim())
 
 const schema = toTypedSchema(
@@ -132,6 +149,10 @@ function normalizeCategoryIds(ids: string[]) {
   return [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))]
 }
 
+function normalizeRelationIds(ids: string[]) {
+  return [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))]
+}
+
 function sanitizeFileName(name: string) {
   const safe = name
     .trim()
@@ -165,7 +186,11 @@ async function uploadProductImages(files: File[], productId: string) {
   })
 }
 
-function buildCreatePayload(form: ProductForm, categoryIds: string[]): Omit<ProductData, 'id'> {
+function buildCreatePayload(
+  form: ProductForm,
+  categoryIds: string[],
+  treatmentIds: string[],
+): Omit<ProductData, 'id'> {
   return {
     title: form.title,
     subtitle: form.subtitle,
@@ -184,7 +209,7 @@ function buildCreatePayload(form: ProductForm, categoryIds: string[]): Omit<Prod
     ingredienti: '',
     storeVisible: normalizeBoolean(form.storeVisible, true),
     storeDisabeld: normalizeString(form.storeDisabeld, ''),
-    trattamentiConsogliatiIds: [],
+    trattamentiConsogliatiIds: treatmentIds,
     updateBy: defaultUpdateBy.value,
   }
 }
@@ -210,6 +235,25 @@ function removeCategorySelection(categoryId: string) {
 
 function isCategorySelected(categoryId: string) {
   return selectedCategoryIds.value.includes(String(categoryId ?? '').trim())
+}
+
+function toggleTreatment(treatmentId: string) {
+  const normalized = String(treatmentId ?? '').trim()
+  if (!normalized) return
+  if (selectedTreatmentIds.value.includes(normalized)) {
+    selectedTreatmentIds.value = selectedTreatmentIds.value.filter((id) => id !== normalized)
+    return
+  }
+  selectedTreatmentIds.value = [...selectedTreatmentIds.value, normalized]
+}
+
+function removeTreatmentSelection(treatmentId: string) {
+  const normalized = String(treatmentId ?? '').trim()
+  selectedTreatmentIds.value = selectedTreatmentIds.value.filter((id) => id !== normalized)
+}
+
+function isTreatmentSelected(treatmentId: string) {
+  return selectedTreatmentIds.value.includes(String(treatmentId ?? '').trim())
 }
 
 function goToCategoryManager() {
@@ -239,6 +283,7 @@ async function loadItem() {
     current.value = undefined
     existingImgUrls.value = []
     selectedCategoryIds.value = []
+    selectedTreatmentIds.value = []
     resetFileSelection()
     return
   }
@@ -251,6 +296,7 @@ async function loadItem() {
     }
     existingImgUrls.value = [...(current.value?.imgUrls ?? [])]
     selectedCategoryIds.value = normalizeCategoryIds(current.value?.categoryIds ?? [])
+    selectedTreatmentIds.value = normalizeRelationIds(current.value?.trattamentiConsogliatiIds ?? [])
     resetFileSelection()
   } catch (error) {
     console.error(error)
@@ -276,6 +322,7 @@ async function onSubmit(values: Record<string, unknown>) {
     toast.error('Seleziona almeno una categoria prodotto')
     return
   }
+  const normalizedTreatmentIds = normalizeRelationIds(selectedTreatmentIds.value)
 
   const selectedFiles = toFileArray(fileValue.value)
   if (selectedFiles.length && !productStore.storageFolder) {
@@ -285,7 +332,7 @@ async function onSubmit(values: Record<string, unknown>) {
 
   try {
     if (isCreateMode.value) {
-      const created = await productStore.add(buildCreatePayload(form, normalizedCategoryIds))
+      const created = await productStore.add(buildCreatePayload(form, normalizedCategoryIds, normalizedTreatmentIds))
       let uploadedUrls: string[] = []
 
       if (selectedFiles.length) {
@@ -324,6 +371,7 @@ async function onSubmit(values: Record<string, unknown>) {
       imgUrls: nextImgUrls,
       storeVisible: normalizeBoolean(form.storeVisible, true),
       storeDisabeld: normalizeString(form.storeDisabeld, ''),
+      trattamentiConsogliatiIds: normalizedTreatmentIds,
       updateBy: defaultUpdateBy.value,
     })
 
@@ -382,6 +430,22 @@ function goPageDettaglio() {
   })
 }
 
+function previewTitle(values: Record<string, unknown>) {
+  return normalizeString(values.title, current.value?.title ?? 'Anteprima prodotto')
+}
+
+function previewSubtitle(values: Record<string, unknown>) {
+  return normalizeString(values.subtitle, current.value?.subtitle ?? '')
+}
+
+function previewPrice(values: Record<string, unknown>) {
+  return normalizeNumber(values.price, current.value?.price ?? 0)
+}
+
+function previewStoreDisabeld(values: Record<string, unknown>) {
+  return normalizeString(values.storeDisabeld, current.value?.storeDisabeld ?? '')
+}
+
 onMounted(() => {
   loadItem()
 })
@@ -406,8 +470,30 @@ watch(() => route.params.id, loadItem)
         :validation-schema="schema"
         :initial-values="initialValues"
         @submit="onSubmit"
-        v-slot="{ isSubmitting }"
+        v-slot="{ isSubmitting, values }"
       >
+        <div class="card border-0 shadow-sm p-2 p-md-3 mb-3 preview-shell">
+          <CatalogCard
+            :title="previewTitle(values)"
+            :subtitle="previewSubtitle(values)"
+            :price="previewPrice(values)"
+            :img-urls="previewImgUrls"
+            :store-disabeld="previewStoreDisabeld(values)"
+          />
+
+          <div class="d-flex gap-2 mt-3">
+            <Btn
+              type="submit"
+              color="dark"
+              icon="save"
+              :loading="isSubmitting || isUploadingImage || isDeleting"
+              :disabled="isDeleting || isUploadingImage || isSubmitting"
+            >
+              {{ isCreateMode ? 'Crea' : 'Salva' }}
+            </Btn>
+          </div>
+        </div>
+
         <div class="card border-0 shadow-sm p-3 p-md-4">
           <div class="row g-3">
             <div class="col-12">
@@ -463,6 +549,35 @@ watch(() => route.params.id, loadItem)
                 <span v-for="item in selectedCategoryItems" :key="item.id" class="selected-relation">
                   {{ item.title }}
                   <button type="button" aria-label="Rimuovi categoria" @click="removeCategorySelection(item.id)">
+                    x
+                  </button>
+                </span>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label mb-1">Trattamenti consigliati</label>
+              <div v-if="treatmentOptions.length" class="relation-grid">
+                <button
+                  v-for="option in treatmentOptions"
+                  :key="option.id"
+                  type="button"
+                  class="relation-chip relation-chip--secondary"
+                  :class="{ 'relation-chip--active': isTreatmentSelected(option.id) }"
+                  @click="toggleTreatment(option.id)"
+                >
+                  {{ option.title }}
+                </button>
+              </div>
+              <div v-else class="form-text">Nessun trattamento disponibile.</div>
+              <small class="form-text text-muted d-block mt-1">
+                Relazione unica: questi collegamenti saranno visibili anche nella scheda trattamento.
+              </small>
+
+              <div v-if="selectedTreatmentItems.length" class="selected-relations mt-2">
+                <span v-for="item in selectedTreatmentItems" :key="item.id" class="selected-relation">
+                  {{ item.title }}
+                  <button type="button" aria-label="Rimuovi trattamento" @click="removeTreatmentSelection(item.id)">
                     x
                   </button>
                 </span>
@@ -576,6 +691,16 @@ watch(() => route.params.id, loadItem)
   max-width: 660px;
 }
 
+.preview-shell :deep(.catalog-card) {
+  animation: none;
+}
+
+.preview-shell :deep(.catalog-card--clickable) {
+  cursor: default;
+  transform: none;
+  box-shadow: 0 8px 20px rgba(45, 23, 31, 0.12);
+}
+
 .dropzone-wrap {
   border: 1px dashed #cbd5e1;
   border-radius: 0.75rem;
@@ -641,6 +766,12 @@ watch(() => route.params.id, loadItem)
   border-color: rgba(84, 44, 58, 0.68);
   color: #3d232c;
   font-weight: 600;
+}
+
+.relation-chip--secondary.relation-chip--active {
+  background: rgba(214, 236, 255, 0.62);
+  border-color: rgba(34, 78, 112, 0.5);
+  color: #23445f;
 }
 
 .selected-relations {

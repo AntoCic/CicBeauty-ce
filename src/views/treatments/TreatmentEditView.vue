@@ -10,7 +10,9 @@ import { Auth } from '../../main'
 import { treatmentStore } from '../../stores/treatmentStore'
 import { typeExpenseStore } from '../../stores/typeExpenseStore'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
+import { productStore } from '../../stores/productStore'
 import HeaderApp from '../../components/HeaderApp.vue'
+import CatalogCard from '../../components/CatalogCard.vue'
 
 type TreatmentForm = {
   title: string
@@ -30,6 +32,11 @@ useStoreWatch([
     store: treatmentCategoryStore,
     getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
   },
+  {
+    store: productStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+    checkLogin: false,
+  },
 ])
 
 const route = useRoute()
@@ -38,7 +45,10 @@ const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const current = ref<Treatment | undefined>(undefined)
 const isLoading = ref(false)
 const isDeleting = ref(false)
+const isSyncingRelations = ref(false)
 const selectedCategoryIds = ref<string[]>([])
+const selectedProductIds = ref<string[]>([])
+const hasEditedProductLinks = ref(false)
 
 const routeId = computed(() => String(route.params.id ?? '').trim())
 const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
@@ -58,9 +68,17 @@ const typeExpenseOptions = computed(() =>
 const categoryOptions = computed(() =>
   [...treatmentCategoryStore.itemsActiveArray].sort((a, b) => a.title.localeCompare(b.title, 'it')),
 )
+const productOptions = computed(() =>
+  [...productStore.itemsActiveArray].sort((a, b) => a.title.localeCompare(b.title, 'it')),
+)
 const selectedCategoryItems = computed(() =>
   selectedCategoryIds.value
     .map((id) => treatmentCategoryStore.findItemsById(id))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+)
+const selectedProductItems = computed(() =>
+  selectedProductIds.value
+    .map((id) => productStore.findItemsById(id))
     .filter((item): item is NonNullable<typeof item> => Boolean(item)),
 )
 const defaultUpdateBy = computed(() => String(Auth.uid ?? '').trim())
@@ -121,6 +139,10 @@ function normalizeCategoryIds(ids: string[]) {
   return [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))]
 }
 
+function normalizeRelationIds(ids: string[]) {
+  return [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))]
+}
+
 function buildCreatePayload(form: TreatmentForm, categoryIds: string[]): Omit<TreatmentData, 'id'> {
   return {
     title: form.title,
@@ -164,14 +186,91 @@ function isCategorySelected(categoryId: string) {
   return selectedCategoryIds.value.includes(String(categoryId ?? '').trim())
 }
 
+function toggleProduct(productId: string) {
+  hasEditedProductLinks.value = true
+  const normalized = String(productId ?? '').trim()
+  if (!normalized) return
+  if (selectedProductIds.value.includes(normalized)) {
+    selectedProductIds.value = selectedProductIds.value.filter((id) => id !== normalized)
+    return
+  }
+  selectedProductIds.value = [...selectedProductIds.value, normalized]
+}
+
+function removeProductSelection(productId: string) {
+  hasEditedProductLinks.value = true
+  const normalized = String(productId ?? '').trim()
+  selectedProductIds.value = selectedProductIds.value.filter((id) => id !== normalized)
+}
+
+function isProductSelected(productId: string) {
+  return selectedProductIds.value.includes(String(productId ?? '').trim())
+}
+
 function goToCategoryManager() {
   router.push({ name: 'TreatmentCategoriesManageView' })
+}
+
+function findLinkedProductIds(treatmentId: string) {
+  const normalizedTreatmentId = String(treatmentId ?? '').trim()
+  if (!normalizedTreatmentId) return []
+  return productStore.itemsActiveArray
+    .filter((product) => normalizeRelationIds(product.trattamentiConsogliatiIds ?? []).includes(normalizedTreatmentId))
+    .map((product) => product.id)
+}
+
+async function syncTreatmentProductLinks(treatmentId: string, nextProductIds: string[]) {
+  const normalizedTreatmentId = String(treatmentId ?? '').trim()
+  if (!normalizedTreatmentId) return
+
+  const nextSet = new Set(normalizeRelationIds(nextProductIds))
+  const currentlyLinkedProducts = productStore.itemsActiveArray.filter((product) =>
+    normalizeRelationIds(product.trattamentiConsogliatiIds ?? []).includes(normalizedTreatmentId),
+  )
+  const currentlyLinkedIds = new Set(currentlyLinkedProducts.map((product) => product.id))
+
+  const updates: Promise<unknown>[] = []
+
+  for (const product of currentlyLinkedProducts) {
+    if (nextSet.has(product.id)) continue
+    const nextTreatmentIds = normalizeRelationIds(product.trattamentiConsogliatiIds ?? []).filter(
+      (id) => id !== normalizedTreatmentId,
+    )
+    updates.push(
+      product.update({
+        trattamentiConsogliatiIds: nextTreatmentIds,
+        updateBy: defaultUpdateBy.value,
+      }),
+    )
+  }
+
+  for (const productId of nextSet) {
+    if (currentlyLinkedIds.has(productId)) continue
+    const product = productStore.findItemsById(productId)
+    if (!product) continue
+    const nextTreatmentIds = normalizeRelationIds([
+      ...(product.trattamentiConsogliatiIds ?? []),
+      normalizedTreatmentId,
+    ])
+    updates.push(
+      product.update({
+        trattamentiConsogliatiIds: nextTreatmentIds,
+        updateBy: defaultUpdateBy.value,
+      }),
+    )
+  }
+
+  if (updates.length) {
+    await Promise.all(updates)
+  }
 }
 
 async function loadItem() {
   if (isCreateMode.value) {
     current.value = undefined
     selectedCategoryIds.value = []
+    selectedProductIds.value = []
+    hasEditedProductLinks.value = false
     return
   }
 
@@ -182,6 +281,11 @@ async function loadItem() {
       toast.warning('Trattamento non trovato')
     }
     selectedCategoryIds.value = normalizeCategoryIds(current.value?.categoryIds ?? [])
+    const linkedProductIds = findLinkedProductIds(current.value?.id ?? '')
+    selectedProductIds.value = linkedProductIds.length
+      ? linkedProductIds
+      : normalizeRelationIds(current.value?.prodottiConsigliatiIds ?? [])
+    hasEditedProductLinks.value = false
   } catch (error) {
     console.error(error)
     toast.error('Errore caricamento trattamento')
@@ -207,6 +311,7 @@ async function onSubmit(values: Record<string, unknown>) {
     toast.error('Seleziona almeno una categoria trattamento')
     return
   }
+  const normalizedProductIds = normalizeRelationIds(selectedProductIds.value)
 
   const updatePayload = {
     title: form.title,
@@ -216,14 +321,17 @@ async function onSubmit(values: Record<string, unknown>) {
     duration: normalizeNumber(form.duration, 0),
     price: normalizeNumber(form.price, 0),
     description: form.description,
+    prodottiConsigliatiIds: [],
     storeVisible: normalizeBoolean(form.storeVisible, true),
     storeDisabeld: normalizeString(form.storeDisabeld, ''),
     updateBy: defaultUpdateBy.value,
   }
 
+  isSyncingRelations.value = true
   try {
     if (isCreateMode.value) {
-      await treatmentStore.add(buildCreatePayload(form, normalizedCategoryIds))
+      const created = await treatmentStore.add(buildCreatePayload(form, normalizedCategoryIds))
+      await syncTreatmentProductLinks(created.id, normalizedProductIds)
       toast.success('Trattamento creato')
       await router.replace({ name: 'TreatmentsView', params: { categoryId: normalizedCategoryIds[0] } })
       return
@@ -232,11 +340,14 @@ async function onSubmit(values: Record<string, unknown>) {
     if (!current.value) return
 
     await current.value.update(updatePayload)
+    await syncTreatmentProductLinks(current.value.id, normalizedProductIds)
     toast.success('Trattamento aggiornato')
     await router.replace({ name: 'TreatmentsView', params: { categoryId: normalizedCategoryIds[0] } })
   } catch (error) {
     console.error(error)
     toast.error('Errore salvataggio trattamento')
+  } finally {
+    isSyncingRelations.value = false
   }
 }
 
@@ -265,6 +376,16 @@ onMounted(() => {
   loadItem()
 })
 watch(() => route.params.id, loadItem)
+watch(
+  () => productStore.itemsActiveArray.length,
+  () => {
+    if (isCreateMode.value || !current.value || selectedProductIds.value.length || hasEditedProductLinks.value) return
+    const linkedProductIds = findLinkedProductIds(current.value.id)
+    selectedProductIds.value = linkedProductIds.length
+      ? linkedProductIds
+      : normalizeRelationIds(current.value.prodottiConsigliatiIds ?? [])
+  },
+)
 
 function goPageDettaglio() {
   if (isCreateMode.value) return
@@ -273,6 +394,22 @@ function goPageDettaglio() {
     params: { id: route.params.id },
     query: { categoryId: selectedCategoryIds.value[0] ?? undefined },
   })
+}
+
+function previewTitle(values: Record<string, unknown>) {
+  return normalizeString(values.title, current.value?.title ?? 'Anteprima trattamento')
+}
+
+function previewSubtitle(values: Record<string, unknown>) {
+  return normalizeString(values.subtitle, current.value?.subtitle ?? '')
+}
+
+function previewPrice(values: Record<string, unknown>) {
+  return normalizeNumber(values.price, current.value?.price ?? 0)
+}
+
+function previewStoreDisabeld(values: Record<string, unknown>) {
+  return normalizeString(values.storeDisabeld, current.value?.storeDisabeld ?? '')
 }
 </script>
 
@@ -294,8 +431,29 @@ function goPageDettaglio() {
         :validation-schema="schema"
         :initial-values="initialValues"
         @submit="onSubmit"
-        v-slot="{ isSubmitting }"
+        v-slot="{ isSubmitting, values }"
       >
+        <div class="card border-0 shadow-sm p-2 p-md-3 mb-3 preview-shell">
+          <CatalogCard
+            :title="previewTitle(values)"
+            :subtitle="previewSubtitle(values)"
+            :price="previewPrice(values)"
+            :store-disabeld="previewStoreDisabeld(values)"
+          />
+
+          <div class="d-flex gap-2 mt-3">
+            <Btn
+              type="submit"
+              color="dark"
+              icon="save"
+              :loading="isSubmitting || isDeleting || isSyncingRelations"
+              :disabled="isDeleting || isSyncingRelations || isSubmitting"
+            >
+              {{ isCreateMode ? 'Crea' : 'Salva' }}
+            </Btn>
+          </div>
+        </div>
+
         <div class="card border-0 shadow-sm p-3 p-md-4">
           <div class="row g-3">
             <div class="col-12">
@@ -357,6 +515,35 @@ function goPageDettaglio() {
               </div>
             </div>
 
+            <div class="col-12 mt-3">
+              <label class="form-label mb-1">Prodotti consigliati</label>
+              <div v-if="productOptions.length" class="relation-grid">
+                <button
+                  v-for="option in productOptions"
+                  :key="option.id"
+                  type="button"
+                  class="relation-chip relation-chip--secondary"
+                  :class="{ 'relation-chip--active': isProductSelected(option.id) }"
+                  @click="toggleProduct(option.id)"
+                >
+                  {{ option.title }}
+                </button>
+              </div>
+              <div v-else class="form-text">Nessun prodotto disponibile.</div>
+              <small class="form-text text-muted d-block mt-1">
+                Relazione unica: il link viene salvato sui prodotti e riflesso in modo automatico.
+              </small>
+
+              <div v-if="selectedProductItems.length" class="selected-relations mt-2">
+                <span v-for="item in selectedProductItems" :key="item.id" class="selected-relation">
+                  {{ item.title }}
+                  <button type="button" aria-label="Rimuovi prodotto" @click="removeProductSelection(item.id)">
+                    x
+                  </button>
+                </span>
+              </div>
+            </div>
+
             <div class="col-12 col-md-6">
               <label class="form-label">Durata (minuti)</label>
               <Field name="duration" type="number" min="0" class="form-control" />
@@ -394,10 +581,10 @@ function goPageDettaglio() {
           </div>
 
           <div class="d-flex gap-2 mt-4">
-            <Btn type="submit" color="dark" icon="save" :loading="isSubmitting || isDeleting" :disabled="isDeleting">
+            <Btn type="submit" color="dark" icon="save" :loading="isSubmitting || isDeleting || isSyncingRelations" :disabled="isDeleting">
               {{ isCreateMode ? 'Crea' : 'Salva' }}
             </Btn>
-            <Btn color="secondary" icon="sync" :disabled="isSubmitting || isDeleting" @click="loadItem">
+            <Btn color="secondary" icon="sync" :disabled="isSubmitting || isDeleting || isSyncingRelations" @click="loadItem">
               Ricarica
             </Btn>
             <Btn
@@ -407,7 +594,7 @@ function goPageDettaglio() {
               variant="outline"
               icon="delete"
               :loading="isDeleting"
-              :disabled="isSubmitting || isDeleting"
+              :disabled="isSubmitting || isDeleting || isSyncingRelations"
               @click="onDeleteTreatment"
             >
               Elimina
@@ -424,6 +611,16 @@ function goPageDettaglio() {
 <style scoped>
 .edit-wrapper {
   max-width: 660px;
+}
+
+.preview-shell :deep(.catalog-card) {
+  animation: none;
+}
+
+.preview-shell :deep(.catalog-card--clickable) {
+  cursor: default;
+  transform: none;
+  box-shadow: 0 8px 20px rgba(45, 23, 31, 0.12);
 }
 
 .relation-grid {
@@ -451,6 +648,12 @@ function goPageDettaglio() {
   border-color: rgba(84, 44, 58, 0.68);
   color: #3d232c;
   font-weight: 600;
+}
+
+.relation-chip--secondary.relation-chip--active {
+  background: rgba(214, 236, 255, 0.62);
+  border-color: rgba(34, 78, 112, 0.5);
+  color: #23445f;
 }
 
 .selected-relations {

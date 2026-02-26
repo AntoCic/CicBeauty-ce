@@ -97,4 +97,10 @@ export class Treatment extends FirestoreModel<TreatmentData> {
       ...this.timestampbleProps()
     }
   }
+
+  get formattedPrice() {
+    if (typeof this.price !== "number" || Number.isNaN(this.price)) return "-";
+    const priceFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
+    return priceFormatter.format(this.price);
+  }
 }

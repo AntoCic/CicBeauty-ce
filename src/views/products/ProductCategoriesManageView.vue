@@ -39,7 +39,14 @@ const formKey = ref(0)
 const isUploading = ref(false)
 const isSeedingDefaults = ref(false)
 const deletingIds = ref<Record<string, boolean>>({})
+const removingImageIds = ref<Record<string, boolean>>({})
 const fileValue = ref<FieldFileValue>([])
+const editingCategoryId = ref('')
+
+const editingCategory = computed(() =>
+  editingCategoryId.value ? productCategoryStore.findItemsById(editingCategoryId.value) : undefined,
+)
+const isEditMode = computed(() => Boolean(editingCategory.value))
 
 const defaultUpdateBy = computed(() => {
   const email = String(Auth.user?.email ?? '').trim()
@@ -58,9 +65,9 @@ const schema = toTypedSchema(
 )
 
 const defaultValues = computed<ProductCategoryForm>(() => ({
-  title: '',
-  subtitle: '',
-  updateBy: defaultUpdateBy.value,
+  title: editingCategory.value?.title ?? '',
+  subtitle: editingCategory.value?.subtitle ?? '',
+  updateBy: editingCategory.value?.updateBy ?? defaultUpdateBy.value,
 }))
 
 function normalizeString(value: unknown, fallback = '') {
@@ -86,6 +93,24 @@ function stripFileExtension(fileName: string) {
 
 function resetFileSelection() {
   fileValue.value = []
+}
+
+function goCreateMode() {
+  editingCategoryId.value = ''
+  formKey.value += 1
+  resetFileSelection()
+}
+
+function goEditMode(categoryId: string) {
+  const normalized = String(categoryId ?? '').trim()
+  if (!normalized) return
+  editingCategoryId.value = normalized
+  formKey.value += 1
+  resetFileSelection()
+}
+
+function imageRemovingKey(categoryId: string, index: number) {
+  return `${categoryId}:${index}`
 }
 
 async function uploadCategoryImages(files: File[], categoryId: string) {
@@ -118,7 +143,27 @@ async function onSubmit(values: Record<string, unknown>) {
     return
   }
 
+  isUploading.value = true
   try {
+    if (editingCategory.value) {
+      let nextImgUrls = [...(editingCategory.value.imgUrls ?? [])]
+      if (selectedFiles.length) {
+        const uploadedUrls = await uploadCategoryImages(selectedFiles, editingCategory.value.id)
+        nextImgUrls = [...nextImgUrls, ...uploadedUrls]
+      }
+
+      await editingCategory.value.update({
+        title: payload.title,
+        subtitle: payload.subtitle,
+        imgUrls: nextImgUrls,
+        updateBy: payload.updateBy,
+      })
+
+      toast.success('Categoria prodotti aggiornata')
+      goCreateMode()
+      return
+    }
+
     const created = await productCategoryStore.add({
       title: payload.title,
       subtitle: payload.subtitle,
@@ -127,7 +172,6 @@ async function onSubmit(values: Record<string, unknown>) {
     })
 
     if (selectedFiles.length) {
-      isUploading.value = true
       const uploadedUrls = await uploadCategoryImages(selectedFiles, created.id)
       await created.update({
         imgUrls: uploadedUrls,
@@ -140,7 +184,7 @@ async function onSubmit(values: Record<string, unknown>) {
     resetFileSelection()
   } catch (error) {
     console.error(error)
-    toast.error('Errore nella creazione della categoria prodotti')
+    toast.error(isEditMode.value ? 'Errore aggiornamento categoria prodotti' : 'Errore creazione categoria prodotti')
   } finally {
     isUploading.value = false
   }
@@ -182,6 +226,9 @@ async function removeCategory(category: (typeof productCategoryStore.itemsActive
         .map((url) => productCategoryStore.storageFolder?.removeFromUrl(url)),
     )
     await category.delete(productCategoryStore)
+    if (editingCategoryId.value === category.id) {
+      goCreateMode()
+    }
     toast.success('Categoria prodotti eliminata')
   } catch (error) {
     console.error(error)
@@ -190,6 +237,32 @@ async function removeCategory(category: (typeof productCategoryStore.itemsActive
     const nextDeleting = { ...deletingIds.value }
     delete nextDeleting[category.id]
     deletingIds.value = nextDeleting
+  }
+}
+
+async function removeCategoryImage(category: (typeof productCategoryStore.itemsActiveArray)[number], index: number) {
+  const currentUrl = String(category.imgUrls?.[index] ?? '').trim()
+  if (!currentUrl) return
+
+  const key = imageRemovingKey(category.id, index)
+  if (removingImageIds.value[key]) return
+  removingImageIds.value = { ...removingImageIds.value, [key]: true }
+
+  try {
+    await productCategoryStore.storageFolder?.removeFromUrl(currentUrl)
+    const nextImgUrls = (category.imgUrls ?? []).filter((_, currentIndex) => currentIndex !== index)
+    await category.update({
+      imgUrls: nextImgUrls,
+      updateBy: defaultUpdateBy.value,
+    })
+    toast.success('Immagine categoria prodotti rimossa')
+  } catch (error) {
+    console.error(error)
+    toast.error('Errore rimozione immagine categoria prodotti')
+  } finally {
+    const nextRemoving = { ...removingImageIds.value }
+    delete nextRemoving[key]
+    removingImageIds.value = nextRemoving
   }
 }
 </script>
@@ -209,6 +282,10 @@ async function removeCategory(category: (typeof productCategoryStore.itemsActive
       @submit="onSubmit"
       v-slot="{ isSubmitting }"
     >
+      <p class="fw-semibold mb-2">
+        {{ isEditMode ? 'Modifica categoria prodotti' : 'Nuova categoria prodotti' }}
+      </p>
+
       <div class="row g-3">
         <div class="col-12 col-md-6">
           <label class="form-label">Titolo</label>
@@ -250,14 +327,36 @@ async function removeCategory(category: (typeof productCategoryStore.itemsActive
                     Svuota selezione
                   </Btn>
                 </div>
+                <div class="small text-muted mt-2">
+                  {{ isEditMode ? 'I nuovi file verranno aggiunti alle immagini esistenti.' : 'Puoi caricare una o piu immagini.' }}
+                </div>
               </div>
             </template>
           </FieldFile>
         </div>
       </div>
-      <Btn class="mt-3" type="submit" color="dark" icon="add" :loading="isSubmitting || isUploading">
-        Aggiungi categoria prodotti
-      </Btn>
+
+      <div class="d-flex gap-2 mt-3 flex-wrap">
+        <Btn
+          type="submit"
+          color="dark"
+          :icon="isEditMode ? 'save' : 'add'"
+          :loading="isSubmitting || isUploading"
+        >
+          {{ isEditMode ? 'Salva modifiche categoria prodotti' : 'Aggiungi categoria prodotti' }}
+        </Btn>
+        <Btn
+          v-if="isEditMode"
+          type="button"
+          color="secondary"
+          variant="outline"
+          icon="close"
+          :disabled="isSubmitting || isUploading"
+          @click="goCreateMode"
+        >
+          Annulla modifica
+        </Btn>
+      </div>
     </Form>
 
     <div v-if="canManage && !productCategoryStore.itemsActiveArray.length" class="mb-3">
@@ -277,6 +376,15 @@ async function removeCategory(category: (typeof productCategoryStore.itemsActive
             <small class="text-muted">{{ item.updateBy }}</small>
             <Btn
               type="button"
+              icon="edit"
+              color="secondary"
+              variant="outline"
+              @click="goEditMode(item.id)"
+            >
+              Edit
+            </Btn>
+            <Btn
+              type="button"
               icon="delete"
               color="danger"
               variant="outline"
@@ -289,7 +397,17 @@ async function removeCategory(category: (typeof productCategoryStore.itemsActive
         </div>
 
         <div v-if="item.imgUrls?.length" class="saved-image-grid">
-          <img v-for="(url, index) in item.imgUrls" :key="`${url}-${index}`" :src="url" :alt="`Categoria prodotti ${index + 1}`" class="saved-image" />
+          <article v-for="(url, index) in item.imgUrls" :key="`${url}-${index}`" class="saved-image-card">
+            <img :src="url" :alt="`Categoria prodotti ${index + 1}`" class="saved-image" />
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-danger"
+              :disabled="Boolean(removingImageIds[imageRemovingKey(item.id, index)])"
+              @click="removeCategoryImage(item, index)"
+            >
+              {{ removingImageIds[imageRemovingKey(item.id, index)] ? 'Rimozione...' : 'Rimuovi foto' }}
+            </button>
+          </article>
         </div>
       </article>
 
@@ -319,6 +437,16 @@ async function removeCategory(category: (typeof productCategoryStore.itemsActive
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 8px;
+}
+
+.saved-image-card {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f8fafc;
 }
 
 .saved-image {

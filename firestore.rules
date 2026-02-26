@@ -69,7 +69,7 @@ service cloud.firestore {
       allow write:  if isSignedIn() && isAdmin();
     }
 
-    match /productsCategories {
+    match /productsCategories/{id} {
       allow read: if true;
       allow write: if isSignedIn() && isAdmin();
     }
@@ -79,7 +79,7 @@ service cloud.firestore {
       allow write: if isSignedIn() && isAdmin();
     }
 
-    match /treatmentsCategories {
+    match /treatmentsCategories/{id} {
       allow read: if true;
       allow write: if isSignedIn() && isAdmin();
     }
