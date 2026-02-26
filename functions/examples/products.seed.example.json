@@ -1,0 +1,18 @@
+[
+  {
+    "id": "prod-hydra-serum-01",
+    "title": "Siero Lenitivo Hydra",
+    "subtitle": "Idratazione quotidiana per pelli sensibili",
+    "description": "Formula leggera con attivi calmanti per comfort immediato.",
+    "tag": ["idratazione", "pelle sensibile", "viso"],
+    "storeVisible": true
+  },
+  {
+    "id": "prod-purify-gel-02",
+    "title": "Gel Detergente Purify",
+    "subtitle": "Detersione delicata anti-impurita",
+    "description": "Rimuove eccesso di sebo senza seccare la pelle.",
+    "tag": ["detersione", "pelle mista", "anti-imperfezioni"],
+    "storeVisible": true
+  }
+]

@@ -17,6 +17,7 @@ import TreatmentView from './views/treatments/TreatmentView.vue';
 import TreatmentEditView from './views/treatments/TreatmentEditView.vue';
 import TypeExpensesView from './views/type-expenses/TypeExpensesView.vue';
 import AnnouncementsView from './views/announcements/AnnouncementsView.vue';
+import AiAgentsDemoView from './views/ai/AiAgentsDemoView.vue';
 
 
 // ===================================================================================================
@@ -33,6 +34,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/product/:id', name: 'ProductView', component: ProductView },
   { path: '/type-expenses', name: 'TypeExpensesView', component: TypeExpensesView, meta: { loginStatus: true } },
   { path: '/announcements', name: 'AnnouncementsView', component: AnnouncementsView },
+  { path: '/ai/agents-demo', name: 'AiAgentsDemoView', component: AiAgentsDemoView, meta: { loginStatus: true } },
   { path: '/products/categories/manage', name: 'ProductCategoriesManageView', component: ProductCategoriesManageView, meta: { loginStatus: true } },
   { path: '/treatments/categories/manage', name: 'TreatmentCategoriesManageView', component: TreatmentCategoriesManageView, meta: { loginStatus: true } },
 

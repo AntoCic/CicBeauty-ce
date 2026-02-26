@@ -13,6 +13,7 @@ import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { productStore } from '../../stores/productStore'
 import HeaderApp from '../../components/HeaderApp.vue'
 import CatalogCard from '../../components/CatalogCard.vue'
+import { callMarketingAgent, parseAiError } from '../../services/aiAgents'
 
 type TreatmentForm = {
   title: string
@@ -24,6 +25,7 @@ type TreatmentForm = {
   storeVisible: boolean | string
   storeDisabeld: string
 }
+type SetFieldValueFn = (field: string, value: unknown, shouldValidate?: boolean) => void
 
 useChangeHeader('Modifica trattamento', { name: 'TreatmentCategoriesView' })
 useStoreWatch([
@@ -49,6 +51,8 @@ const isSyncingRelations = ref(false)
 const selectedCategoryIds = ref<string[]>([])
 const selectedProductIds = ref<string[]>([])
 const hasEditedProductLinks = ref(false)
+const isGeneratingSubtitle = ref(false)
+const isGeneratingDescription = ref(false)
 
 const routeId = computed(() => String(route.params.id ?? '').trim())
 const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
@@ -411,6 +415,50 @@ function previewPrice(values: Record<string, unknown>) {
 function previewStoreDisabeld(values: Record<string, unknown>) {
   return normalizeString(values.storeDisabeld, current.value?.storeDisabeld ?? '')
 }
+
+async function generateMarketingCopy(
+  values: Record<string, unknown>,
+  setFieldValue: SetFieldValueFn,
+  target: 'subtitle' | 'description',
+) {
+  const title = normalizeString(values.title)
+  if (!title) {
+    toast.warning('Inserisci prima il titolo del trattamento')
+    return
+  }
+
+  const context = [normalizeString(values.subtitle), normalizeString(values.description)].filter(Boolean).join('\n')
+
+  if (target === 'subtitle') {
+    isGeneratingSubtitle.value = true
+  } else {
+    isGeneratingDescription.value = true
+  }
+
+  try {
+    const generated = await callMarketingAgent({
+      title,
+      context: context || undefined,
+    })
+    const nextValue = target === 'subtitle' ? generated.subtitle : generated.description
+    setFieldValue(target, nextValue, true)
+    toast.success(target === 'subtitle' ? 'Sottotitolo generato con AI' : 'Descrizione generata con AI')
+  } catch (error) {
+    console.error(error)
+    toast.error(parseAiError(error))
+  } finally {
+    isGeneratingSubtitle.value = false
+    isGeneratingDescription.value = false
+  }
+}
+
+function generateSubtitle(values: Record<string, unknown>, setFieldValue: SetFieldValueFn) {
+  void generateMarketingCopy(values, setFieldValue, 'subtitle')
+}
+
+function generateDescription(values: Record<string, unknown>, setFieldValue: SetFieldValueFn) {
+  void generateMarketingCopy(values, setFieldValue, 'description')
+}
 </script>
 
 <template>
@@ -431,7 +479,7 @@ function previewStoreDisabeld(values: Record<string, unknown>) {
         :validation-schema="schema"
         :initial-values="initialValues"
         @submit="onSubmit"
-        v-slot="{ isSubmitting, values }"
+        v-slot="{ isSubmitting, values, setFieldValue }"
       >
         <div class="card border-0 shadow-sm p-2 p-md-3 mb-3 preview-shell">
           <CatalogCard
@@ -465,6 +513,18 @@ function previewStoreDisabeld(values: Record<string, unknown>) {
             <div class="col-12">
               <label class="form-label">Sottotitolo</label>
               <Field name="subtitle" class="form-control" />
+              <Btn
+                v-if="isCreateMode"
+                type="button"
+                icon="wand_stars"
+                color="dark"
+                class="gemini-action-btn mt-2"
+                :loading="isGeneratingSubtitle"
+                :disabled="isSubmitting || isDeleting || isSyncingRelations || isGeneratingDescription"
+                @click="generateSubtitle(values, setFieldValue)"
+              >
+                Genera sottotitolo con AI
+              </Btn>
               <small class="form-text text-muted d-block">Non obbligatorio</small>
               <ErrorMessage name="subtitle" class="text-danger small" />
             </div>
@@ -559,6 +619,18 @@ function previewStoreDisabeld(values: Record<string, unknown>) {
             <div class="col-12">
               <label class="form-label">Descrizione</label>
               <Field name="description" as="textarea" rows="3" class="form-control" />
+              <Btn
+                v-if="isCreateMode"
+                type="button"
+                icon="wand_stars"
+                color="dark"
+                class="gemini-action-btn mt-2"
+                :loading="isGeneratingDescription"
+                :disabled="isSubmitting || isDeleting || isSyncingRelations || isGeneratingSubtitle"
+                @click="generateDescription(values, setFieldValue)"
+              >
+                Genera descrizione con AI
+              </Btn>
               <small class="form-text text-muted d-block">Non obbligatorio</small>
               <ErrorMessage name="description" class="text-danger small" />
             </div>
@@ -679,5 +751,48 @@ function previewStoreDisabeld(values: Record<string, unknown>) {
   color: #7d1d1d;
   font-weight: 700;
   line-height: 1;
+}
+
+.gemini-action-btn {
+  border-color: transparent !important;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.95)) padding-box,
+    linear-gradient(120deg, #4285f4, #34a853, #fbbc05, #ea4335, #4285f4) border-box;
+  background-size: 100% 100%, 240% 240%;
+  animation: geminiBorderFlow 6.5s linear infinite;
+}
+
+.gemini-action-btn:deep(.material-symbols-outlined) {
+  background: linear-gradient(120deg, #4285f4, #34a853, #fbbc05, #ea4335, #4285f4);
+  background-size: 240% 240%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: geminiIconFlow 4s linear infinite;
+}
+
+@keyframes geminiBorderFlow {
+  0% {
+    background-position: 0 0, 0% 50%;
+  }
+  100% {
+    background-position: 0 0, 200% 50%;
+  }
+}
+
+@keyframes geminiIconFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gemini-action-btn,
+  .gemini-action-btn:deep(.material-symbols-outlined) {
+    animation: none;
+  }
 }
 </style>

@@ -1,9 +1,11 @@
 import { cicInit } from 'cic-kit-firebase-functions';
-import { aiGenerateText } from './routes/aiGenerate.js';
+import { marketingAgent } from './agents/marketingAgent.js';
+import { productChatAgent } from './agents/productChatAgent.js';
+import { REGION } from './config/runtime.js';
 
 const { sendUserPush, syncPublicUser } = cicInit({
-  region: 'europe-west1',
+  region: REGION,
   https: { cors: true },
 });
 
-export { sendUserPush, syncPublicUser, aiGenerateText };
+export { sendUserPush, syncPublicUser, marketingAgent, productChatAgent };

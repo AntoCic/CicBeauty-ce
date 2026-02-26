@@ -31,4 +31,9 @@ export const toolbarOffcanvasTabs: OffcanvasTab[] = [
     icon: 'notifications',
     to: { name: 'AnnouncementsView' },
   },
+  {
+    name: 'AI Demo',
+    icon: 'smart_toy',
+    to: { name: 'AiAgentsDemoView' },
+  },
 ];
