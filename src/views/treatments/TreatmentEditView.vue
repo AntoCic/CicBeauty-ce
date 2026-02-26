@@ -463,40 +463,21 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
 
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp
-      :title="isCreateMode ? 'Nuovo trattamento' : 'Modifica trattamento'"
-      :to="headerTo"
-      :btn-icon="!isCreateMode ? 'visibility' : undefined"
-      @btn-click="goPageDettaglio"
-    />
+    <HeaderApp :title="isCreateMode ? 'Nuovo trattamento' : 'Modifica trattamento'" :to="headerTo"
+      :btn-icon="!isCreateMode ? 'visibility' : undefined" @btn-click="goPageDettaglio" />
 
     <div class="edit-wrapper mx-auto py-3 py-md-4">
       <div v-if="isLoading" class="text-muted small">Caricamento...</div>
 
-      <Form
-        v-else-if="current || isCreateMode"
-        :key="formKey"
-        :validation-schema="schema"
-        :initial-values="initialValues"
-        @submit="onSubmit"
-        v-slot="{ isSubmitting, values, setFieldValue }"
-      >
+      <Form v-else-if="current || isCreateMode" :key="formKey" :validation-schema="schema"
+        :initial-values="initialValues" @submit="onSubmit" v-slot="{ isSubmitting, values, setFieldValue }">
         <div class="card border-0 shadow-sm p-2 p-md-3 mb-3 preview-shell">
-          <CatalogCard
-            :title="previewTitle(values)"
-            :subtitle="previewSubtitle(values)"
-            :price="previewPrice(values)"
-            :store-disabeld="previewStoreDisabeld(values)"
-          />
+          <CatalogCard :title="previewTitle(values)" :subtitle="previewSubtitle(values)" :price="previewPrice(values)"
+            :store-disabeld="previewStoreDisabeld(values)" />
 
           <div class="d-flex gap-2 mt-3">
-            <Btn
-              type="submit"
-              color="dark"
-              icon="save"
-              :loading="isSubmitting || isDeleting || isSyncingRelations"
-              :disabled="isDeleting || isSyncingRelations || isSubmitting"
-            >
+            <Btn type="submit" color="dark" icon="save" :loading="isSubmitting || isDeleting || isSyncingRelations"
+              :disabled="isDeleting || isSyncingRelations || isSubmitting">
               {{ isCreateMode ? 'Crea' : 'Salva' }}
             </Btn>
           </div>
@@ -510,23 +491,17 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
               <ErrorMessage name="title" class="text-danger small" />
             </div>
 
-            <div class="col-12">
+            <div class="col-10">
               <label class="form-label">Sottotitolo</label>
               <Field name="subtitle" class="form-control" />
-              <Btn
-                v-if="isCreateMode"
-                type="button"
-                icon="wand_stars"
-                color="dark"
-                class="gemini-action-btn mt-2"
-                :loading="isGeneratingSubtitle"
-                :disabled="isSubmitting || isDeleting || isSyncingRelations || isGeneratingDescription"
-                @click="generateSubtitle(values, setFieldValue)"
-              >
-                Genera sottotitolo con AI
-              </Btn>
               <small class="form-text text-muted d-block">Non obbligatorio</small>
               <ErrorMessage name="subtitle" class="text-danger small" />
+            </div>
+            <div class="col-2 pt-4">
+              <Btn v-if="isCreateMode" type="button" icon="wand_stars" color="dark" class="gemini-action-btn mt-2"
+                :loading="isGeneratingSubtitle"
+                :disabled="isSubmitting || isDeleting || isSyncingRelations || isGeneratingDescription"
+                @click="generateSubtitle(values, setFieldValue)" />
             </div>
 
             <div class="col-12">
@@ -549,14 +524,9 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
                 </Btn>
               </div>
               <div v-if="categoryOptions.length" class="relation-grid">
-                <button
-                  v-for="option in categoryOptions"
-                  :key="option.id"
-                  type="button"
-                  class="relation-chip"
+                <button v-for="option in categoryOptions" :key="option.id" type="button" class="relation-chip"
                   :class="{ 'relation-chip--active': isCategorySelected(option.id) }"
-                  @click="toggleCategory(option.id)"
-                >
+                  @click="toggleCategory(option.id)">
                   {{ option.title }}
                 </button>
               </div>
@@ -578,14 +548,9 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
             <div class="col-12 mt-3">
               <label class="form-label mb-1">Prodotti consigliati</label>
               <div v-if="productOptions.length" class="relation-grid">
-                <button
-                  v-for="option in productOptions"
-                  :key="option.id"
-                  type="button"
+                <button v-for="option in productOptions" :key="option.id" type="button"
                   class="relation-chip relation-chip--secondary"
-                  :class="{ 'relation-chip--active': isProductSelected(option.id) }"
-                  @click="toggleProduct(option.id)"
-                >
+                  :class="{ 'relation-chip--active': isProductSelected(option.id) }" @click="toggleProduct(option.id)">
                   {{ option.title }}
                 </button>
               </div>
@@ -616,23 +581,19 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
               <ErrorMessage name="price" class="text-danger small" />
             </div>
 
-            <div class="col-12">
+            <div class="col-10">
               <label class="form-label">Descrizione</label>
               <Field name="description" as="textarea" rows="3" class="form-control" />
-              <Btn
-                v-if="isCreateMode"
-                type="button"
-                icon="wand_stars"
-                color="dark"
-                class="gemini-action-btn mt-2"
-                :loading="isGeneratingDescription"
-                :disabled="isSubmitting || isDeleting || isSyncingRelations || isGeneratingSubtitle"
-                @click="generateDescription(values, setFieldValue)"
-              >
-                Genera descrizione con AI
-              </Btn>
+
               <small class="form-text text-muted d-block">Non obbligatorio</small>
               <ErrorMessage name="description" class="text-danger small" />
+            </div>
+
+            <div class="col-2 pt-4">
+              <Btn v-if="isCreateMode" type="button" icon="wand_stars" color="dark" class="gemini-action-btn mt-2"
+                :loading="isGeneratingDescription"
+                :disabled="isSubmitting || isDeleting || isSyncingRelations || isGeneratingSubtitle"
+                @click="generateDescription(values, setFieldValue)" />
             </div>
 
             <div class="col-12 col-md-6">
@@ -653,22 +614,16 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
           </div>
 
           <div class="d-flex gap-2 mt-4">
-            <Btn type="submit" color="dark" icon="save" :loading="isSubmitting || isDeleting || isSyncingRelations" :disabled="isDeleting">
+            <Btn type="submit" color="dark" icon="save" :loading="isSubmitting || isDeleting || isSyncingRelations"
+              :disabled="isDeleting">
               {{ isCreateMode ? 'Crea' : 'Salva' }}
             </Btn>
-            <Btn color="secondary" icon="sync" :disabled="isSubmitting || isDeleting || isSyncingRelations" @click="loadItem">
+            <Btn color="secondary" icon="sync" :disabled="isSubmitting || isDeleting || isSyncingRelations"
+              @click="loadItem">
               Ricarica
             </Btn>
-            <Btn
-              v-if="!isCreateMode"
-              type="button"
-              color="danger"
-              variant="outline"
-              icon="delete"
-              :loading="isDeleting"
-              :disabled="isSubmitting || isDeleting || isSyncingRelations"
-              @click="onDeleteTreatment"
-            >
+            <Btn v-if="!isCreateMode" type="button" color="danger" variant="outline" icon="delete" :loading="isDeleting"
+              :disabled="isSubmitting || isDeleting || isSyncingRelations" @click="onDeleteTreatment">
               Elimina
             </Btn>
           </div>
@@ -775,6 +730,7 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
   0% {
     background-position: 0 0, 0% 50%;
   }
+
   100% {
     background-position: 0 0, 200% 50%;
   }
@@ -784,12 +740,14 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
   0% {
     background-position: 0% 50%;
   }
+
   100% {
     background-position: 200% 50%;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .gemini-action-btn,
   .gemini-action-btn:deep(.material-symbols-outlined) {
     animation: none;

@@ -27,11 +27,14 @@ jobs:
           echo "channel_id=$channel" >> "$GITHUB_OUTPUT"
       - run: npm ci && npm run build
       - uses: FirebaseExtended/action-hosting-deploy@v0
+        id: deploy
         with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CNCBEAUTY_CE }}
           projectId: cncbeauty-ce
           channelId: ${{ steps.channel.outputs.channel_id }}
           expires: 30d
       - name: Print preview URL
         run: |
-          echo "Preview URL: https://${{ steps.channel.outputs.channel_id }}--cncbeauty-ce.web.app" >> "$GITHUB_STEP_SUMMARY"
+          echo "Preview URL: ${{ steps.deploy.outputs.details_url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Expires: ${{ steps.deploy.outputs.expire_time_formatted }}" >> "$GITHUB_STEP_SUMMARY"
