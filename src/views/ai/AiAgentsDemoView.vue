@@ -4,13 +4,9 @@ import '@wdns/vue-code-block/dist/scss/main.scss'
 import { Btn, cicKitStore, toast, useChangeHeader } from 'cic-kit'
 import { computed, ref } from 'vue'
 import HeaderApp from '../../components/HeaderApp.vue'
-import {
-  callMarketingAgent,
-  callProductChatAgent,
-  parseAiError,
-  type MarketingAgentResponse,
-  type ProductChatAgentResponse,
-} from '../../services/aiAgents'
+import { callMarketingAgent, type MarketingAgentResponse } from '../../call/callMarketingAgent'
+import { callProductChatAgent, type ProductChatAgentResponse } from '../../call/callProductChatAgent'
+import { parseAiError } from '../../call/_utilityApi'
 
 useChangeHeader('Demo AI Agents', { name: 'home' })
 

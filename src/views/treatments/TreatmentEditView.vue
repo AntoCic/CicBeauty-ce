@@ -13,7 +13,8 @@ import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { productStore } from '../../stores/productStore'
 import HeaderApp from '../../components/HeaderApp.vue'
 import CatalogCard from '../../components/CatalogCard.vue'
-import { callMarketingAgent, parseAiError } from '../../services/aiAgents'
+import { callMarketingAgent } from '../../call/callMarketingAgent'
+import { parseAiError } from '../../call/_utilityApi'
 
 type TreatmentForm = {
   title: string
@@ -423,7 +424,7 @@ async function generateMarketingCopy(
 ) {
   const title = normalizeString(values.title)
   if (!title) {
-    toast.warning('Inserisci prima il titolo del trattamento')
+    window.alert('Inserisci un titolo prima di usare AI.')
     return
   }
 
