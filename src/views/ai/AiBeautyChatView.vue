@@ -244,6 +244,16 @@ watch(
   <div class="chat-page container-fluid pb-t overflow-auto h-100" :style="bgStyle">
     <HeaderApp title="Beauty Advisor AI" :to="{ name: 'home' }" />
 
+    <section class="chat-disclaimer">
+      <p class="mb-0">
+        Risposte AI a scopo informativo: non sostituiscono parere medico o professionale. Non inserire dati sanitari
+        o dati personali sensibili.
+      </p>
+      <RouterLink class="chat-disclaimer-link" :to="{ name: 'AiTransparencyView' }">
+        Dettagli su AI e privacy
+      </RouterLink>
+    </section>
+
     <div v-if="hasAiPermission" class="chat-shell">
       <section ref="chatBodyRef" class="chat-body">
         <div v-if="!messages.length && !isSending" class="chat-empty">
@@ -390,6 +400,22 @@ watch(
   padding: 0.9rem 0.8rem 1.2rem;
   display: grid;
   gap: 0.85rem;
+}
+
+.chat-disclaimer {
+  width: min(1040px, 100%);
+  margin: 0 auto;
+  padding: 0.45rem 0.8rem 0;
+  display: grid;
+  gap: 0.2rem;
+  color: rgba(61, 35, 44, 0.8);
+  font-size: 0.78rem;
+}
+
+.chat-disclaimer-link {
+  width: fit-content;
+  color: #542c3a;
+  font-size: 0.74rem;
 }
 
 .chat-body {

@@ -2,6 +2,7 @@ import type { OffcanvasTab } from "cic-kit";
 
 type OffcanvasTabConfig = OffcanvasTab & {
   requiresBetaFeatures?: boolean
+  requiresSuperAdmin?: boolean
 }
 
 const toolbarOffcanvasTabConfigs: OffcanvasTabConfig[] = [
@@ -31,6 +32,12 @@ const toolbarOffcanvasTabConfigs: OffcanvasTabConfig[] = [
     to: { name: 'TypeExpensesView' },
   },
   {
+    name: 'App Config',
+    icon: 'settings',
+    to: { name: 'AppConfigView' },
+    requiresSuperAdmin: true,
+  },
+  {
     name: 'Avvisi',
     icon: 'notifications',
     to: { name: 'AnnouncementsView' },
@@ -44,6 +51,10 @@ const toolbarOffcanvasTabConfigs: OffcanvasTabConfig[] = [
   },
 ];
 
-export function getToolbarOffcanvasTabs(hasBetaFeatures: boolean): OffcanvasTab[] {
-  return toolbarOffcanvasTabConfigs.filter((tab) => !tab.requiresBetaFeatures || hasBetaFeatures)
+export function getToolbarOffcanvasTabs(hasBetaFeatures: boolean, hasSuperAdmin: boolean): OffcanvasTab[] {
+  return toolbarOffcanvasTabConfigs.filter((tab) => {
+    const betaFeatureAllowed = !tab.requiresBetaFeatures || hasBetaFeatures
+    const superAdminAllowed = !tab.requiresSuperAdmin || hasSuperAdmin
+    return betaFeatureAllowed && superAdminAllowed
+  })
 }

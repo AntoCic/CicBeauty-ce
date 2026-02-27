@@ -7,6 +7,8 @@ import { getToolbarOffcanvasTabs } from './toolbarMenu';
 import { registerSW } from "virtual:pwa-register";
 import { publicUserStore } from './stores/publicUser';
 import { UserPermission } from './enums/UserPermission';
+import CookieConsentBanner from './components/CookieConsentBanner.vue';
+import { appConfigStore } from './stores/appConfigStore';
 
 const route = useRoute();
 let initAppLoadingClosed = false;
@@ -15,9 +17,10 @@ const userPermission = computed(() => Object.values(UserPermission));
 function applyToolbarMenu() {
   toolbarOffcanvasStore.title = "Menu";
   const hasBetaFeatures = Auth?.user?.hasPermission(defaultUserPermission.BETA_FEATURES) ?? false;
-  toolbarOffcanvasStore.setTabs(getToolbarOffcanvasTabs(hasBetaFeatures));
+  const hasSuperAdmin = Auth?.user?.hasPermission(defaultUserPermission.SUPERADMIN) ?? false;
+  toolbarOffcanvasStore.setTabs(getToolbarOffcanvasTabs(hasBetaFeatures, hasSuperAdmin));
 }
-useStoreWatch([{ store: publicUserStore }]);
+useStoreWatch([{ store: appConfigStore, checkLogin: false }, { store: publicUserStore }]);
 
 watch(
   () => Auth.isLoggedIn,
@@ -67,6 +70,7 @@ onBeforeUnmount(() => {
   <ModalDev v-if="Auth?.user?.hasPermission(defaultUserPermission.MODAL_DEV_ON) && cicKitStore.debugMod"
     :public-users="publicUserStore.items" :user_permissions="userPermission" />
   <ToastCmp />
+  <CookieConsentBanner />
   <RegisterSW :registerSW="registerSW" />
 </template>
 

@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { Auth } from '../main'
 import { UserPermission } from '../enums/UserPermission'
+import LegalLinks from '../components/LegalLinks.vue'
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const router = useRouter()
@@ -64,9 +65,7 @@ function onPromptKeydown(event: KeyboardEvent) {
     </section>
 
     <footer class="home-footer text-center fs-8">
-      <RouterLink v-if="!Auth.isLoggedIn" :to="{ name: 'login' }" class="home-link">
-        <span>login</span>
-      </RouterLink>
+      <LegalLinks />
     </footer>
   </div>
 </template>
@@ -167,6 +166,14 @@ function onPromptKeydown(event: KeyboardEvent) {
   text-align: left;
 }
 
+.home-disclaimer {
+  margin: 14px auto 0;
+  width: min(420px, 100%);
+  font-size: 0.77rem;
+  line-height: 1.5;
+  color: rgba(61, 35, 44, 0.74);
+}
+
 .home-ai-title {
   margin: 0 0 8px;
   font-size: 0.72rem;
@@ -209,10 +216,10 @@ function onPromptKeydown(event: KeyboardEvent) {
 }
 
 .home-footer {
-  position: absolute;
-  bottom: 8px;
-  left: 0;
-  right: 0;
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
 }
 
 .home-footer .home-link:hover {

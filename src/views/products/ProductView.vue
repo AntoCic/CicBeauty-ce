@@ -259,6 +259,9 @@ async function onDeleteItem() {
                 {{ formatPrice(item.price) }}
               </p>
             </div>
+            <p class="detail-legal-note">
+              Prezzo indicativo da listino fornitore. Nessuna vendita online su questo sito.
+            </p>
 
             <p v-if="item.subtitle" class="detail-subtitle">{{ item.subtitle }}</p>
 
@@ -561,6 +564,12 @@ async function onDeleteItem() {
   font-weight: 800;
   letter-spacing: 0.02em;
   white-space: nowrap;
+}
+
+.detail-legal-note {
+  margin: 0.3rem 0 0;
+  font-size: 0.76rem;
+  color: rgba(75, 41, 53, 0.72);
 }
 
 .recommended-section {

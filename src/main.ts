@@ -6,9 +6,12 @@ import "./main.scss";
 import { setupFirebase, initAuth, _CurrentUser, initCicKitStore, cicKitStore, headerStore, toolbarStore, loading } from "cic-kit";
 import { firebaseConfig, VAPID_PUBLIC_KEY } from "./firebase-config";
 import pkg from '../package.json';
+import { applyConsentToAnalytics, bootstrapConsentBeforeFirebase } from "./legal/cookieConsent";
 
 loading.on('loading:initApp');
+bootstrapConsentBeforeFirebase(firebaseConfig.measurementId);
 setupFirebase(firebaseConfig, VAPID_PUBLIC_KEY);
+applyConsentToAnalytics(firebaseConfig.measurementId);
 export const Auth = initAuth(_CurrentUser);
 initCicKitStore({
     packageJson: pkg, defaultViews: {
