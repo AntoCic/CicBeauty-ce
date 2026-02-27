@@ -49,6 +49,10 @@ service cloud.firestore {
       allow write: if isSignedIn() && hasUserPermission('SUPERADMIN');
     }
 
+    match /agentPrompts/{id} {
+      allow read, write: if isSignedIn() && isAdmin();
+    }
+
     match /appointments/{userId} {
       allow read: if isSignedIn() && isAdmin();
       allow write: if isSignedIn() && isAdmin();

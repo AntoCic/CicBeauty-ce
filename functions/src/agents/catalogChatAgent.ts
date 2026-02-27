@@ -2,10 +2,11 @@ import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { generateJsonObject } from '../ai/geminiClient.js';
 import { db } from '../config/firebaseAdmin.js';
-import { DEFAULT_GEMINI_MODEL, REGION } from '../config/runtime.js';
+import { REGION } from '../config/runtime.js';
 import { GEMINI_API_KEY } from '../config/secret.js';
 import { requireUserPermission } from '../utils/auth.js';
 import { readOptionalIntegerInRange, readRequiredString } from '../utils/validation.js';
+import { buildAgentSystemInstruction, getAgentPromptConfig } from './agentPromptConfig.js';
 
 const PRODUCT_CANDIDATE_LIMIT = 100;
 const TREATMENT_CANDIDATE_LIMIT = 100;
@@ -68,7 +69,8 @@ export const catalogChatAgent = onCall<CatalogChatAgentRequest>(
     const treatmentLimit = readOptionalIntegerInRange(data.treatmentLimit, 'treatmentLimit', 1, 5, 3);
     const history = readHistory(data.history);
 
-    const [productCandidates, treatmentCandidates] = await Promise.all([
+    const [promptConfig, productCandidates, treatmentCandidates] = await Promise.all([
+      getAgentPromptConfig('catalogChatAgent'),
       loadCandidates('products', PRODUCT_CANDIDATE_LIMIT),
       loadCandidates('treatments', TREATMENT_CANDIDATE_LIMIT),
     ]);
@@ -81,35 +83,24 @@ export const catalogChatAgent = onCall<CatalogChatAgentRequest>(
       };
     }
 
-    const model = DEFAULT_GEMINI_MODEL;
     const geminiOutput = await generateJsonObject<CatalogChatRawResponse>({
-      model,
-      systemInstruction: [
-        'Sei un consulente esperto di centro estetico.',
-        'Analizza i candidati usando sia metaAI sia prezzo.',
-        'Il prezzo e espresso in euro.',
-        'Non inventare id e non usare id fuori lista.',
-        'Se il messaggio contiene vincoli di budget o fascia prezzo, rispettali quando selezioni prodotti e trattamenti ma non essere troppo selettivo il prezzo è sempre orientativo.',
-        `Restituisci massimo ${productLimit} prodotti e massimo ${treatmentLimit} trattamenti.`,
-        'Formato obbligatorio:',
-        '{"products":[{"id":"...","reason":"..."}],"treatments":[{"id":"...","reason":"..."}],"finalAdvice":{"title":"...","summary":"...","treatmentIds":["..."],"productIds":["..."],"frequency":"...","quantity":"..."}}',
-        'reason deve essere breve e concreta.',
-        'finalAdvice deve proporre un percorso chiaro; usa frequency e quantity quando utili.',
-        'Rispondi solo con JSON valido.',
-      ].join('\n'),
+      model: promptConfig.model,
+      systemInstruction: buildAgentSystemInstruction('catalogChatAgent', promptConfig.prompt),
       userPrompt: JSON.stringify(
         {
-          message,
-          history,
-          limits: { products: productLimit, treatments: treatmentLimit },
-          productCandidates,
-          treatmentCandidates,
+          payload: {
+            message,
+            history,
+            limits: { products: productLimit, treatments: treatmentLimit },
+            productCandidates,
+            treatmentCandidates,
+          },
         },
         null,
         2,
       ),
-      maxOutputTokens: 1400,
-      temperature: 0.35,
+      maxOutputTokens: promptConfig.maxOutputTokens,
+      temperature: promptConfig.temperature,
     });
 
     const allowedProductIds = new Set(productCandidates.map((candidate) => candidate.id));
@@ -227,7 +218,7 @@ function emptyAdvice(): FinalAdvice {
   return {
     title: 'Percorso Signature Cic Beauty',
     summary:
-      'Data la specificità della richiesta, ti consigliamo di rivolgerti a un operatore per una consulenza gratuita dedicata.',
+      'Data la specificita della richiesta, ti consigliamo di rivolgerti a un operatore per una consulenza gratuita dedicata.',
     treatmentIds: [],
     productIds: [],
     frequency: '',

@@ -1,3 +1,9 @@
+## v0.0.18 - 2026-02-27
+
+ADD propmpt settings
+
+---
+
 ## v0.0.17 - 2026-02-27
 
 add legal fiix

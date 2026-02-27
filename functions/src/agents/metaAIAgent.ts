@@ -1,9 +1,10 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { generateJsonObject } from '../ai/geminiClient.js';
-import { DEFAULT_GEMINI_MODEL, REGION } from '../config/runtime.js';
+import { REGION } from '../config/runtime.js';
 import { GEMINI_API_KEY } from '../config/secret.js';
 import { requireUserPermission } from '../utils/auth.js';
 import { readOptionalIntegerInRange } from '../utils/validation.js';
+import { buildAgentSystemInstruction, getAgentPromptConfig } from './agentPromptConfig.js';
 
 export type MetaAIAgentRequest = {
   entityType: 'product' | 'treatment';
@@ -33,31 +34,25 @@ export const metaAIAgent = onCall<MetaAIAgentRequest>(
     const maxWords = readOptionalIntegerInRange(data.maxWords, 'maxWords', 40, 300, 140);
 
     const cleanedSource = cleanSourceForMetaAI(source);
-    const model = DEFAULT_GEMINI_MODEL;
+    const promptConfig = await getAgentPromptConfig('metaAIAgent');
     const output = await generateJsonObject<MetaAIAgentRawResponse>({
-      model,
-      systemInstruction: [
-        'Sei un data curator specializzato in schede estetiche.',
-        'Genera solo il campo metaAI in italiano, sintetico ma informativo.',
-        'Formato obbligatorio: {"metaAI":"..."}',
-        'Usa solo i dati forniti dal payload.',
-        'Se nel payload trovi "metaAIAttuale", usalo come riferimento per aggiornare e migliorare il nuovo metaAI mantenendo coerenza.',
-        'Non inserire ID tecnici, type_expense_id, prezzi amministrativi o campi interni.',
-        'Niente markdown, niente elenco puntato, niente testo extra.',
-        `Massimo ${maxWords} parole.`,
-      ].join('\n'),
+      model: promptConfig.model,
+      systemInstruction: buildAgentSystemInstruction('metaAIAgent', promptConfig.prompt),
       userPrompt: JSON.stringify(
         {
-          entityType,
-          source: cleanedSource,
-          objective:
-            'Creare un testo pulito con caratteristiche essenziali, benefici, target ideale, uso/frequenza e note importanti se disponibili. Se presente metaAIAttuale, trattalo come base di partenza da rifinire.',
+          payload: {
+            entityType,
+            source: cleanedSource,
+            objective:
+              'Creare un testo pulito con caratteristiche essenziali, benefici, target ideale, uso/frequenza e note importanti se disponibili. Se presente metaAIAttuale, trattalo come base di partenza da rifinire.',
+            maxWords,
+          },
         },
         null,
         2,
       ),
-      maxOutputTokens: 700,
-      temperature: 0.35,
+      maxOutputTokens: promptConfig.maxOutputTokens,
+      temperature: promptConfig.temperature,
     });
 
     const metaAI = normalizeResultByWords(output.metaAI, maxWords, 'metaAI');

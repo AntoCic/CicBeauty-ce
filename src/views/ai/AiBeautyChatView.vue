@@ -219,6 +219,44 @@ function suggestedTreatments(result: CatalogChatAgentResponse) {
     .filter((row): row is { entry: CatalogChatAgentResponse['treatments'][number]; item: Treatment } => Boolean(row.item))
 }
 
+function resolveSuggestionSubtitle(reason: unknown, fallback: unknown) {
+  const reasonText = String(reason ?? '').trim()
+  if (reasonText) return reasonText
+  return String(fallback ?? '').trim()
+}
+
+function suggestedCards(result: CatalogChatAgentResponse) {
+  const treatmentCards = suggestedTreatments(result).map((row) => ({
+    id: `treatment-${row.item.id}`,
+    title: row.item.title,
+    subtitle: resolveSuggestionSubtitle(row.entry.reason, row.item.subtitle),
+    price: row.item.price,
+    imgUrls: undefined as string[] | undefined,
+    storeDisabeld: row.item.storeDisabeld,
+    to: {
+      name: 'TreatmentView' as const,
+      params: { id: row.item.id },
+      query: { categoryId: row.item.categoryIds[0] || undefined },
+    },
+  }))
+
+  const productCards = suggestedProducts(result).map((row) => ({
+    id: `product-${row.item.id}`,
+    title: row.item.title,
+    subtitle: resolveSuggestionSubtitle(row.entry.reason, row.item.subtitle),
+    price: row.item.price,
+    imgUrls: row.item.imgUrls ?? [],
+    storeDisabeld: row.item.storeDisabeld,
+    to: {
+      name: 'ProductView' as const,
+      params: { id: row.item.id },
+      query: { categoryId: row.item.categoryIds[0] || undefined },
+    },
+  }))
+
+  return [...treatmentCards, ...productCards]
+}
+
 function finalAdviceTreatments(result: CatalogChatAgentResponse) {
   return result.finalAdvice.treatmentIds
     .map((id) => treatmentById.value.get(id))
@@ -242,7 +280,7 @@ watch(
 
 <template>
   <div class="chat-page container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp title="Beauty Advisor AI" :to="{ name: 'home' }" />
+    <HeaderApp title="Aurea chat" :to="{ name: 'home' }" />
 
     <section class="chat-disclaimer">
       <p class="mb-0">
@@ -271,43 +309,22 @@ watch(
           </div>
 
           <div v-if="message.role === 'assistant' && message.result" class="result-shell">
-            <div v-if="suggestedTreatments(message.result).length" class="result-block">
-              <h3 class="result-title">Trattamenti suggeriti</h3>
-              <div class="row g-3">
+            <div v-if="suggestedCards(message.result).length" class="result-block">
+              <h3 class="result-title">Suggerimenti</h3>
+              <div class="result-list">
                 <div
-                  v-for="row in suggestedTreatments(message.result)"
-                  :key="`treatment-${message.id}-${row.item.id}`"
-                  class="col-12 col-md-6"
+                  v-for="card in suggestedCards(message.result)"
+                  :key="`${message.id}-${card.id}`"
+                  class="result-card-wrap"
                 >
                   <CatalogCard
-                    :title="row.item.title"
-                    :subtitle="row.item.subtitle"
-                    :price="row.item.price"
-                    :store-disabeld="row.item.storeDisabeld"
-                    :to="{ name: 'TreatmentView', params: { id: row.item.id }, query: { categoryId: row.item.categoryIds[0] || undefined } }"
+                    :title="card.title"
+                    :subtitle="card.subtitle"
+                    :price="card.price"
+                    :img-urls="card.imgUrls"
+                    :store-disabeld="card.storeDisabeld"
+                    :to="card.to"
                   />
-                  <p class="result-reason">{{ row.entry.reason }}</p>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="suggestedProducts(message.result).length" class="result-block">
-              <h3 class="result-title">Prodotti suggeriti</h3>
-              <div class="row g-3">
-                <div
-                  v-for="row in suggestedProducts(message.result)"
-                  :key="`product-${message.id}-${row.item.id}`"
-                  class="col-12 col-md-6"
-                >
-                  <CatalogCard
-                    :title="row.item.title"
-                    :subtitle="row.item.subtitle"
-                    :price="row.item.price"
-                    :img-urls="row.item.imgUrls ?? []"
-                    :store-disabeld="row.item.storeDisabeld"
-                    :to="{ name: 'ProductView', params: { id: row.item.id }, query: { categoryId: row.item.categoryIds[0] || undefined } }"
-                  />
-                  <p class="result-reason">{{ row.entry.reason }}</p>
                 </div>
               </div>
             </div>
@@ -487,19 +504,29 @@ watch(
   background: rgba(255, 255, 255, 0.64);
 }
 
+.result-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  align-items: start;
+  gap: 0.7rem;
+}
+
+.result-card-wrap {
+  width: 100%;
+  max-width: 220px;
+  margin: 0 auto;
+}
+
+.result-card-wrap :deep(.catalog-card) {
+  height: auto !important;
+}
+
 .result-title {
   margin: 0 0 0.65rem;
   font-size: 0.86rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #4b2935;
-}
-
-.result-reason {
-  margin: 0.45rem 0 0;
-  font-size: 0.82rem;
-  color: rgba(47, 47, 47, 0.85);
-  line-height: 1.45;
 }
 
 .route-panel {

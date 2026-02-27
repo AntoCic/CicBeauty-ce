@@ -45,23 +45,20 @@ function onPromptKeydown(event: KeyboardEvent) {
           Products Catalog
         </RouterLink>
       </div>
+      <hr class="hr-custom">
 
-      <section v-if="canUseAiChat" class="home-ai-box">
-        <p class="home-ai-title">Beauty Advisor AI</p>
-        <textarea
-          v-model="advisorPrompt"
-          class="form-control home-ai-input"
-          rows="3"
-          placeholder="Scrivi la tua esigenza e premi invio per aprire la chat AI"
-          @keydown="onPromptKeydown"
-        />
+      <template v-if="canUseAiChat">
+        <textarea v-model="advisorPrompt" class="form-control home-ai-input" rows="4" placeholder="Ciao, sono Aurea ✨
+La tua assistente beauty AI 💆‍♀️
+Clicca qui e raccontami cosa stai cercando… ti aiuterò a trovare i trattamenti e i prodotti perfetti per te 💛🌸"
+          @keydown="onPromptKeydown" />
         <div class="home-ai-actions">
           <small>Invio con Enter, nuova riga con Shift+Enter</small>
           <button type="button" class="home-ai-send" :disabled="!advisorPrompt.trim()" @click="sendToAdvisor">
             Apri Chat AI
           </button>
         </div>
-      </section>
+      </template>
     </section>
 
     <footer class="home-footer text-center fs-8">
@@ -157,6 +154,11 @@ function onPromptKeydown(event: KeyboardEvent) {
   animation-delay: 270ms;
 }
 
+.hr-custom {
+  margin: 2em 0;
+  border-bottom: 1px solid rgba(84, 44, 58, 0.24);
+}
+
 .home-ai-box {
   margin-top: 18px;
   border: 1px solid rgba(84, 44, 58, 0.24);
@@ -231,10 +233,12 @@ function onPromptKeydown(event: KeyboardEvent) {
     opacity: 0;
     transform: translateY(20px) scale(0.97);
   }
+
   70% {
     opacity: 1;
     transform: translateY(-3px) scale(1.01);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);

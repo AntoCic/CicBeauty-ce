@@ -3,6 +3,7 @@ import type { OffcanvasTab } from "cic-kit";
 type OffcanvasTabConfig = OffcanvasTab & {
   requiresBetaFeatures?: boolean
   requiresSuperAdmin?: boolean
+  requiresAdmin?: boolean
 }
 
 const toolbarOffcanvasTabConfigs: OffcanvasTabConfig[] = [
@@ -38,6 +39,12 @@ const toolbarOffcanvasTabConfigs: OffcanvasTabConfig[] = [
     requiresSuperAdmin: true,
   },
   {
+    name: 'Prompt Agenti AI',
+    icon: 'psychology',
+    to: { name: 'AgentPromptsView' },
+    requiresAdmin: true,
+  },
+  {
     name: 'Avvisi',
     icon: 'notifications',
     to: { name: 'AnnouncementsView' },
@@ -51,10 +58,15 @@ const toolbarOffcanvasTabConfigs: OffcanvasTabConfig[] = [
   },
 ];
 
-export function getToolbarOffcanvasTabs(hasBetaFeatures: boolean, hasSuperAdmin: boolean): OffcanvasTab[] {
+export function getToolbarOffcanvasTabs(
+  hasBetaFeatures: boolean,
+  hasSuperAdmin: boolean,
+  hasAdmin: boolean,
+): OffcanvasTab[] {
   return toolbarOffcanvasTabConfigs.filter((tab) => {
     const betaFeatureAllowed = !tab.requiresBetaFeatures || hasBetaFeatures
     const superAdminAllowed = !tab.requiresSuperAdmin || hasSuperAdmin
-    return betaFeatureAllowed && superAdminAllowed
+    const adminAllowed = !tab.requiresAdmin || hasAdmin
+    return betaFeatureAllowed && superAdminAllowed && adminAllowed
   })
 }

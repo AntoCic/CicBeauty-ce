@@ -1,9 +1,10 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { generateJsonObject } from '../ai/geminiClient.js';
-import { REGION, DEFAULT_GEMINI_MODEL } from '../config/runtime.js';
+import { REGION } from '../config/runtime.js';
 import { GEMINI_API_KEY } from '../config/secret.js';
 import { requireUserPermission } from '../utils/auth.js';
 import { readOptionalIntegerInRange, readOptionalString, readRequiredString } from '../utils/validation.js';
+import { buildAgentSystemInstruction, getAgentPromptConfig } from './agentPromptConfig.js';
 
 export type MarketingAgentRequest = {
   title: string;
@@ -39,25 +40,24 @@ export const marketingAgent = onCall<MarketingAgentRequest>(
       40,
     );
 
-    const model = DEFAULT_GEMINI_MODEL;
+    const promptConfig = await getAgentPromptConfig('marketingAgent');
     const output = await generateJsonObject<MarketingAgentRawResponse>({
-      model,
-      systemInstruction: [
-        'Sei un copywriter senior per un centro estetico premium.',
-        'Rispondi solo con JSON valido e senza testo extra.',
-        'Formato obbligatorio: {"subtitle":"...","description":"..."}',
-        `subtitle massimo ${subtitleMaxWords} parole.`,
-        `description massimo ${descriptionMaxWords} parole.`,
-        'Tono: elegante, persuasivo, concreto, in italiano.',
-      ].join('\n'),
-      userPrompt: JSON.stringify({
-        title,
-        context: context ?? null,
-        subtitleMaxWords,
-        descriptionMaxWords,
-      }),
-      maxOutputTokens: 900,
-      temperature: 0.6,
+      model: promptConfig.model,
+      systemInstruction: buildAgentSystemInstruction('marketingAgent', promptConfig.prompt),
+      userPrompt: JSON.stringify(
+        {
+          payload: {
+            title,
+            context: context ?? null,
+            subtitleMaxWords,
+            descriptionMaxWords,
+          },
+        },
+        null,
+        2,
+      ),
+      maxOutputTokens: promptConfig.maxOutputTokens,
+      temperature: promptConfig.temperature,
     });
 
     const subtitle = normalizeResultByWords(output.subtitle, subtitleMaxWords, 'subtitle');
