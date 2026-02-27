@@ -50,6 +50,7 @@ const categoryCards = computed(() => {
     }))
 
   const cards = [
+    ...sorted,
     {
       id: '__all-products__',
       title: 'Tutti i prodotti',
@@ -58,7 +59,6 @@ const categoryCards = computed(() => {
       count: productStore.itemsActiveArray.length,
       to: { name: 'ProductsView' },
     },
-    ...sorted,
   ]
 
   if (!term) return cards

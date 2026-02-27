@@ -1,10 +1,6 @@
 export const UserPermission = {
-  SUPERADMIN: 'SUPERADMIN',
-  MODAL_DEV_ON: 'MODAL_DEV_ON',
-  ADMIN: 'ADMIN',
-  OFFLINE_ALLOW: 'OFFLINE_ALLOW',
-
-
+  AI: 'AI',
+  AI_BETA_FEATURES: 'AI_BETA_FEATURES',
 } as const
 
 // Type union derivato dalle chiavi dell'oggetto

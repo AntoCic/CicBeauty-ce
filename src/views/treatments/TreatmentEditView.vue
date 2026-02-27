@@ -14,7 +14,9 @@ import { productStore } from '../../stores/productStore'
 import HeaderApp from '../../components/HeaderApp.vue'
 import CatalogCard from '../../components/CatalogCard.vue'
 import { callMarketingAgent } from '../../call/callMarketingAgent'
+import { callMetaAIAgent } from '../../call/callMetaAIAgent'
 import { parseAiError } from '../../call/_utilityApi'
+import { UserPermission } from '../../enums/UserPermission'
 
 type TreatmentForm = {
   title: string
@@ -23,6 +25,7 @@ type TreatmentForm = {
   duration: number | string
   price: number | string
   description: string
+  metaAI: string
   storeVisible: boolean | string
   storeDisabeld: string
 }
@@ -54,6 +57,7 @@ const selectedProductIds = ref<string[]>([])
 const hasEditedProductLinks = ref(false)
 const isGeneratingSubtitle = ref(false)
 const isGeneratingDescription = ref(false)
+const isGeneratingMetaAI = ref(false)
 
 const routeId = computed(() => String(route.params.id ?? '').trim())
 const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
@@ -87,6 +91,7 @@ const selectedProductItems = computed(() =>
     .filter((item): item is NonNullable<typeof item> => Boolean(item)),
 )
 const defaultUpdateBy = computed(() => String(Auth.uid ?? '').trim())
+const hasAiPermission = computed(() => Auth?.user?.hasPermission(UserPermission.AI) ?? false)
 
 const schema = toTypedSchema(
   yup.object({
@@ -96,6 +101,7 @@ const schema = toTypedSchema(
     duration: yup.number().typeError('Numero obbligatorio').required('Campo obbligatorio'),
     price: yup.number().typeError('Numero obbligatorio').required('Campo obbligatorio'),
     description: yup.string().default(''),
+    metaAI: yup.string().default(''),
     storeVisible: yup.boolean().required('Campo obbligatorio'),
     storeDisabeld: yup.string().default(''),
   }),
@@ -110,6 +116,7 @@ const initialValues = computed<TreatmentForm>(() => ({
   duration: current.value?.duration ?? 0,
   price: current.value?.price ?? 0,
   description: current.value?.description ?? '',
+  metaAI: current.value?.metaAI ?? '',
   storeVisible: current.value?.storeVisible ?? true,
   storeDisabeld: current.value?.storeDisabeld ?? '',
 }))
@@ -166,6 +173,7 @@ function buildCreatePayload(form: TreatmentForm, categoryIds: string[]): Omit<Tr
     tipiDiPelle: '',
     prodottiConsigliatiIds: [],
     ingredienti: '',
+    metaAI: normalizeString(form.metaAI, ''),
     storeVisible: normalizeBoolean(form.storeVisible, true),
     storeDisabeld: normalizeString(form.storeDisabeld, ''),
     updateBy: defaultUpdateBy.value,
@@ -307,6 +315,7 @@ async function onSubmit(values: Record<string, unknown>) {
     duration: normalizeNumber(values.duration, 0),
     price: normalizeNumber(values.price, 0),
     description: normalizeString(values.description, ''),
+    metaAI: normalizeString(values.metaAI, ''),
     storeVisible: normalizeBoolean(values.storeVisible, true),
     storeDisabeld: normalizeString(values.storeDisabeld, ''),
   }
@@ -326,6 +335,7 @@ async function onSubmit(values: Record<string, unknown>) {
     duration: normalizeNumber(form.duration, 0),
     price: normalizeNumber(form.price, 0),
     description: form.description,
+    metaAI: form.metaAI,
     prodottiConsigliatiIds: [],
     storeVisible: normalizeBoolean(form.storeVisible, true),
     storeDisabeld: normalizeString(form.storeDisabeld, ''),
@@ -417,11 +427,68 @@ function previewStoreDisabeld(values: Record<string, unknown>) {
   return normalizeString(values.storeDisabeld, current.value?.storeDisabeld ?? '')
 }
 
+function buildMetaAISource(values: Record<string, unknown>) {
+  return {
+    titolo: normalizeString(values.title, current.value?.title ?? ''),
+    sottotitolo: normalizeString(values.subtitle, current.value?.subtitle ?? ''),
+    descrizione: normalizeString(values.description, current.value?.description ?? ''),
+    metaAIAttuale: normalizeString(values.metaAI, current.value?.metaAI ?? ''),
+    durataMinuti: normalizeNumber(values.duration, current.value?.duration ?? 0),
+    prezzo: normalizeNumber(values.price, current.value?.price ?? 0),
+    visibileNelloStore: normalizeBoolean(values.storeVisible, current.value?.storeVisible ?? true),
+    nonDisponibilePer: normalizeString(values.storeDisabeld, current.value?.storeDisabeld ?? ''),
+    categorie: selectedCategoryItems.value.map((item) => item.title),
+    prodottiConsigliati: selectedProductItems.value.map((item) => ({
+      id: item.id,
+      titolo: item.title,
+      sottotitolo: item.subtitle ?? '',
+      metaAI: item.metaAI ?? '',
+    })),
+    tipiDiPelle: normalizeString(current.value?.tipiDiPelle ?? ''),
+    ingredienti: normalizeString(current.value?.ingredienti ?? ''),
+    tag: [...(current.value?.tag ?? [])],
+  }
+}
+
+async function generateMetaAI(values: Record<string, unknown>, setFieldValue: SetFieldValueFn) {
+  if (!hasAiPermission.value) {
+    toast.error('Permesso AI richiesto')
+    return
+  }
+
+  const title = normalizeString(values.title, current.value?.title ?? '')
+  if (!title) {
+    window.alert('Inserisci un titolo prima di usare AI.')
+    return
+  }
+
+  isGeneratingMetaAI.value = true
+  try {
+    const response = await callMetaAIAgent({
+      entityType: 'treatment',
+      source: buildMetaAISource(values),
+      maxWords: 180,
+    })
+    setFieldValue('metaAI', response.metaAI, true)
+    toast.success('metaAI trattamento generato')
+  } catch (error) {
+    console.error(error)
+    toast.error(parseAiError(error))
+  } finally {
+    isGeneratingMetaAI.value = false
+  }
+}
+
 async function generateMarketingCopy(
   values: Record<string, unknown>,
   setFieldValue: SetFieldValueFn,
   target: 'subtitle' | 'description',
 ) {
+  if (!hasAiPermission.value) {
+    toast.error('Permesso AI richiesto')
+    return
+  }
+
   const title = normalizeString(values.title)
   if (!title) {
     window.alert('Inserisci un titolo prima di usare AI.')
@@ -440,6 +507,8 @@ async function generateMarketingCopy(
     const generated = await callMarketingAgent({
       title,
       context: context || undefined,
+      subtitleMaxWords: 4,
+      descriptionMaxWords: 40,
     })
     const nextValue = target === 'subtitle' ? generated.subtitle : generated.description
     setFieldValue(target, nextValue, true)
@@ -499,7 +568,7 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
               <ErrorMessage name="subtitle" class="text-danger small" />
             </div>
             <div class="col-2 pt-4">
-              <Btn v-if="isCreateMode" type="button" icon="wand_stars" color="dark" class="gemini-action-btn mt-2"
+              <Btn v-if="hasAiPermission" type="button" icon="wand_stars" color="dark" class="gemini-action-btn mt-2"
                 :loading="isGeneratingSubtitle"
                 :disabled="isSubmitting || isDeleting || isSyncingRelations || isGeneratingDescription"
                 @click="generateSubtitle(values, setFieldValue)" />
@@ -591,10 +660,26 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
             </div>
 
             <div class="col-2 pt-4">
-              <Btn v-if="isCreateMode" type="button" icon="wand_stars" color="dark" class="gemini-action-btn mt-2"
+              <Btn v-if="hasAiPermission" type="button" icon="wand_stars" color="dark" class="gemini-action-btn mt-2"
                 :loading="isGeneratingDescription"
                 :disabled="isSubmitting || isDeleting || isSyncingRelations || isGeneratingSubtitle"
                 @click="generateDescription(values, setFieldValue)" />
+            </div>
+
+            <div v-if="hasAiPermission" class="col-10">
+              <label class="form-label">metaAI</label>
+              <Field name="metaAI" as="textarea" rows="5" class="form-control" />
+              <small class="form-text text-muted d-block">
+                Testo essenziale usato dagli agenti AI per consigliare prodotti e trattamenti.
+              </small>
+              <ErrorMessage name="metaAI" class="text-danger small" />
+            </div>
+
+            <div v-if="hasAiPermission" class="col-2 pt-4">
+              <Btn type="button" icon="wand_stars" color="dark" class="gemini-action-btn mt-2"
+                :loading="isGeneratingMetaAI"
+                :disabled="isSubmitting || isDeleting || isSyncingRelations || isGeneratingSubtitle || isGeneratingDescription"
+                @click="generateMetaAI(values, setFieldValue)" />
             </div>
 
             <div class="col-12 col-md-6">

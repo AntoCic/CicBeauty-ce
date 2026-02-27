@@ -56,3 +56,21 @@ export function readRecommendationLimit(raw: unknown) {
   }
   return parsed;
 }
+
+export function readOptionalIntegerInRange(
+  raw: unknown,
+  key: string,
+  min: number,
+  max: number,
+  fallback: number,
+) {
+  if (raw == null || raw === '') return fallback;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed)) {
+    throw new HttpsError('invalid-argument', `${key} deve essere un numero intero.`);
+  }
+  if (parsed < min || parsed > max) {
+    throw new HttpsError('invalid-argument', `${key} deve essere tra ${min} e ${max}.`);
+  }
+  return parsed;
+}

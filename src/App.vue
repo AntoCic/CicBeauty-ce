@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import { cicKitStore, defaultUserPermission, LoaderCmp, loading, ToastCmp, ToolbarApp, toolbarOffcanvasStore, ModalDev, RegisterSW, HeaderApp, toolbarStore, useStoreWatch } from 'cic-kit';
-import { nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
 import { Auth } from './main';
-import { toolbarOffcanvasTabs } from "./toolbarMenu";
+import { getToolbarOffcanvasTabs } from './toolbarMenu';
 import { registerSW } from "virtual:pwa-register";
 import { publicUserStore } from './stores/publicUser';
+import { UserPermission } from './enums/UserPermission';
 
 const route = useRoute();
 let initAppLoadingClosed = false;
+const userPermission = computed(() => Object.values(UserPermission));
 
 function applyToolbarMenu() {
   toolbarOffcanvasStore.title = "Menu";
-  toolbarOffcanvasStore.setTabs(toolbarOffcanvasTabs);
+  const hasBetaFeatures = Auth?.user?.hasPermission(defaultUserPermission.BETA_FEATURES) ?? false;
+  toolbarOffcanvasStore.setTabs(getToolbarOffcanvasTabs(hasBetaFeatures));
 }
 useStoreWatch([{ store: publicUserStore }]);
 
@@ -20,6 +23,7 @@ watch(
   () => Auth.isLoggedIn,
   () => {
     toolbarStore.show = Auth.isLoggedIn;
+    applyToolbarMenu();
   },
 );
 
@@ -61,7 +65,7 @@ onBeforeUnmount(() => {
 
   <ToolbarApp glass primary-dark="#e8b3be" primary-light="#542c3a" />
   <ModalDev v-if="Auth?.user?.hasPermission(defaultUserPermission.MODAL_DEV_ON) && cicKitStore.debugMod"
-    :public-users="publicUserStore.items" />
+    :public-users="publicUserStore.items" :user_permissions="userPermission" />
   <ToastCmp />
   <RegisterSW :registerSW="registerSW" />
 </template>

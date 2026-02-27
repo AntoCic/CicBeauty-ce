@@ -18,6 +18,7 @@ export interface ProductData extends Partial<Timestampble> {
   tipiDiPelle?: string
   consigliUso?: string
   ingredienti?: string
+  metaAI?: string
   storeVisible: boolean
   storeDisabeld: string
   trattamentiConsogliatiIds?: string[]
@@ -42,6 +43,7 @@ export class Product extends FirestoreModel<ProductData> {
   tipiDiPelle?: string
   consigliUso?: string
   ingredienti?: string
+  metaAI?: string
   storeVisible: boolean
   storeDisabeld: string
   trattamentiConsogliatiIds?: string[]
@@ -66,6 +68,7 @@ export class Product extends FirestoreModel<ProductData> {
     this.tipiDiPelle = data.tipiDiPelle
     this.consigliUso = data.consigliUso
     this.ingredienti = data.ingredienti
+    this.metaAI = data.metaAI
     this.storeVisible = data.storeVisible
     this.storeDisabeld = data.storeDisabeld
     this.trattamentiConsogliatiIds = data.trattamentiConsogliatiIds
@@ -90,6 +93,7 @@ export class Product extends FirestoreModel<ProductData> {
       tipiDiPelle: this.tipiDiPelle,
       consigliUso: this.consigliUso,
       ingredienti: this.ingredienti,
+      metaAI: this.metaAI,
       storeVisible: this.storeVisible,
       storeDisabeld: this.storeDisabeld,
       trattamentiConsogliatiIds: this.trattamentiConsogliatiIds,

@@ -4,6 +4,8 @@ import { httpsCallable } from 'firebase/functions'
 export type MarketingAgentRequest = {
   title: string
   context?: string
+  subtitleMaxWords?: number
+  descriptionMaxWords?: number
 }
 
 export type MarketingAgentResponse = {

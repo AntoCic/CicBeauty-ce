@@ -67,9 +67,29 @@ export async function generateJsonObject<T>(input: GenerateJsonInput): Promise<T
 }
 
 function normalizeModel(model: string) {
+  const minimumModel = 'gemini-2.5-flash-lite';
   const value = String(model ?? '').trim();
-  if (!value) return 'gemini-2.5-flash-lite';
-  return value.startsWith('models/') ? value.slice(7) : value;
+  if (!value) return minimumModel;
+
+  const normalized = value.startsWith('models/') ? value.slice(7) : value;
+  if (!isAtLeastGemini25(normalized)) {
+    return minimumModel;
+  }
+
+  return normalized;
+}
+
+function isAtLeastGemini25(model: string) {
+  const normalized = String(model ?? '').trim().toLowerCase();
+  const match = normalized.match(/^gemini-(\d+)(?:\.(\d+))?/);
+  if (!match) return true;
+
+  const major = Number(match[1] ?? 0);
+  const minor = Number(match[2] ?? 0);
+
+  if (major > 2) return true;
+  if (major < 2) return false;
+  return minor >= 5;
 }
 
 function extractFirstText(payload: GeminiApiResponse) {

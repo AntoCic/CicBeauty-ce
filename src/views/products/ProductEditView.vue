@@ -24,6 +24,9 @@ import { productCategoryStore } from '../../stores/productCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
 import HeaderApp from '../../components/HeaderApp.vue'
 import CatalogCard from '../../components/CatalogCard.vue'
+import { callMetaAIAgent } from '../../call/callMetaAIAgent'
+import { parseAiError } from '../../call/_utilityApi'
+import { UserPermission } from '../../enums/UserPermission'
 
 type ProductForm = {
   title: string
@@ -31,9 +34,11 @@ type ProductForm = {
   type_expense_id: string
   price: number | string
   description: string
+  metaAI: string
   storeVisible: boolean | string
   storeDisabeld: string
 }
+type SetFieldValueFn = (field: string, value: unknown, shouldValidate?: boolean) => void
 
 useChangeHeader('Modifica prodotto', { name: 'ProductCategoriesView' })
 useStoreWatch([
@@ -60,6 +65,7 @@ const fileValue = ref<FieldFileValue>([])
 const existingImgUrls = ref<string[]>([])
 const selectedCategoryIds = ref<string[]>([])
 const selectedTreatmentIds = ref<string[]>([])
+const isGeneratingMetaAI = ref(false)
 
 const routeId = computed(() => String(route.params.id ?? '').trim())
 const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
@@ -94,6 +100,7 @@ const selectedTreatmentItems = computed(() =>
 )
 const previewImgUrls = computed(() => existingImgUrls.value.filter(Boolean).slice(0, 2))
 const defaultUpdateBy = computed(() => String(Auth.uid ?? '').trim())
+const hasAiPermission = computed(() => Auth?.user?.hasPermission(UserPermission.AI) ?? false)
 
 const schema = toTypedSchema(
   yup.object({
@@ -102,6 +109,7 @@ const schema = toTypedSchema(
     type_expense_id: yup.string().required('Campo obbligatorio'),
     price: yup.number().typeError('Numero obbligatorio').required('Campo obbligatorio'),
     description: yup.string().default(''),
+    metaAI: yup.string().default(''),
     storeVisible: yup.boolean().required('Campo obbligatorio'),
     storeDisabeld: yup.string().default(''),
   }),
@@ -115,6 +123,7 @@ const initialValues = computed<ProductForm>(() => ({
   type_expense_id: current.value?.type_expense_id ?? '',
   price: current.value?.price ?? 0,
   description: current.value?.description ?? '',
+  metaAI: current.value?.metaAI ?? '',
   storeVisible: current.value?.storeVisible ?? true,
   storeDisabeld: current.value?.storeDisabeld ?? '',
 }))
@@ -207,6 +216,7 @@ function buildCreatePayload(
     tipiDiPelle: '',
     consigliUso: '',
     ingredienti: '',
+    metaAI: normalizeString(form.metaAI, ''),
     storeVisible: normalizeBoolean(form.storeVisible, true),
     storeDisabeld: normalizeString(form.storeDisabeld, ''),
     trattamentiConsogliatiIds: treatmentIds,
@@ -313,6 +323,7 @@ async function onSubmit(values: Record<string, unknown>) {
     type_expense_id: normalizeString(values.type_expense_id),
     price: normalizeNumber(values.price, 0),
     description: normalizeString(values.description, ''),
+    metaAI: normalizeString(values.metaAI, ''),
     storeVisible: normalizeBoolean(values.storeVisible, true),
     storeDisabeld: normalizeString(values.storeDisabeld, ''),
   }
@@ -368,6 +379,7 @@ async function onSubmit(values: Record<string, unknown>) {
       categoryIds: normalizedCategoryIds,
       price: normalizeNumber(form.price, 0),
       description: form.description,
+      metaAI: form.metaAI,
       imgUrls: nextImgUrls,
       storeVisible: normalizeBoolean(form.storeVisible, true),
       storeDisabeld: normalizeString(form.storeDisabeld, ''),
@@ -446,6 +458,58 @@ function previewStoreDisabeld(values: Record<string, unknown>) {
   return normalizeString(values.storeDisabeld, current.value?.storeDisabeld ?? '')
 }
 
+function buildMetaAISource(values: Record<string, unknown>) {
+  return {
+    titolo: normalizeString(values.title, current.value?.title ?? ''),
+    sottotitolo: normalizeString(values.subtitle, current.value?.subtitle ?? ''),
+    descrizione: normalizeString(values.description, current.value?.description ?? ''),
+    metaAIAttuale: normalizeString(values.metaAI, current.value?.metaAI ?? ''),
+    prezzo: normalizeNumber(values.price, current.value?.price ?? 0),
+    visibileNelloStore: normalizeBoolean(values.storeVisible, current.value?.storeVisible ?? true),
+    nonDisponibilePer: normalizeString(values.storeDisabeld, current.value?.storeDisabeld ?? ''),
+    categorie: selectedCategoryItems.value.map((item) => item.title),
+    trattamentiConsigliati: selectedTreatmentItems.value.map((item) => ({
+      id: item.id,
+      titolo: item.title,
+      sottotitolo: item.subtitle ?? '',
+      metaAI: item.metaAI ?? '',
+    })),
+    tipiDiPelle: normalizeString(current.value?.tipiDiPelle ?? ''),
+    consigliUso: normalizeString(current.value?.consigliUso ?? ''),
+    ingredienti: normalizeString(current.value?.ingredienti ?? ''),
+    tag: [...(current.value?.tag ?? [])],
+  }
+}
+
+async function generateMetaAI(values: Record<string, unknown>, setFieldValue: SetFieldValueFn) {
+  if (!hasAiPermission.value) {
+    toast.error('Permesso AI richiesto')
+    return
+  }
+
+  const title = normalizeString(values.title, current.value?.title ?? '')
+  if (!title) {
+    window.alert('Inserisci un titolo prima di usare AI.')
+    return
+  }
+
+  isGeneratingMetaAI.value = true
+  try {
+    const response = await callMetaAIAgent({
+      entityType: 'product',
+      source: buildMetaAISource(values),
+      maxWords: 180,
+    })
+    setFieldValue('metaAI', response.metaAI, true)
+    toast.success('metaAI prodotto generato')
+  } catch (error) {
+    console.error(error)
+    toast.error(parseAiError(error))
+  } finally {
+    isGeneratingMetaAI.value = false
+  }
+}
+
 onMounted(() => {
   loadItem()
 })
@@ -470,7 +534,7 @@ watch(() => route.params.id, loadItem)
         :validation-schema="schema"
         :initial-values="initialValues"
         @submit="onSubmit"
-        v-slot="{ isSubmitting, values }"
+        v-slot="{ isSubmitting, values, setFieldValue }"
       >
         <div class="card border-0 shadow-sm p-2 p-md-3 mb-3 preview-shell">
           <CatalogCard
@@ -611,6 +675,27 @@ watch(() => route.params.id, loadItem)
               <Field name="description" as="textarea" rows="3" class="form-control" />
               <small class="form-text text-muted d-block">Non obbligatorio</small>
               <ErrorMessage name="description" class="text-danger small" />
+            </div>
+
+            <div v-if="hasAiPermission" class="col-10">
+              <label class="form-label">metaAI</label>
+              <Field name="metaAI" as="textarea" rows="5" class="form-control" />
+              <small class="form-text text-muted d-block">
+                Testo pulito usato dagli agenti AI per trovare i match migliori.
+              </small>
+              <ErrorMessage name="metaAI" class="text-danger small" />
+            </div>
+
+            <div v-if="hasAiPermission" class="col-2 pt-4">
+              <Btn
+                type="button"
+                icon="wand_stars"
+                color="dark"
+                class="gemini-action-btn mt-2"
+                :loading="isGeneratingMetaAI"
+                :disabled="isSubmitting || isUploadingImage || isDeleting"
+                @click="generateMetaAI(values, setFieldValue)"
+              />
             </div>
 
             <div class="col-12">
@@ -797,5 +882,50 @@ watch(() => route.params.id, loadItem)
   color: #7d1d1d;
   font-weight: 700;
   line-height: 1;
+}
+
+.gemini-action-btn {
+  border-color: transparent !important;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.95)) padding-box,
+    linear-gradient(120deg, #4285f4, #34a853, #fbbc05, #ea4335, #4285f4) border-box;
+  background-size: 100% 100%, 240% 240%;
+  animation: geminiBorderFlow 6.5s linear infinite;
+}
+
+.gemini-action-btn:deep(.material-symbols-outlined) {
+  background: linear-gradient(120deg, #4285f4, #34a853, #fbbc05, #ea4335, #4285f4);
+  background-size: 240% 240%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: geminiIconFlow 4s linear infinite;
+}
+
+@keyframes geminiBorderFlow {
+  0% {
+    background-position: 0 0, 0% 50%;
+  }
+
+  100% {
+    background-position: 0 0, 200% 50%;
+  }
+}
+
+@keyframes geminiIconFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gemini-action-btn,
+  .gemini-action-btn:deep(.material-symbols-outlined) {
+    animation: none;
+  }
 }
 </style>

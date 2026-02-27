@@ -2,12 +2,14 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { generateJsonObject } from '../ai/geminiClient.js';
 import { REGION, DEFAULT_GEMINI_MODEL } from '../config/runtime.js';
 import { GEMINI_API_KEY } from '../config/secret.js';
-import { requireAuth } from '../utils/auth.js';
-import { readOptionalString, readRequiredString } from '../utils/validation.js';
+import { requireUserPermission } from '../utils/auth.js';
+import { readOptionalIntegerInRange, readOptionalString, readRequiredString } from '../utils/validation.js';
 
 export type MarketingAgentRequest = {
   title: string;
   context?: string;
+  subtitleMaxWords?: number;
+  descriptionMaxWords?: number;
 };
 
 export type MarketingAgentResponse = {
@@ -23,11 +25,19 @@ export const marketingAgent = onCall<MarketingAgentRequest>(
     secrets: [GEMINI_API_KEY],
   },
   async (request): Promise<MarketingAgentResponse> => {
-    requireAuth(request);
+    await requireUserPermission(request, 'AI');
 
     const data = asObject(request.data);
     const title = readRequiredString(data, 'title', { maxLength: 180 });
     const context = readOptionalString(data, 'context', { maxLength: 2000 });
+    const subtitleMaxWords = readOptionalIntegerInRange(data.subtitleMaxWords, 'subtitleMaxWords', 2, 20, 4);
+    const descriptionMaxWords = readOptionalIntegerInRange(
+      data.descriptionMaxWords,
+      'descriptionMaxWords',
+      10,
+      120,
+      40,
+    );
 
     const model = DEFAULT_GEMINI_MODEL;
     const output = await generateJsonObject<MarketingAgentRawResponse>({
@@ -36,17 +46,22 @@ export const marketingAgent = onCall<MarketingAgentRequest>(
         'Sei un copywriter senior per un centro estetico premium.',
         'Rispondi solo con JSON valido e senza testo extra.',
         'Formato obbligatorio: {"subtitle":"...","description":"..."}',
-        'subtitle massimo 120 caratteri.',
-        'description massimo 800 caratteri.',
+        `subtitle massimo ${subtitleMaxWords} parole.`,
+        `description massimo ${descriptionMaxWords} parole.`,
         'Tono: elegante, persuasivo, concreto, in italiano.',
       ].join('\n'),
-      userPrompt: JSON.stringify({ title, context: context ?? null }),
+      userPrompt: JSON.stringify({
+        title,
+        context: context ?? null,
+        subtitleMaxWords,
+        descriptionMaxWords,
+      }),
       maxOutputTokens: 900,
       temperature: 0.6,
     });
 
-    const subtitle = normalizeResultString(output.subtitle, 120, 'subtitle');
-    const description = normalizeResultString(output.description, 800, 'description');
+    const subtitle = normalizeResultByWords(output.subtitle, subtitleMaxWords, 'subtitle');
+    const description = normalizeResultByWords(output.description, descriptionMaxWords, 'description');
 
     return { subtitle, description };
   },
@@ -59,10 +74,18 @@ function asObject(input: unknown) {
   return input as Record<string, unknown>;
 }
 
-function normalizeResultString(value: unknown, maxLength: number, key: string) {
+function normalizeResultByWords(value: unknown, maxWords: number, key: string) {
   const normalized = typeof value === 'string' ? value.trim() : '';
   if (!normalized) {
     throw new HttpsError('internal', `Gemini non ha restituito "${key}".`);
   }
-  return normalized.slice(0, maxLength).trim();
+  const words = normalized
+    .split(/\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const clipped = words.slice(0, maxWords).join(' ').trim();
+  if (!clipped) {
+    throw new HttpsError('internal', `Gemini non ha restituito un "${key}" valido.`);
+  }
+  return clipped;
 }

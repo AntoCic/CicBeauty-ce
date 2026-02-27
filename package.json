@@ -29,11 +29,14 @@
     "@vitejs/plugin-vue": "^5.0.4",
     "@wdns/vue-code-block": "^2.3.5",
     "bootstrap": "^5.3.8",
-    "cic-kit": "^0.0.30",
+    "cic-kit": "^0.0.31",
     "firebase": "^12.0.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.4.624",
     "vee-validate": "^4.15.1",
     "vue": "^3.5.25",
-    "vue-router": "^4.6.4"
+    "vue-router": "^4.6.4",
+    "vuedraggable": "^4.1.0"
   },
   "devDependencies": {
     "@inquirer/select": "^5.0.4",

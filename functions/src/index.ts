@@ -1,6 +1,7 @@
 import { cicInit } from 'cic-kit-firebase-functions';
 import { marketingAgent } from './agents/marketingAgent.js';
-import { productChatAgent } from './agents/productChatAgent.js';
+import { metaAIAgent } from './agents/metaAIAgent.js';
+import { catalogChatAgent } from './agents/catalogChatAgent.js';
 import { REGION } from './config/runtime.js';
 
 const { sendUserPush, syncPublicUser } = cicInit({
@@ -8,4 +9,4 @@ const { sendUserPush, syncPublicUser } = cicInit({
   https: { cors: true },
 });
 
-export { sendUserPush, syncPublicUser, marketingAgent, productChatAgent };
+export { sendUserPush, syncPublicUser, marketingAgent, metaAIAgent, catalogChatAgent };

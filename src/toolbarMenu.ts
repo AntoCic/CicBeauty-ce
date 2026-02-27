@@ -1,6 +1,10 @@
 import type { OffcanvasTab } from "cic-kit";
 
-export const toolbarOffcanvasTabs: OffcanvasTab[] = [
+type OffcanvasTabConfig = OffcanvasTab & {
+  requiresBetaFeatures?: boolean
+}
+
+const toolbarOffcanvasTabConfigs: OffcanvasTabConfig[] = [
   {
     name: 'Prodotti',
     icon: 'shopping_bag',
@@ -30,10 +34,16 @@ export const toolbarOffcanvasTabs: OffcanvasTab[] = [
     name: 'Avvisi',
     icon: 'notifications',
     to: { name: 'AnnouncementsView' },
+    requiresBetaFeatures: true,
   },
   {
-    name: 'AI Demo',
-    icon: 'smart_toy',
-    to: { name: 'AiAgentsDemoView' },
+    name: 'PDF Demo',
+    icon: 'picture_as_pdf',
+    to: { name: 'PdfPlacementDemoView' },
+    requiresBetaFeatures: true,
   },
 ];
+
+export function getToolbarOffcanvasTabs(hasBetaFeatures: boolean): OffcanvasTab[] {
+  return toolbarOffcanvasTabConfigs.filter((tab) => !tab.requiresBetaFeatures || hasBetaFeatures)
+}

@@ -17,7 +17,8 @@ import TreatmentView from './views/treatments/TreatmentView.vue';
 import TreatmentEditView from './views/treatments/TreatmentEditView.vue';
 import TypeExpensesView from './views/type-expenses/TypeExpensesView.vue';
 import AnnouncementsView from './views/announcements/AnnouncementsView.vue';
-import AiAgentsDemoView from './views/ai/AiAgentsDemoView.vue';
+import AiBeautyChatView from './views/ai/AiBeautyChatView.vue';
+import PdfPlacementDemoView from './views/tools/PdfPlacementDemoView.vue';
 
 
 // ===================================================================================================
@@ -34,7 +35,8 @@ export const routes: RouteRecordRaw[] = [
   { path: '/product/:id', name: 'ProductView', component: ProductView },
   { path: '/type-expenses', name: 'TypeExpensesView', component: TypeExpensesView, meta: { loginStatus: true } },
   { path: '/announcements', name: 'AnnouncementsView', component: AnnouncementsView },
-  { path: '/ai/agents-demo', name: 'AiAgentsDemoView', component: AiAgentsDemoView, meta: { loginStatus: true } },
+  { path: '/ai/beauty-chat', name: 'AiBeautyChatView', component: AiBeautyChatView },
+  { path: '/tools/pdf-placement-demo', name: 'PdfPlacementDemoView', component: PdfPlacementDemoView, meta: { loginStatus: true } },
   { path: '/products/categories/manage', name: 'ProductCategoriesManageView', component: ProductCategoriesManageView, meta: { loginStatus: true } },
   { path: '/treatments/categories/manage', name: 'TreatmentCategoriesManageView', component: TreatmentCategoriesManageView, meta: { loginStatus: true } },
 

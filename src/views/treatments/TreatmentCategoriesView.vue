@@ -50,6 +50,7 @@ const categoryCards = computed(() => {
     }))
 
   const cards = [
+    ...sorted,
     {
       id: '__all-treatments__',
       title: 'Tutti i trattamenti',
@@ -58,7 +59,6 @@ const categoryCards = computed(() => {
       count: treatmentStore.itemsActiveArray.length,
       to: { name: 'TreatmentsView' },
     },
-    ...sorted,
   ]
 
   if (!term) return cards
