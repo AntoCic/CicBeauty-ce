@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { cicKitStore } from 'cic-kit';
 import { Auth } from '../main';
 
 </script>
@@ -13,6 +14,12 @@ import { Auth } from '../main';
         class="material-symbols-outlined" style="font-size: 0.7rem; vertical-align: middle;">
         lock_person
       </span> Admin</RouterLink>
+    <span v-if="Auth.isLoggedIn" class="legal-link" @click="() => cicKitStore.debugMod = true">
+      <span
+        class="material-symbols-outlined" style="font-size: 0.7rem; vertical-align: middle;">
+        frame_bug
+      </span>
+    </span>
   </nav>
 </template>
 

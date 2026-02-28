@@ -56,6 +56,12 @@ const toolbarOffcanvasTabConfigs: OffcanvasTabConfig[] = [
     to: { name: 'PdfPlacementDemoView' },
     requiresBetaFeatures: true,
   },
+  {
+    name: 'Test Playground',
+    icon: 'science',
+    to: { name: 'TestPlaygroundView' },
+    requiresBetaFeatures: true,
+  },
 ];
 
 export function getToolbarOffcanvasTabs(

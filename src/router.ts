@@ -25,6 +25,7 @@ import TermsConditionsView from './views/legal/TermsConditionsView.vue';
 import AiTransparencyView from './views/legal/AiTransparencyView.vue';
 import AppConfigView from './views/app-config/AppConfigView.vue';
 import AgentPromptsView from './views/ai/AgentPromptsView.vue';
+import TestPlaygroundView from './views/tools/TestPlaygroundView.vue';
 
 
 // ===================================================================================================
@@ -49,6 +50,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/legal/terms', name: 'TermsConditionsView', component: TermsConditionsView },
   { path: '/legal/ai-transparency', name: 'AiTransparencyView', component: AiTransparencyView },
   { path: '/tools/pdf-placement-demo', name: 'PdfPlacementDemoView', component: PdfPlacementDemoView, meta: { loginStatus: true } },
+  { path: '/tools/test-playground', name: 'TestPlaygroundView', component: TestPlaygroundView, meta: { loginStatus: true } },
   { path: '/products/categories/manage', name: 'ProductCategoriesManageView', component: ProductCategoriesManageView, meta: { loginStatus: true } },
   { path: '/treatments/categories/manage', name: 'TreatmentCategoriesManageView', component: TreatmentCategoriesManageView, meta: { loginStatus: true } },
 

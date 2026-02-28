@@ -1,3 +1,9 @@
+## v0.0.19 - 2026-02-28
+
+add ai fiix
+
+---
+
 ## v0.0.18 - 2026-02-27
 
 ADD propmpt settings

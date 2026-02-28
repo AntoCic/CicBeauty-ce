@@ -12,12 +12,6 @@ export type AgentPromptRuntimeConfig = {
   temperature: number;
 };
 
-const SERVER_JSON_GUARD_LINES = [
-  'Formato obbligatorio:',
-  '{"products":[{"id":"...","reason":"..."}],"treatments":[{"id":"...","reason":"..."}],"finalAdvice":{"title":"...","summary":"...","treatmentIds":["..."],"productIds":["..."],"frequency":"...","quantity":"..."}}',
-  'Rispondi solo con JSON valido.',
-] as const;
-
 const DEFAULT_MAX_OUTPUT_TOKENS = 1400;
 const DEFAULT_TEMPERATURE = 0.35;
 
@@ -85,17 +79,14 @@ export async function getAgentPromptConfig(agentId: AgentPromptId): Promise<Agen
 }
 
 export function buildAgentSystemInstruction(agentId: AgentPromptId, prompt: string) {
-  const promptWithoutManagedLines = removeServerManagedJsonLines(prompt);
-  const sections = [
-    promptWithoutManagedLines,
-    ...SERVER_JSON_GUARD_LINES,
-  ];
+  const sections = [prompt];
 
   if (agentId === 'marketingAgent') {
     sections.push('Per questo agente il formato di risposta effettivo e: {"subtitle":"...","description":"..."}');
   } else if (agentId === 'metaAIAgent') {
     sections.push('Per questo agente il formato di risposta effettivo e: {"metaAI":"..."}');
   }
+  sections.push('Rispondi solo con JSON valido e senza testo extra.');
 
   return sections
     .map((line) => line.trim())
@@ -128,22 +119,4 @@ function normalizeTemperature(value: unknown, fallback: number) {
   if (parsed < 0) return 0;
   if (parsed > 1) return 1;
   return Number(parsed.toFixed(2));
-}
-
-function removeServerManagedJsonLines(prompt: string) {
-  const toDrop = new Set(
-    [
-      ...SERVER_JSON_GUARD_LINES,
-      'Rispondi solo con JSON valido e senza testo extra.',
-      'Formato obbligatorio: {"subtitle":"...","description":"..."}',
-      'Formato obbligatorio: {"metaAI":"..."}',
-    ].map((line) => line.trim()),
-  );
-
-  return String(prompt ?? '')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line && !toDrop.has(line))
-    .join('\n')
-    .trim();
 }

@@ -27,7 +27,6 @@ export const metaAIAgent = onCall<MetaAIAgentRequest>(
   },
   async (request): Promise<MetaAIAgentResponse> => {
     await requireUserPermission(request, 'AI');
-
     const data = asObject(request.data);
     const entityType = readEntityType(data.entityType);
     const source = asObject(data.source);
@@ -35,9 +34,10 @@ export const metaAIAgent = onCall<MetaAIAgentRequest>(
 
     const cleanedSource = cleanSourceForMetaAI(source);
     const promptConfig = await getAgentPromptConfig('metaAIAgent');
+    const systemInstruction = buildAgentSystemInstruction('metaAIAgent', promptConfig.prompt);
     const output = await generateJsonObject<MetaAIAgentRawResponse>({
       model: promptConfig.model,
-      systemInstruction: buildAgentSystemInstruction('metaAIAgent', promptConfig.prompt),
+      systemInstruction,
       userPrompt: JSON.stringify(
         {
           payload: {
