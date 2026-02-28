@@ -4,7 +4,7 @@ import { computed, useAttrs, type ButtonHTMLAttributes, type StyleValue } from '
 defineOptions({ inheritAttrs: false })
 
 type BtnAiSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
-type BtnAiVariant = 'solid' | 'outline'
+type BtnAiVariant = 'default' | 'ghost' | 'solid' | 'outline'
 
 const props = withDefaults(
   defineProps<{
@@ -79,6 +79,16 @@ const ariaLabel = computed(() => String(attrs['aria-label'] ?? attrs.title ?? 'A
 .btn-ai {
   --btn-ai-size: 42px;
   --btn-ai-icon-size: 86%;
+  --btn-ai-logo-gradient: linear-gradient(
+    118deg,
+    #ff4b4b 0%,
+    #ff6a88 16%,
+    #b34dff 36%,
+    #7a5cff 52%,
+    #4f7dff 68%,
+    #26b8ff 84%,
+    #38d39f 100%
+  );
   position: relative;
   width: var(--btn-ai-size);
   height: var(--btn-ai-size);
@@ -90,7 +100,7 @@ const ariaLabel = computed(() => String(attrs['aria-label'] ?? attrs.title ?? 'A
   padding: 4px;
   margin: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: 2px;
   background: transparent;
   box-shadow: none;
   cursor: pointer;
@@ -98,8 +108,40 @@ const ariaLabel = computed(() => String(attrs['aria-label'] ?? attrs.title ?? 'A
   transition: transform 0.18s ease, opacity 0.2s ease;
 }
 
+.btn-ai--default,
+.btn-ai--outline,
+.btn-ai--solid {
+  padding: 4px;
+}
+
+.btn-ai--ghost {
+  padding: 0;
+}
+
+.btn-ai::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.4px;
+  background: var(--btn-ai-logo-gradient);
+  background-size: 250% 250%;
+  background-position: 0% 50%;
+  animation: btnAiLogoFlow 2.2s ease-in-out infinite alternate;
+  pointer-events: none;
+  opacity: 0.95;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.btn-ai--ghost::before {
+  display: none;
+}
+
 .btn-ai__icon-wrap {
   position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   display: block;
@@ -119,16 +161,7 @@ const ariaLabel = computed(() => String(attrs['aria-label'] ?? attrs.title ?? 'A
   position: absolute;
   inset: 0;
   display: block;
-  background: linear-gradient(
-    118deg,
-    #ff4b4b 0%,
-    #ff6a88 16%,
-    #b34dff 36%,
-    #7a5cff 52%,
-    #4f7dff 68%,
-    #26b8ff 84%,
-    #38d39f 100%
-  );
+  background: var(--btn-ai-logo-gradient);
   background-size: 250% 250%;
   background-position: 0% 50%;
   animation: btnAiLogoFlow 2.2s ease-in-out infinite alternate;
@@ -157,27 +190,32 @@ const ariaLabel = computed(() => String(attrs['aria-label'] ?? attrs.title ?? 'A
 }
 
 .btn-ai--xs {
-  --btn-ai-size: 28px;
+  --btn-ai-size: 16px;
 }
 
 .btn-ai--sm {
-  --btn-ai-size: 34px;
+  --btn-ai-size: 28px;
 }
 
 .btn-ai--md {
-  --btn-ai-size: 42px;
+  --btn-ai-size: 34px;
 }
 
 .btn-ai--lg {
-  --btn-ai-size: 50px;
+  --btn-ai-size: 42px;
 }
 
 .btn-ai--xl {
-  --btn-ai-size: 58px;
+  --btn-ai-size: 50px;
 }
 
 .btn-ai:hover:not(:disabled) .btn-ai__icon-animated,
 .btn-ai:active:not(:disabled) .btn-ai__icon-animated {
+  animation-play-state: paused;
+}
+
+.btn-ai:hover:not(:disabled)::before,
+.btn-ai:active:not(:disabled)::before {
   animation-play-state: paused;
 }
 
@@ -202,6 +240,10 @@ const ariaLabel = computed(() => String(attrs['aria-label'] ?? attrs.title ?? 'A
   animation: btnAiPulse 0.92s ease-in-out infinite;
 }
 
+.btn-ai.is-loading::before {
+  animation-duration: 0.75s;
+}
+
 .btn-ai.is-loading .btn-ai__icon-animated {
   animation-duration: 0.75s;
   animation-play-state: running;
@@ -220,6 +262,12 @@ const ariaLabel = computed(() => String(attrs['aria-label'] ?? attrs.title ?? 'A
 .btn-ai:disabled:not(.is-loading) .btn-ai__icon-base {
   opacity: 0.26;
   filter: brightness(0) invert(1) grayscale(1);
+}
+
+.btn-ai:disabled:not(.is-loading)::before {
+  animation-play-state: paused;
+  opacity: 0.36;
+  filter: saturate(0.42) brightness(0.84);
 }
 
 .btn-ai:disabled:not(.is-loading) .btn-ai__icon-animated {
@@ -254,6 +302,7 @@ const ariaLabel = computed(() => String(attrs['aria-label'] ?? attrs.title ?? 'A
 
 @media (prefers-reduced-motion: reduce) {
   .btn-ai,
+  .btn-ai::before,
   .btn-ai__icon-wrap,
   .btn-ai__icon-animated {
     animation: none !important;

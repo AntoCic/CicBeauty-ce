@@ -78,6 +78,12 @@ watch(
             aria-label="AI attr demo sm"
           />
         </form>
+
+        <h3 class="h6 mt-4 mb-2">Variant</h3>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <BtnAi size="md" variant="default" aria-label="AI variant default md" />
+          <BtnAi size="md" variant="ghost" aria-label="AI variant ghost md" />
+        </div>
       </section>
     </div>
   </div>

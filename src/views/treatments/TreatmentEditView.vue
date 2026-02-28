@@ -13,6 +13,7 @@ import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { productStore } from '../../stores/productStore'
 import HeaderApp from '../../components/HeaderApp.vue'
 import CatalogCard from '../../components/CatalogCard.vue'
+import BtnAi from '../../components/BtnAi.vue'
 import { callMarketingAgent } from '../../call/callMarketingAgent'
 import { callMetaAIAgent } from '../../call/callMetaAIAgent'
 import { parseAiError } from '../../call/_utilityApi'
@@ -568,7 +569,7 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
               <ErrorMessage name="subtitle" class="text-danger small" />
             </div>
             <div class="col-2 pt-4">
-              <Btn v-if="hasAiPermission" type="button" icon="wand_stars" color="dark" class="gemini-action-btn mt-2"
+              <BtnAi v-if="hasAiPermission" type="button" class="mt-2"
                 :loading="isGeneratingSubtitle"
                 :disabled="isSubmitting || isDeleting || isSyncingRelations || isGeneratingDescription"
                 @click="generateSubtitle(values, setFieldValue)" />
@@ -660,7 +661,7 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
             </div>
 
             <div class="col-2 pt-4">
-              <Btn v-if="hasAiPermission" type="button" icon="wand_stars" color="dark" class="gemini-action-btn mt-2"
+              <BtnAi v-if="hasAiPermission" type="button" class="mt-2"
                 :loading="isGeneratingDescription"
                 :disabled="isSubmitting || isDeleting || isSyncingRelations || isGeneratingSubtitle"
                 @click="generateDescription(values, setFieldValue)" />
@@ -676,7 +677,7 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
             </div>
 
             <div v-if="hasAiPermission" class="col-2 pt-4">
-              <Btn type="button" icon="wand_stars" color="dark" class="gemini-action-btn mt-2"
+              <BtnAi type="button" class="mt-2"
                 :loading="isGeneratingMetaAI"
                 :disabled="isSubmitting || isDeleting || isSyncingRelations || isGeneratingSubtitle || isGeneratingDescription"
                 @click="generateMetaAI(values, setFieldValue)" />
@@ -792,51 +793,5 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
   color: #7d1d1d;
   font-weight: 700;
   line-height: 1;
-}
-
-.gemini-action-btn {
-  border-color: transparent !important;
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.95)) padding-box,
-    linear-gradient(120deg, #4285f4, #34a853, #fbbc05, #ea4335, #4285f4) border-box;
-  background-size: 100% 100%, 240% 240%;
-  animation: geminiBorderFlow 6.5s linear infinite;
-}
-
-.gemini-action-btn:deep(.material-symbols-outlined) {
-  background: linear-gradient(120deg, #4285f4, #34a853, #fbbc05, #ea4335, #4285f4);
-  background-size: 240% 240%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: geminiIconFlow 4s linear infinite;
-}
-
-@keyframes geminiBorderFlow {
-  0% {
-    background-position: 0 0, 0% 50%;
-  }
-
-  100% {
-    background-position: 0 0, 200% 50%;
-  }
-}
-
-@keyframes geminiIconFlow {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  100% {
-    background-position: 200% 50%;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-
-  .gemini-action-btn,
-  .gemini-action-btn:deep(.material-symbols-outlined) {
-    animation: none;
-  }
 }
 </style>
