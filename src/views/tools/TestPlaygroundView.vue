@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { cicKitStore, defaultUserPermission, useChangeHeader } from 'cic-kit'
-import { computed, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BtnAi from '../../components/BtnAi.vue'
 import HeaderApp from '../../components/HeaderApp.vue'
@@ -10,7 +10,7 @@ useChangeHeader('Test Playground', { name: 'home' })
 
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
-const loadingDemo = ref(false)
+const demoSizes = ['xs', 'sm', 'md', 'lg', 'xl'] as const
 
 const hasBetaFeatures = computed(() => Auth?.user?.hasPermission(defaultUserPermission.BETA_FEATURES) ?? false)
 
@@ -22,13 +22,6 @@ watch(
   },
   { immediate: true },
 )
-
-async function triggerLoadingDemo() {
-  if (loadingDemo.value) return
-  loadingDemo.value = true
-  await new Promise((resolve) => window.setTimeout(resolve, 1800))
-  loadingDemo.value = false
-}
 </script>
 
 <template>
@@ -39,28 +32,51 @@ async function triggerLoadingDemo() {
       <section class="card border-0 shadow-sm p-3 p-md-4">
         <h2 class="h6 text-uppercase mb-1">BtnAi</h2>
         <p class="small text-muted mb-4">
-          Demo component con stati base, hover/focus, disabled e loading.
+          Demo component con tutte le size (`xs/sm/md/lg/xl`) nei tre stati principali.
         </p>
 
+        <h3 class="h6 mb-2">Default</h3>
         <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
-          <BtnAi size="xs" aria-label="AI xs" />
-          <BtnAi size="sm" aria-label="AI sm" />
-          <BtnAi size="md" aria-label="AI md" />
-          <BtnAi size="lg" aria-label="AI lg" />
-          <BtnAi size="xl" aria-label="AI xl" />
+          <BtnAi
+            v-for="size in demoSizes"
+            :key="`default-${size}`"
+            :size="size"
+            :aria-label="`AI default ${size}`"
+          />
         </div>
 
+        <h3 class="h6 mb-2">Disabled</h3>
         <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
-          <BtnAi variant="solid" size="md" aria-label="AI solid md" />
-          <BtnAi variant="outline" size="md" aria-label="AI outline md" />
-          <BtnAi variant="outline" size="lg" disabled aria-label="AI disabled" />
-          <BtnAi size="lg" :loading="loadingDemo" aria-label="AI loading demo" @click="triggerLoadingDemo" />
+          <BtnAi
+            v-for="size in demoSizes"
+            :key="`disabled-${size}`"
+            :size="size"
+            disabled
+            :aria-label="`AI disabled ${size}`"
+          />
         </div>
 
+        <h3 class="h6 mb-2">Loading</h3>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
+          <BtnAi
+            v-for="size in demoSizes"
+            :key="`loading-${size}`"
+            :size="size"
+            :loading="true"
+            :aria-label="`AI loading ${size}`"
+          />
+        </div>
+
+        <h3 class="h6 mb-2">HTML Attr Demo</h3>
         <form class="d-flex flex-wrap align-items-center gap-2" @submit.prevent>
-          <BtnAi type="submit" variant="outline" size="sm" aria-label="AI submit" />
-          <BtnAi type="button" size="sm" title="Button con attr HTML custom" data-test-id="btn-ai-test-id"
-            aria-label="AI attr demo" />
+          <BtnAi type="submit" size="sm" aria-label="AI submit sm" />
+          <BtnAi
+            type="button"
+            size="sm"
+            title="Button con attr HTML custom"
+            data-test-id="btn-ai-test-id"
+            aria-label="AI attr demo sm"
+          />
         </form>
       </section>
     </div>

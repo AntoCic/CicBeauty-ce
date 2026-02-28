@@ -14,7 +14,7 @@ const props = withDefaults(
   }>(),
   {
     size: 'md',
-    variant: 'solid',
+    variant: 'outline',
     loading: false,
   },
 )
@@ -66,20 +66,19 @@ const ariaLabel = computed(() => String(attrs['aria-label'] ?? attrs.title ?? 'A
     ]"
     :style="externalStyle"
   >
-    <span class="btn-ai__ambient" aria-hidden="true"></span>
-    <span class="btn-ai__icon" aria-hidden="true"></span>
+    <span class="btn-ai__icon-wrap" aria-hidden="true">
+      <img class="btn-ai__icon-base" src="/img/AI/AI_icon.svg" alt="" />
+      <span class="btn-ai__icon-animated"></span>
+      <span v-if="loading" class="spinner-border spinner-border-sm btn-ai__spinner" role="status"></span>
+    </span>
     <span v-if="loading" class="visually-hidden">Loading</span>
   </button>
 </template>
 
 <style scoped>
 .btn-ai {
-  --ai-border-1: #4285f4;
-  --ai-border-2: #34a853;
-  --ai-border-3: #fbbc05;
-  --ai-border-4: #ea4335;
   --btn-ai-size: 42px;
-  --btn-ai-icon-size: 54%;
+  --btn-ai-icon-size: 86%;
   position: relative;
   width: var(--btn-ai-size);
   height: var(--btn-ai-size);
@@ -88,85 +87,53 @@ const ariaLabel = computed(() => String(attrs['aria-label'] ?? attrs.title ?? 'A
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  border: 1px solid transparent;
+  padding: 4px;
+  margin: 0;
+  border: 0;
   border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
   cursor: pointer;
   user-select: none;
-  background:
-    linear-gradient(150deg, rgba(36, 24, 46, 0.98), rgba(20, 42, 63, 0.95)) padding-box,
-    linear-gradient(
-      120deg,
-      var(--ai-border-1),
-      var(--ai-border-2),
-      var(--ai-border-3),
-      var(--ai-border-4),
-      var(--ai-border-1)
-    )
-    border-box;
-  background-size: 100% 100%, 280% 280%;
-  box-shadow:
-    0 10px 18px rgba(19, 13, 27, 0.26),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    filter 0.2s ease,
-    opacity 0.2s ease;
-  animation: btnAiBorderFlow 6.8s linear infinite;
-  isolation: isolate;
-  overflow: hidden;
+  transition: transform 0.18s ease, opacity 0.2s ease;
 }
 
-.btn-ai--outline {
-  background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.6)) padding-box,
-    linear-gradient(
-      120deg,
-      var(--ai-border-1),
-      var(--ai-border-2),
-      var(--ai-border-3),
-      var(--ai-border-4),
-      var(--ai-border-1)
-    )
-    border-box;
-  box-shadow:
-    0 8px 14px rgba(26, 14, 24, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
-}
-
-.btn-ai__ambient {
-  position: absolute;
-  inset: -36%;
-  z-index: 0;
-  background:
-    radial-gradient(circle at 28% 24%, rgba(66, 133, 244, 0.3), transparent 42%),
-    radial-gradient(circle at 72% 70%, rgba(234, 67, 53, 0.28), transparent 44%);
-  opacity: 0.72;
-  filter: blur(10px);
-  animation: btnAiAmbient 3.5s ease-in-out infinite alternate;
-}
-
-.btn-ai__icon {
+.btn-ai__icon-wrap {
   position: relative;
-  z-index: 1;
+  width: 100%;
+  height: 100%;
   display: block;
   flex: 0 0 auto;
-  width: calc(var(--btn-ai-size) * var(--btn-ai-icon-size));
-  height: calc(var(--btn-ai-size) * var(--btn-ai-icon-size));
+}
+
+.btn-ai__icon-base {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  opacity: 0.2;
+  filter: brightness(0) invert(1);
+}
+
+.btn-ai__icon-animated {
+  position: absolute;
+  inset: 0;
+  display: block;
   background: linear-gradient(
-    120deg,
-    #5ab1ff,
-    #42d480,
-    #ffd54a,
-    #ff7a64,
-    #5ab1ff
+    118deg,
+    #ff4b4b 0%,
+    #ff6a88 16%,
+    #b34dff 36%,
+    #7a5cff 52%,
+    #4f7dff 68%,
+    #26b8ff 84%,
+    #38d39f 100%
   );
-  background-size: 260% 260%;
+  background-size: 250% 250%;
+  background-position: 0% 50%;
+  animation: btnAiLogoFlow 2.2s ease-in-out infinite alternate;
   -webkit-mask-image: url('/img/AI/AI_icon.svg');
   mask-image: url('/img/AI/AI_icon.svg');
-  -webkit-mask-mode: alpha;
-  mask-mode: alpha;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-size: contain;
@@ -174,7 +141,19 @@ const ariaLabel = computed(() => String(attrs['aria-label'] ?? attrs.title ?? 'A
   -webkit-mask-position: center;
   mask-position: center;
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.42));
-  animation: btnAiIconFlow 3.9s linear infinite;
+  will-change: background-position, filter;
+}
+
+.btn-ai__spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: calc(var(--btn-ai-size) * 0.42);
+  height: calc(var(--btn-ai-size) * 0.42);
+  border-width: 0.10em;
+  color: #7a5cff;
+  z-index: 3;
+  pointer-events: none;
 }
 
 .btn-ai--xs {
@@ -197,142 +176,88 @@ const ariaLabel = computed(() => String(attrs['aria-label'] ?? attrs.title ?? 'A
   --btn-ai-size: 58px;
 }
 
-.btn-ai:hover:not(:disabled),
-.btn-ai:focus-visible:not(:disabled) {
-  transform: translateY(-1px) scale(1.04);
-  box-shadow:
-    0 14px 26px rgba(14, 12, 31, 0.34),
-    0 0 0 2px rgba(66, 133, 244, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  animation-duration: 3.2s;
+.btn-ai:hover:not(:disabled) .btn-ai__icon-animated,
+.btn-ai:active:not(:disabled) .btn-ai__icon-animated {
+  animation-play-state: paused;
 }
 
-.btn-ai:hover:not(:disabled) .btn-ai__icon,
-.btn-ai:focus-visible:not(:disabled) .btn-ai__icon {
-  animation-duration: 1.9s;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.56));
-}
-
-.btn-ai:focus-visible:not(:disabled) {
-  outline: none;
+.btn-ai:hover:not(:disabled) {
+  transform: translateY(-1px);
 }
 
 .btn-ai:active:not(:disabled) {
-  transform: scale(0.95);
-  transition-duration: 0.08s;
+  transform: scale(0.96);
 }
 
-.btn-ai::after {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: 6px;
-  border: 2px solid rgba(255, 255, 255, 0.18);
-  border-top-color: rgba(255, 255, 255, 0.9);
-  border-right-color: rgba(66, 133, 244, 0.76);
-  opacity: 0;
-  pointer-events: none;
-  transform: scale(0.9);
+.btn-ai:focus-visible {
+  outline: 2px solid rgba(79, 207, 112, 0.65);
+  outline-offset: 2px;
 }
 
 .btn-ai.is-loading {
   cursor: wait;
 }
 
-.btn-ai.is-loading::after {
-  opacity: 1;
-  transform: scale(1);
-  animation: btnAiSpinner 0.86s linear infinite;
+.btn-ai.is-loading .btn-ai__icon-wrap {
+  animation: btnAiPulse 0.92s ease-in-out infinite;
 }
 
-.btn-ai.is-loading .btn-ai__icon {
-  animation:
-    btnAiIconFlow 2s linear infinite,
-    btnAiPulse 0.88s ease-in-out infinite;
+.btn-ai.is-loading .btn-ai__icon-animated {
+  animation-duration: 0.75s;
+  animation-play-state: running;
+  opacity: 0.72;
+  filter:
+    saturate(0.64)
+    brightness(0.92)
+    drop-shadow(0 0 4px rgba(255, 255, 255, 0.26));
 }
 
 .btn-ai:disabled:not(.is-loading) {
   cursor: not-allowed;
-  opacity: 0.56;
-  filter: grayscale(0.45);
-  animation: none;
-  box-shadow: none;
-  transform: none;
+  opacity: 0.75;
 }
 
-.btn-ai:disabled:not(.is-loading) .btn-ai__ambient {
-  animation: none;
-  opacity: 0.24;
+.btn-ai:disabled:not(.is-loading) .btn-ai__icon-base {
+  opacity: 0.26;
+  filter: brightness(0) invert(1) grayscale(1);
 }
 
-.btn-ai:disabled:not(.is-loading) .btn-ai__icon {
-  animation: none;
-  background: linear-gradient(120deg, #a09ca6, #bcb8c0);
-  filter: none;
+.btn-ai:disabled:not(.is-loading) .btn-ai__icon-animated {
+  animation-play-state: paused;
+  opacity: 0.36;
+  filter:
+    saturate(0.42)
+    brightness(0.84)
+    drop-shadow(0 0 3px rgba(255, 255, 255, 0.2));
 }
 
-@keyframes btnAiBorderFlow {
-  0% {
-    background-position: 0 0, 0% 50%;
-  }
-
-  100% {
-    background-position: 0 0, 220% 50%;
-  }
-}
-
-@keyframes btnAiIconFlow {
+@keyframes btnAiLogoFlow {
   0% {
     background-position: 0% 50%;
   }
 
   100% {
-    background-position: 220% 50%;
-  }
-}
-
-@keyframes btnAiAmbient {
-  0% {
-    transform: translate(-2%, -1%) scale(0.95);
-    opacity: 0.6;
-  }
-
-  100% {
-    transform: translate(3%, 4%) scale(1.08);
-    opacity: 0.9;
-  }
-}
-
-@keyframes btnAiSpinner {
-  0% {
-    transform: scale(1) rotate(0deg);
-  }
-
-  100% {
-    transform: scale(1) rotate(360deg);
+    background-position: 100% 50%;
   }
 }
 
 @keyframes btnAiPulse {
-
   0%,
   100% {
-    transform: scale(0.96);
+    transform: scale(0.98);
   }
 
   50% {
-    transform: scale(1.08);
+    transform: scale(1.02);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   .btn-ai,
-  .btn-ai__ambient,
-  .btn-ai__icon,
-  .btn-ai::after {
+  .btn-ai__icon-wrap,
+  .btn-ai__icon-animated {
     animation: none !important;
-    transition: none;
+    transition: none !important;
   }
 }
 </style>
