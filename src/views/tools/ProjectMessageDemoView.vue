@@ -2,7 +2,7 @@
 import { Btn, cicKitStore, defaultUserPermission, toast, useChangeHeader } from 'cic-kit'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { callPublishProjectMessage } from '../../call/callProjectMessageRelay'
+import { hub } from '../../call/hub'
 import { defaultCatch } from '../../call/_utilityApi'
 import HeaderApp from '../../components/HeaderApp.vue'
 import { Auth } from '../../main'
@@ -69,8 +69,7 @@ async function submitProjectMessage() {
   responseJson.value = ''
 
   try {
-    const response = await callPublishProjectMessage({
-      typeMessage: normalizeOptional(form.typeMessage),
+    const response = await hub.send(normalizeOptional(form.typeMessage) || 'info', {
       title: normalizeOptional(form.title),
       message,
       sendPush: form.sendPush,
