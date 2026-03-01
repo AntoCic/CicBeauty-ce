@@ -23,6 +23,20 @@ export type AppConfigFields = {
   cookiePolicyBodyHtml: string
   termsConditionsBodyHtml: string
   aiTransparencyBodyHtml: string
+  businessTimezone: string
+  dayStart: string
+  breakStart: string
+  breakEnd: string
+  dayEnd: string
+  workingDays?: number[]
+  appointmentSlotMinutes: number
+  defaultAppointmentDurationMinutes: number
+  personalAppointmentDurationMinutes: number
+  calendarPrefetchMonths: number
+  availabilitySearchDays: number
+  availabilityMinNoticeMinutes: number
+  googleCalendarSyncEnabled: boolean
+  googleCalendarId: string
 }
 
 export interface AppConfigData extends AppConfigFields, Partial<Timestampble> {
@@ -122,6 +136,20 @@ export const APP_CONFIG_DEFAULTS: AppConfigFields = {
   <li>Elaborazione tramite Cloud Functions protette da autenticazione e permessi.</li>
   <li>Controlli lato server su formato, lunghezza e contenuti minimi del payload.</li>
 </ul>`.trim(),
+  businessTimezone: 'Europe/Rome',
+  dayStart: '09:00',
+  breakStart: '13:00',
+  breakEnd: '14:00',
+  dayEnd: '19:00',
+  workingDays: [1, 2, 3, 4, 5, 6],
+  appointmentSlotMinutes: 15,
+  defaultAppointmentDurationMinutes: 60,
+  personalAppointmentDurationMinutes: 30,
+  calendarPrefetchMonths: 1,
+  availabilitySearchDays: 45,
+  availabilityMinNoticeMinutes: 30,
+  googleCalendarSyncEnabled: false,
+  googleCalendarId: '',
 }
 
 export function mergeAppConfigWithDefaults(data?: Partial<AppConfigData> | null): AppConfigData {
@@ -176,6 +204,20 @@ export class AppConfig extends FirestoreModel<AppConfigData> {
   cookiePolicyBodyHtml: string
   termsConditionsBodyHtml: string
   aiTransparencyBodyHtml: string
+  businessTimezone: string
+  dayStart: string
+  breakStart: string
+  breakEnd: string
+  dayEnd: string
+  workingDays: number[]
+  appointmentSlotMinutes: number
+  defaultAppointmentDurationMinutes: number
+  personalAppointmentDurationMinutes: number
+  calendarPrefetchMonths: number
+  availabilitySearchDays: number
+  availabilityMinNoticeMinutes: number
+  googleCalendarSyncEnabled: boolean
+  googleCalendarId: string
 
   constructor(data: AppConfigData) {
     super(data)
@@ -197,6 +239,23 @@ export class AppConfig extends FirestoreModel<AppConfigData> {
     this.cookiePolicyBodyHtml = data.cookiePolicyBodyHtml ?? APP_CONFIG_DEFAULTS.cookiePolicyBodyHtml
     this.termsConditionsBodyHtml = data.termsConditionsBodyHtml ?? APP_CONFIG_DEFAULTS.termsConditionsBodyHtml
     this.aiTransparencyBodyHtml = data.aiTransparencyBodyHtml ?? APP_CONFIG_DEFAULTS.aiTransparencyBodyHtml
+    this.businessTimezone = data.businessTimezone ?? APP_CONFIG_DEFAULTS.businessTimezone
+    this.dayStart = data.dayStart ?? APP_CONFIG_DEFAULTS.dayStart
+    this.breakStart = data.breakStart ?? APP_CONFIG_DEFAULTS.breakStart
+    this.breakEnd = data.breakEnd ?? APP_CONFIG_DEFAULTS.breakEnd
+    this.dayEnd = data.dayEnd ?? APP_CONFIG_DEFAULTS.dayEnd
+    this.workingDays = data.workingDays ?? APP_CONFIG_DEFAULTS.workingDays ?? [1, 2, 3, 4, 5, 6]
+    this.appointmentSlotMinutes = data.appointmentSlotMinutes ?? APP_CONFIG_DEFAULTS.appointmentSlotMinutes
+    this.defaultAppointmentDurationMinutes =
+      data.defaultAppointmentDurationMinutes ?? APP_CONFIG_DEFAULTS.defaultAppointmentDurationMinutes
+    this.personalAppointmentDurationMinutes =
+      data.personalAppointmentDurationMinutes ?? APP_CONFIG_DEFAULTS.personalAppointmentDurationMinutes
+    this.calendarPrefetchMonths = data.calendarPrefetchMonths ?? APP_CONFIG_DEFAULTS.calendarPrefetchMonths
+    this.availabilitySearchDays = data.availabilitySearchDays ?? APP_CONFIG_DEFAULTS.availabilitySearchDays
+    this.availabilityMinNoticeMinutes =
+      data.availabilityMinNoticeMinutes ?? APP_CONFIG_DEFAULTS.availabilityMinNoticeMinutes
+    this.googleCalendarSyncEnabled = data.googleCalendarSyncEnabled ?? APP_CONFIG_DEFAULTS.googleCalendarSyncEnabled
+    this.googleCalendarId = data.googleCalendarId ?? APP_CONFIG_DEFAULTS.googleCalendarId
   }
 
   toData(): AppConfigData {
@@ -220,6 +279,20 @@ export class AppConfig extends FirestoreModel<AppConfigData> {
       cookiePolicyBodyHtml: this.cookiePolicyBodyHtml,
       termsConditionsBodyHtml: this.termsConditionsBodyHtml,
       aiTransparencyBodyHtml: this.aiTransparencyBodyHtml,
+      businessTimezone: this.businessTimezone,
+      dayStart: this.dayStart,
+      breakStart: this.breakStart,
+      breakEnd: this.breakEnd,
+      dayEnd: this.dayEnd,
+      workingDays: this.workingDays,
+      appointmentSlotMinutes: this.appointmentSlotMinutes,
+      defaultAppointmentDurationMinutes: this.defaultAppointmentDurationMinutes,
+      personalAppointmentDurationMinutes: this.personalAppointmentDurationMinutes,
+      calendarPrefetchMonths: this.calendarPrefetchMonths,
+      availabilitySearchDays: this.availabilitySearchDays,
+      availabilityMinNoticeMinutes: this.availabilityMinNoticeMinutes,
+      googleCalendarSyncEnabled: this.googleCalendarSyncEnabled,
+      googleCalendarId: this.googleCalendarId,
       ...this.timestampbleProps()
     }
   }

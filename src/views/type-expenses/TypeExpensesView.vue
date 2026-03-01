@@ -6,6 +6,7 @@ import * as yup from "yup";
 import { computed, ref } from "vue";
 import { typeExpenseStore } from "../../stores/typeExpenseStore";
 import { Auth } from "../../main";
+import { hasBetaFeaturesAccess } from "../../utils/permissions";
 
 useChangeHeader("Tipi di spesa", "/");
 const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin);
@@ -15,12 +16,14 @@ type TypeExpenseForm = {
   emoji: string;
   name: string;
   description: string;
+  old_id: string;
   updateBy: string;
 };
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle());
 const formKey = ref(0);
 const isSeedingDefaults = ref(false);
+const hasBetaFeatures = computed(() => hasBetaFeaturesAccess());
 
 const categories = [
   {
@@ -134,6 +137,7 @@ const schema = toTypedSchema(
     emoji: yup.string().default(""),
     name: yup.string().required("Campo obbligatorio"),
     description: yup.string().required("Campo obbligatorio"),
+    old_id: yup.string().default(""),
     updateBy: yup.string().required("Campo obbligatorio"),
   }),
 );
@@ -142,6 +146,7 @@ const defaultValues = computed<TypeExpenseForm>(() => ({
   emoji: "",
   name: "",
   description: "",
+  old_id: "",
   updateBy: defaultUpdateBy.value,
 }));
 
@@ -150,6 +155,7 @@ async function onSubmit(values: Record<string, unknown>) {
     emoji: String(values.emoji ?? "").trim(),
     name: String(values.name ?? ""),
     description: String(values.description ?? ""),
+    old_id: String(values.old_id ?? "").trim(),
     updateBy: String(values.updateBy ?? ""),
   };
 
@@ -158,6 +164,7 @@ async function onSubmit(values: Record<string, unknown>) {
       emoji: payload.emoji,
       name: payload.name,
       description: payload.description,
+      old_id: hasBetaFeatures.value ? payload.old_id : "",
       updateBy: payload.updateBy,
     });
     toast.success("Tipo di spesa creato");
@@ -222,6 +229,11 @@ function typeExpenseLabel(typeExpense: { emoji?: string; name: string }) {
           <Field name="updateBy" class="form-control" />
           <ErrorMessage name="updateBy" class="text-danger small" />
         </div>
+        <div v-if="hasBetaFeatures" class="col-12 col-md-4">
+          <label class="form-label">old_id (migrazione)</label>
+          <Field name="old_id" class="form-control" />
+          <ErrorMessage name="old_id" class="text-danger small" />
+        </div>
         <div class="col-12">
           <label class="form-label">Descrizione</label>
           <Field name="description" as="textarea" class="form-control" rows="3" />
@@ -244,6 +256,7 @@ function typeExpenseLabel(typeExpense: { emoji?: string; name: string }) {
           <small class="text-muted">{{ item.updateBy }}</small>
         </div>
         <p class="mb-0">{{ item.description }}</p>
+        <p v-if="hasBetaFeatures && item.old_id" class="small text-muted mb-0">old_id: {{ item.old_id }}</p>
       </div>
 
       <p v-if="!typeExpenseStore.itemsActiveArray.length" class="text-muted small mb-0">Nessun tipo di spesa.</p>

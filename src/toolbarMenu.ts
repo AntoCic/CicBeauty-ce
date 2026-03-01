@@ -4,9 +4,46 @@ type OffcanvasTabConfig = OffcanvasTab & {
   requiresBetaFeatures?: boolean
   requiresSuperAdmin?: boolean
   requiresAdmin?: boolean
+  requiresOperator?: boolean
 }
 
 const toolbarOffcanvasTabConfigs: OffcanvasTabConfig[] = [
+  {
+    name: 'Calendario',
+    icon: 'calendar_month',
+    to: { name: 'CalendarView' },
+    requiresOperator: true,
+  },
+  {
+    name: 'Clienti',
+    icon: 'groups',
+    to: { name: 'ClientsView' },
+    requiresOperator: true,
+  },
+  {
+    name: 'Spese',
+    icon: 'account_balance_wallet',
+    to: { name: 'ExpensesView' },
+    requiresOperator: true,
+  },
+  {
+    name: 'Coupon',
+    icon: 'local_offer',
+    to: { name: 'CouponsView' },
+    requiresOperator: true,
+  },
+  {
+    name: 'Statistiche',
+    icon: 'bar_chart',
+    to: { name: 'StatsView' },
+    requiresOperator: true,
+  },
+  {
+    name: 'Relazioni',
+    icon: 'schema',
+    to: { name: 'RelationsView' },
+    requiresOperator: true,
+  },
   {
     name: 'Prodotti',
     icon: 'shopping_bag',
@@ -68,17 +105,26 @@ const toolbarOffcanvasTabConfigs: OffcanvasTabConfig[] = [
     to: { name: 'TestPlaygroundView' },
     requiresBetaFeatures: true,
   },
+  {
+    name: 'Import Migrazione',
+    icon: 'upload_file',
+    to: { name: 'MigrationImportView' },
+    requiresBetaFeatures: true,
+    requiresOperator: true,
+  },
 ];
 
 export function getToolbarOffcanvasTabs(
   hasBetaFeatures: boolean,
   hasSuperAdmin: boolean,
   hasAdmin: boolean,
+  hasOperator: boolean,
 ): OffcanvasTab[] {
   return toolbarOffcanvasTabConfigs.filter((tab) => {
     const betaFeatureAllowed = !tab.requiresBetaFeatures || hasBetaFeatures
     const superAdminAllowed = !tab.requiresSuperAdmin || hasSuperAdmin
     const adminAllowed = !tab.requiresAdmin || hasAdmin
-    return betaFeatureAllowed && superAdminAllowed && adminAllowed
+    const operatorAllowed = !tab.requiresOperator || hasOperator
+    return betaFeatureAllowed && superAdminAllowed && adminAllowed && operatorAllowed
   })
 }

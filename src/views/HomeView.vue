@@ -5,6 +5,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { Auth } from '../main'
 import { UserPermission } from '../enums/UserPermission'
 import LegalLinks from '../components/LegalLinks.vue'
+import { hasOperatorAccess } from '../utils/permissions'
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const router = useRouter()
@@ -14,6 +15,7 @@ const canUseAiChat = computed(
     (Auth?.user?.hasPermission(UserPermission.AI) ?? false) &&
     (Auth?.user?.hasPermission(UserPermission.AI_BETA_FEATURES) ?? false),
 )
+const canOperate = computed(() => hasOperatorAccess())
 
 useHideHeader()
 
@@ -43,6 +45,12 @@ function onPromptKeydown(event: KeyboardEvent) {
         </RouterLink>
         <RouterLink :to="{ name: 'ProductCategoriesView' }" class="home-link home-btn home-btn--two">
           Products Catalog
+        </RouterLink>
+        <RouterLink v-if="canOperate" :to="{ name: 'CalendarView' }" class="home-link home-btn home-btn--three">
+          Calendario Operativo
+        </RouterLink>
+        <RouterLink v-if="canOperate" :to="{ name: 'StatsView' }" class="home-link home-btn home-btn--four">
+          Statistiche e KPI
         </RouterLink>
       </div>
       <hr class="hr-custom">
@@ -152,6 +160,14 @@ Clicca qui e raccontami cosa stai cercando… ti aiuterò a trovare i trattament
 
 .home-btn--two {
   animation-delay: 270ms;
+}
+
+.home-btn--three {
+  animation-delay: 360ms;
+}
+
+.home-btn--four {
+  animation-delay: 450ms;
 }
 
 .hr-custom {

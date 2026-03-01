@@ -19,7 +19,8 @@ function applyToolbarMenu() {
   const hasBetaFeatures = Auth?.user?.hasPermission(defaultUserPermission.BETA_FEATURES) ?? false;
   const hasSuperAdmin = Auth?.user?.hasPermission(defaultUserPermission.SUPERADMIN) ?? false;
   const hasAdmin = Auth.isAdmin || hasSuperAdmin;
-  toolbarOffcanvasStore.setTabs(getToolbarOffcanvasTabs(hasBetaFeatures, hasSuperAdmin, hasAdmin));
+  const hasOperator = hasAdmin || (Auth?.user?.hasPermission(UserPermission.OPERATORE) ?? false);
+  toolbarOffcanvasStore.setTabs(getToolbarOffcanvasTabs(hasBetaFeatures, hasSuperAdmin, hasAdmin, hasOperator));
 }
 useStoreWatch([{ store: appConfigStore, checkLogin: false }, { store: publicUserStore }]);
 
