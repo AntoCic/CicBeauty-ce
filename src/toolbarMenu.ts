@@ -57,6 +57,12 @@ const toolbarOffcanvasTabConfigs: OffcanvasTabConfig[] = [
     requiresBetaFeatures: true,
   },
   {
+    name: 'Project Msg Demo',
+    icon: 'send',
+    to: { name: 'ProjectMessageDemoView' },
+    requiresBetaFeatures: true,
+  },
+  {
     name: 'Test Playground',
     icon: 'science',
     to: { name: 'TestPlaygroundView' },

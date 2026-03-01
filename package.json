@@ -1,7 +1,7 @@
 {
   "name": "cicbeauty-ce",
   "private": true,
-  "version": "0.0.20",
+  "version": "0.0.21",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -22,6 +22,7 @@
     "emu:save-c": "docker compose -f docker-compose.emu.yml exec firebase-emulator node ./.firebase-emulators/emu.js save",
     "emu:list": "node ./.firebase-emulators/emu.js list",
     "emu:delete": "node ./.firebase-emulators/emu.js delete",
+    "i:cic": "npm uninstall firebase-secrets-cli && npm install -D firebase-secrets-cli@latest",
     "cic": "npx cic-index"
   },
   "dependencies": {
@@ -44,7 +45,7 @@
     "@types/node": "^24.10.1",
     "@vitejs/plugin-vue": "^6.0.2",
     "@vue/tsconfig": "^0.8.1",
-    "firebase-secrets-cli": "^1.0.2",
+    "firebase-secrets-cli": "^1.0.3",
     "inquirer": "^13.2.1",
     "sass": "^1.97.3",
     "tsx": "^4.21.0",
