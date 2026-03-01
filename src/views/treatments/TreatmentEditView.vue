@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, toast, useChangeHeader, useStoreWatch } from 'cic-kit'
+import { Accordion, Btn, cicKitStore, toast, useChangeHeader, useStoreWatch } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -618,14 +618,20 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
 
             <div class="col-12 mt-3">
               <label class="form-label mb-1">Prodotti consigliati</label>
-              <div v-if="productOptions.length" class="relation-grid">
-                <button v-for="option in productOptions" :key="option.id" type="button"
-                  class="relation-chip relation-chip--secondary"
-                  :class="{ 'relation-chip--active': isProductSelected(option.id) }" @click="toggleProduct(option.id)">
-                  {{ option.title }}
-                </button>
-              </div>
-              <div v-else class="form-text">Nessun prodotto disponibile.</div>
+              <Accordion id="treatment-products-accordion" title="Seleziona prodotti consigliati"
+                class="recommended-products-accordion">
+                <div v-if="productOptions.length" class="relation-grid">
+                  <button v-for="option in productOptions" :key="option.id" type="button"
+                    class="relation-chip relation-chip--secondary relation-chip--multiline"
+                    :class="{ 'relation-chip--active': isProductSelected(option.id) }" @click="toggleProduct(option.id)">
+                    <span class="relation-chip__title">{{ option.title }}</span>
+                    <span v-if="String(option.subtitle ?? '').trim()" class="relation-chip__subtitle">
+                      {{ option.subtitle }}
+                    </span>
+                  </button>
+                </div>
+                <div v-else class="form-text">Nessun prodotto disponibile.</div>
+              </Accordion>
               <small class="form-text text-muted d-block mt-1">
                 Relazione unica: il link viene salvato sui prodotti e riflesso in modo automatico.
               </small>
@@ -633,6 +639,9 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
               <div v-if="selectedProductItems.length" class="selected-relations mt-2">
                 <span v-for="item in selectedProductItems" :key="item.id" class="selected-relation">
                   {{ item.title }}
+                  <small v-if="String(item.subtitle ?? '').trim()" class="selected-relation__subtitle">
+                    {{ item.subtitle }}
+                  </small>
                   <button type="button" aria-label="Rimuovi prodotto" @click="removeProductSelection(item.id)">
                     x
                   </button>
@@ -770,6 +779,39 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
   color: #23445f;
 }
 
+.recommended-products-accordion {
+  border: 1px solid rgba(84, 44, 58, 0.16);
+  border-radius: 4px;
+}
+
+.recommended-products-accordion :deep(.accordion-button) {
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.recommended-products-accordion :deep(.accordion-body) {
+  padding: 0.6rem;
+}
+
+.relation-chip--multiline {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 2px;
+  min-width: 150px;
+}
+
+.relation-chip__title {
+  line-height: 1.15;
+}
+
+.relation-chip__subtitle {
+  font-size: 0.72rem;
+  line-height: 1.15;
+  opacity: 0.85;
+}
+
 .selected-relations {
   display: flex;
   flex-wrap: wrap;
@@ -785,6 +827,11 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
   background: rgba(255, 255, 255, 0.82);
   padding: 2px 8px;
   font-size: 0.78rem;
+}
+
+.selected-relation__subtitle {
+  font-size: 0.7rem;
+  color: rgba(61, 35, 44, 0.78);
 }
 
 .selected-relation button {
