@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 
 const INGEST_ENDPOINT =
   process.env.HUBCORTEX_INGEST_ENDPOINT || 'https://europe-west1-hubcortex-33389.cloudfunctions.net/ingestProjectMessage'
+
 async function main() {
   const apiKey = process.env.HUBCORTEX_API_KEY?.trim()
   if (!apiKey) {
@@ -18,14 +19,16 @@ async function main() {
     typeMessage: 'info',
     title: 'Nuova versione rilasciata',
     message: `Deploy completato: ${sourceProjectId} v${version}`,
-    sourceProjectId,
-    sourceLabel: 'CicBeauty CE',
-    updateBy: process.env.DEPLOY_ACTOR || 'deploy-script',
+    apiKey,
     sendPush: true,
     payload: {
       version,
-      sourceProjectId,
+      project: sourceProjectId,
       environment: process.env.DEPLOY_ENV || 'production',
+      actor: process.env.DEPLOY_ACTOR || 'deploy-script',
+      gitRef: process.env.DEPLOY_REF_NAME || '',
+      gitSha: process.env.DEPLOY_SHA || '',
+      workflowRunUrl: process.env.DEPLOY_RUN_URL || '',
       timestamp: new Date().toISOString(),
     },
   }

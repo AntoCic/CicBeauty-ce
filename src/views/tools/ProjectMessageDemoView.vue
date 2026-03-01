@@ -2,20 +2,17 @@
 import { Btn, cicKitStore, defaultUserPermission, toast, useChangeHeader } from 'cic-kit'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { callProjectMessageRelay } from '../../call/callProjectMessageRelay'
+import { callPublishProjectMessage } from '../../call/callProjectMessageRelay'
 import { defaultCatch } from '../../call/_utilityApi'
 import HeaderApp from '../../components/HeaderApp.vue'
 import { Auth } from '../../main'
 
 type ProjectMessageForm = {
+  apiKey: string
   typeMessage: string
   title: string
   message: string
-  taskId: string
-  sourceProjectId: string
-  sourceLabel: string
   sendPush: boolean
-  updateBy: string
   payloadJson: string
 }
 
@@ -40,18 +37,21 @@ watch(
 )
 
 const form = reactive<ProjectMessageForm>({
-  typeMessage: 'deployment',
-  title: 'Demo invio cross-project',
+  apiKey: '',
+  typeMessage: 'info',
+  title: 'Nuova versione rilasciata',
   message: 'Deploy completato con successo da CicBeauty CE',
-  taskId: '',
-  sourceProjectId: 'cicbeauty-ce',
-  sourceLabel: 'CicBeauty CE',
   sendPush: true,
-  updateBy: inferUpdateBy(),
   payloadJson: '{\n  "env": "staging",\n  "origin": "toolbar-demo"\n}',
 })
 
 async function submitProjectMessage() {
+  const apiKey = form.apiKey.trim()
+  if (!apiKey) {
+    toast.error('Il campo apiKey e obbligatorio')
+    return
+  }
+
   const message = form.message.trim()
   if (!message) {
     toast.error('Il campo messaggio e obbligatorio')
@@ -77,15 +77,12 @@ async function submitProjectMessage() {
   responseJson.value = ''
 
   try {
-    const response = await callProjectMessageRelay({
+    const response = await callPublishProjectMessage({
+      apiKey,
       typeMessage: normalizeOptional(form.typeMessage),
       title: normalizeOptional(form.title),
       message,
-      taskId: normalizeOptional(form.taskId),
-      sourceProjectId: normalizeOptional(form.sourceProjectId),
-      sourceLabel: normalizeOptional(form.sourceLabel),
       sendPush: form.sendPush,
-      updateBy: normalizeOptional(form.updateBy),
       payload,
     })
 
@@ -104,16 +101,6 @@ function normalizeOptional(value: string) {
   const normalized = String(value ?? '').trim()
   return normalized || undefined
 }
-
-function inferUpdateBy() {
-  const email = Auth?.user?.email?.trim()
-  if (email) return email
-
-  const uid = Auth?.uid?.trim()
-  if (uid) return uid
-
-  return 'cicbeauty-ce-demo'
-}
 </script>
 
 <template>
@@ -124,7 +111,8 @@ function inferUpdateBy() {
       <section class="card border-0 shadow-sm p-3 p-md-4 mb-3">
         <h2 class="h6 text-uppercase mb-1">Invio Messaggio HubCortex</h2>
         <p class="small text-muted mb-3">
-          Demo per inviare un messaggio al progetto target usando la Cloud Function relay.
+          Demo per inviare un messaggio al progetto target usando la Cloud Function
+          <code>publishProjectMessage</code>.
         </p>
         <p class="small endpoint-note mb-0">
           Endpoint target: <code>{{ HUBCORTEX_TARGET_ENDPOINT }}</code>
@@ -133,9 +121,21 @@ function inferUpdateBy() {
 
       <section class="card border-0 shadow-sm p-3 p-md-4 mb-3">
         <form class="row g-3" @submit.prevent="submitProjectMessage">
+          <div class="col-12">
+            <label class="form-label">apiKey *</label>
+            <input
+              v-model="form.apiKey"
+              class="form-control font-monospace"
+              type="password"
+              placeholder="PROJECT_API_KEY"
+              autocomplete="off"
+              required
+            />
+          </div>
+
           <div class="col-12 col-md-4">
             <label class="form-label">typeMessage</label>
-            <input v-model="form.typeMessage" class="form-control" type="text" placeholder="deployment" />
+            <input v-model="form.typeMessage" class="form-control" type="text" placeholder="info" />
           </div>
 
           <div class="col-12 col-md-8">
@@ -152,26 +152,6 @@ function inferUpdateBy() {
               placeholder="Testo del messaggio"
               required
             />
-          </div>
-
-          <div class="col-12 col-md-4">
-            <label class="form-label">taskId</label>
-            <input v-model="form.taskId" class="form-control" type="text" placeholder="task_abc123" />
-          </div>
-
-          <div class="col-12 col-md-4">
-            <label class="form-label">sourceProjectId</label>
-            <input v-model="form.sourceProjectId" class="form-control" type="text" placeholder="my-project" />
-          </div>
-
-          <div class="col-12 col-md-4">
-            <label class="form-label">sourceLabel</label>
-            <input v-model="form.sourceLabel" class="form-control" type="text" placeholder="My Project" />
-          </div>
-
-          <div class="col-12 col-md-8">
-            <label class="form-label">updateBy</label>
-            <input v-model="form.updateBy" class="form-control" type="text" placeholder="external-ci" />
           </div>
 
           <div class="col-12 col-md-4 d-flex align-items-end">

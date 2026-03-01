@@ -1,6 +1,5 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { REGION } from '../config/runtime.js';
-import { HUBCORTEX_API_KEY } from '../config/secret.js';
 import { requireUserPermission } from '../utils/auth.js';
 import { readOptionalString, readRequiredString } from '../utils/validation.js';
 
@@ -9,55 +8,40 @@ const HUBCORTEX_INGEST_ENDPOINT =
 
 type JsonRecord = Record<string, unknown>;
 
-export type RelayProjectMessageRequest = {
+export type PublishProjectMessageRequest = {
+  apiKey: string;
   typeMessage?: string;
   title?: string;
   message: string;
-  taskId?: string;
-  sourceProjectId?: string;
-  sourceLabel?: string;
   sendPush?: boolean;
-  updateBy?: string;
   payload?: JsonRecord;
 };
 
-export type RelayProjectMessageResponse = {
+export type PublishProjectMessageResponse = {
   ok: boolean;
   status: number;
   data: JsonRecord;
 };
 
-export const relayProjectMessage = onCall<RelayProjectMessageRequest>(
+export const publishProjectMessage = onCall<PublishProjectMessageRequest>(
   {
     region: REGION,
-    secrets: [HUBCORTEX_API_KEY],
   },
-  async (request): Promise<RelayProjectMessageResponse> => {
+  async (request): Promise<PublishProjectMessageResponse> => {
     await requireUserPermission(request, 'BETA_FEATURES');
 
     const data = asObject(request.data);
+    const apiKey = readRequiredString(data, 'apiKey', { maxLength: 512 });
     const message = readRequiredString(data, 'message', { maxLength: 4000 });
     const typeMessage = readOptionalString(data, 'typeMessage', { maxLength: 80 });
     const title = readOptionalString(data, 'title', { maxLength: 180 });
-    const taskId = readOptionalString(data, 'taskId', { maxLength: 180 });
-    const sourceProjectId = readOptionalString(data, 'sourceProjectId', { maxLength: 120 });
-    const sourceLabel = readOptionalString(data, 'sourceLabel', { maxLength: 120 });
-    const updateBy = readOptionalString(data, 'updateBy', { maxLength: 120 });
     const sendPush = readOptionalBoolean(data.sendPush, 'sendPush');
     const payload = readOptionalObject(data.payload, 'payload');
 
-    const apiKey = HUBCORTEX_API_KEY.value().trim();
-    if (!apiKey) {
-      throw new HttpsError('failed-precondition', 'Missing HUBCORTEX_API_KEY secret.');
-    }
-
     const body: JsonRecord = { message };
+    body.apiKey = apiKey;
     if (typeMessage) body.typeMessage = typeMessage;
     if (title) body.title = title;
-    if (taskId) body.taskId = taskId;
-    if (sourceProjectId) body.sourceProjectId = sourceProjectId;
-    if (sourceLabel) body.sourceLabel = sourceLabel;
-    if (updateBy) body.updateBy = updateBy;
     if (typeof sendPush === 'boolean') body.sendPush = sendPush;
     if (payload) body.payload = payload;
 
@@ -92,6 +76,9 @@ export const relayProjectMessage = onCall<RelayProjectMessageRequest>(
     };
   },
 );
+
+// Backward-compatible export name used by older clients.
+export const relayProjectMessage = publishProjectMessage;
 
 function asObject(input: unknown) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {

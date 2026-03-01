@@ -1,33 +1,36 @@
 import { ensureFirebase, functions } from 'cic-kit'
 import { httpsCallable } from 'firebase/functions'
 
-export type ProjectMessageRelayRequest = {
+export type PublishProjectMessageRequest = {
+  apiKey: string
   typeMessage?: string
   title?: string
   message: string
-  taskId?: string
-  sourceProjectId?: string
-  sourceLabel?: string
   sendPush?: boolean
-  updateBy?: string
   payload?: Record<string, unknown>
 }
 
-export type ProjectMessageRelayResponse = {
+export type PublishProjectMessageResponse = {
   ok: boolean
   status: number
   data: Record<string, unknown>
 }
 
-function getProjectMessageRelayCallable() {
+function getPublishProjectMessageCallable() {
   ensureFirebase()
-  return httpsCallable<ProjectMessageRelayRequest, ProjectMessageRelayResponse>(functions, 'relayProjectMessage')
+  return httpsCallable<PublishProjectMessageRequest, PublishProjectMessageResponse>(
+    functions,
+    'publishProjectMessage',
+  )
 }
 
-export async function callProjectMessageRelay(
-  input: ProjectMessageRelayRequest,
-): Promise<ProjectMessageRelayResponse> {
-  const callable = getProjectMessageRelayCallable()
+export async function callPublishProjectMessage(
+  input: PublishProjectMessageRequest,
+): Promise<PublishProjectMessageResponse> {
+  const callable = getPublishProjectMessageCallable()
   const result = await callable(input)
   return result.data
 }
+
+// Backward-compatible alias name for existing imports.
+export const callProjectMessageRelay = callPublishProjectMessage
