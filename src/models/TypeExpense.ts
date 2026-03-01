@@ -6,6 +6,7 @@ export interface TypeExpenseData extends Partial<Timestampble> {
   name: string
   emoji?: string
   description: string
+  old_id?: string
   updateBy: string
 }
 
@@ -15,6 +16,7 @@ export class TypeExpense extends FirestoreModel<TypeExpenseData> {
   name: string
   emoji?: string
   description: string
+  old_id?: string
   updateBy: string
 
   constructor(data: TypeExpenseData) {
@@ -22,6 +24,7 @@ export class TypeExpense extends FirestoreModel<TypeExpenseData> {
     this.name = data.name
     this.emoji = data.emoji
     this.description = data.description
+    this.old_id = data.old_id
     this.updateBy = data.updateBy
   }
 
@@ -31,6 +34,7 @@ export class TypeExpense extends FirestoreModel<TypeExpenseData> {
       name: this.name,
       emoji: this.emoji,
       description: this.description,
+      old_id: this.old_id,
       updateBy: this.updateBy,
       ...this.timestampbleProps()
     }

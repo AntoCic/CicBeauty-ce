@@ -15,6 +15,9 @@ service cloud.firestore {
     function isAdmin() {
       return hasUserPermission('SUPERADMIN') || hasUserPermission('ADMIN');
     }
+    function isOperator() {
+      return isAdmin() || hasUserPermission('OPERATORE');
+    }
 
     function isSuperAdmin() {
       return hasUserPermission('SUPERADMIN');
@@ -54,18 +57,23 @@ service cloud.firestore {
     }
 
     match /appointments/{userId} {
-      allow read: if isSignedIn() && isAdmin();
-      allow write: if isSignedIn() && isAdmin();
+      allow read: if isSignedIn() && isOperator();
+      allow write: if isSignedIn() && isOperator();
     }
 
     match /clients/{id} {
-      allow read: if isSignedIn() && isAdmin();
-      allow write:  if isSignedIn() && isAdmin();
+      allow read: if isSignedIn() && isOperator();
+      allow write:  if isSignedIn() && isOperator();
     }
     
     match /expenses/{id} {
-      allow read: if isSignedIn() && isAdmin();
-      allow write: if isSignedIn() && isAdmin();
+      allow read: if isSignedIn() && isOperator();
+      allow write: if isSignedIn() && isOperator();
+    }
+
+    match /coupons/{id} {
+      allow read: if isSignedIn() && isOperator();
+      allow write: if isSignedIn() && isOperator();
     }
     
     match /products/{id} {
@@ -89,8 +97,8 @@ service cloud.firestore {
     }
     
     match /typeExpenses/{id} {
-      allow read: if isSignedIn() && isAdmin();
-      allow write: if isSignedIn() && isAdmin();
+      allow read: if isSignedIn() && isOperator();
+      allow write: if isSignedIn() && isOperator();
     }
 
     match /public_users/{userId} {

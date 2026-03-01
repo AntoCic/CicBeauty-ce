@@ -28,6 +28,16 @@ import AppConfigView from './views/app-config/AppConfigView.vue';
 import AgentPromptsView from './views/ai/AgentPromptsView.vue';
 import TestPlaygroundView from './views/tools/TestPlaygroundView.vue';
 import CatalogBackupView from './views/settings/CatalogBackupView.vue';
+import CalendarView from './views/calendar/CalendarView.vue';
+import CalendarDayView from './views/calendar/CalendarDayView.vue';
+import AppointmentEditView from './views/calendar/AppointmentEditView.vue';
+import ClientsView from './views/clients/ClientsView.vue';
+import ClientEditView from './views/clients/ClientEditView.vue';
+import ExpensesView from './views/expenses/ExpensesView.vue';
+import CouponsView from './views/coupons/CouponsView.vue';
+import StatsView from './views/stats/StatsView.vue';
+import RelationsView from './views/relations/RelationsView.vue';
+import MigrationImportView from './views/migration/MigrationImportView.vue';
 
 
 // ===================================================================================================
@@ -43,6 +53,16 @@ export const routes: RouteRecordRaw[] = [
   { path: '/products/category/:categoryId?', name: 'ProductsView', component: ProductsView },
   { path: '/product/:id', name: 'ProductView', component: ProductView },
   { path: '/type-expenses', name: 'TypeExpensesView', component: TypeExpensesView, meta: { loginStatus: true } },
+  { path: '/calendar', name: 'CalendarView', component: CalendarView, meta: { loginStatus: true } },
+  { path: '/calendar/day', name: 'CalendarDayView', component: CalendarDayView, meta: { loginStatus: true } },
+  { path: '/appointments/:id', name: 'AppointmentEditView', component: AppointmentEditView, meta: { loginStatus: true } },
+  { path: '/clients', name: 'ClientsView', component: ClientsView, meta: { loginStatus: true } },
+  { path: '/clients/:id', name: 'ClientEditView', component: ClientEditView, meta: { loginStatus: true } },
+  { path: '/expenses', name: 'ExpensesView', component: ExpensesView, meta: { loginStatus: true } },
+  { path: '/coupons', name: 'CouponsView', component: CouponsView, meta: { loginStatus: true } },
+  { path: '/stats', name: 'StatsView', component: StatsView, meta: { loginStatus: true } },
+  { path: '/relations', name: 'RelationsView', component: RelationsView, meta: { loginStatus: true } },
+  { path: '/migration/import', name: 'MigrationImportView', component: MigrationImportView, meta: { loginStatus: true } },
   { path: '/announcements', name: 'AnnouncementsView', component: AnnouncementsView },
   { path: '/settings/app-config', name: 'AppConfigView', component: AppConfigView, meta: { loginStatus: true } },
   { path: '/settings/agent-prompts', name: 'AgentPromptsView', component: AgentPromptsView, meta: { loginStatus: true } },

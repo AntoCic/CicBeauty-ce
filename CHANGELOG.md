@@ -1,3 +1,21 @@
+## v0.0.24 - 2026-03-01
+
+Migrazione operatori calendario statistiche coupon
+
+---
+
+## v0.0.24 - 2026-03-01
+
+Migrazione operatori, calendario, statistiche, coupon
+
+---
+
+## v0.0.24 - 2026-03-01
+
+Migrazione operatori, calendario, statistiche, coupon
+
+---
+
 ## v0.0.24 - 2026-03-02
 
 add get backup

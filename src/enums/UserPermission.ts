@@ -1,6 +1,7 @@
 export const UserPermission = {
   AI: 'AI',
   AI_BETA_FEATURES: 'AI_BETA_FEATURES',
+  OPERATORE: 'OPERATORE',
 } as const
 
 // Type union derivato dalle chiavi dell'oggetto

@@ -18,8 +18,10 @@ import { callMarketingAgent } from '../../call/callMarketingAgent'
 import { callMetaAIAgent } from '../../call/callMetaAIAgent'
 import { parseAiError } from '../../call/_utilityApi'
 import { UserPermission } from '../../enums/UserPermission'
+import { hasBetaFeaturesAccess } from '../../utils/permissions'
 
 type TreatmentForm = {
+  old_id: string
   title: string
   subtitle: string
   type_expense_id: string
@@ -93,9 +95,11 @@ const selectedProductItems = computed(() =>
 )
 const defaultUpdateBy = computed(() => String(Auth.uid ?? '').trim())
 const hasAiPermission = computed(() => Auth?.user?.hasPermission(UserPermission.AI) ?? false)
+const hasBetaFeatures = computed(() => hasBetaFeaturesAccess())
 
 const schema = toTypedSchema(
   yup.object({
+    old_id: yup.string().default(''),
     title: yup.string().required('Campo obbligatorio'),
     subtitle: yup.string().default(''),
     type_expense_id: yup.string().required('Campo obbligatorio'),
@@ -111,6 +115,7 @@ const schema = toTypedSchema(
 const formKey = computed(() => (isCreateMode.value ? 'treatment-new' : current.value?.id ?? 'treatment-edit'))
 
 const initialValues = computed<TreatmentForm>(() => ({
+  old_id: current.value?.old_id ?? '',
   title: current.value?.title ?? '',
   subtitle: current.value?.subtitle ?? '',
   type_expense_id: current.value?.type_expense_id ?? '',
@@ -158,6 +163,7 @@ function normalizeRelationIds(ids: string[]) {
 
 function buildCreatePayload(form: TreatmentForm, categoryIds: string[]): Omit<TreatmentData, 'id'> {
   return {
+    old_id: hasBetaFeatures.value ? form.old_id : '',
     title: form.title,
     subtitle: form.subtitle,
     icon: '',
@@ -310,6 +316,7 @@ async function loadItem() {
 
 async function onSubmit(values: Record<string, unknown>) {
   const form: TreatmentForm = {
+    old_id: normalizeString(values.old_id, ''),
     title: normalizeString(values.title),
     subtitle: normalizeString(values.subtitle, ''),
     type_expense_id: normalizeString(values.type_expense_id),
@@ -329,6 +336,7 @@ async function onSubmit(values: Record<string, unknown>) {
   const normalizedProductIds = normalizeRelationIds(selectedProductIds.value)
 
   const updatePayload = {
+    old_id: hasBetaFeatures.value ? normalizeString(form.old_id, '') : '',
     title: form.title,
     subtitle: form.subtitle,
     type_expense_id: form.type_expense_id,
@@ -556,6 +564,12 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
 
         <div class="card border-0 shadow-sm p-3 p-md-4">
           <div class="row g-3">
+            <div v-if="hasBetaFeatures" class="col-12">
+              <label class="form-label">old_id (migrazione)</label>
+              <Field name="old_id" class="form-control" />
+              <ErrorMessage name="old_id" class="text-danger small" />
+            </div>
+
             <div class="col-12">
               <label class="form-label">Titolo</label>
               <Field name="title" class="form-control" />

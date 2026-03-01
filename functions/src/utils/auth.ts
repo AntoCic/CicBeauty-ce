@@ -27,6 +27,12 @@ export async function requireUserPermission(request: CallableRequest<unknown>, r
   throw new HttpsError('permission-denied', `Permesso richiesto: ${requiredPermission}.`);
 }
 
+export async function requireUserPermissions(request: CallableRequest<unknown>, requiredPermissions: string[]) {
+  for (const permission of requiredPermissions) {
+    await requireUserPermission(request, permission);
+  }
+}
+
 function hasPermissionInToken(request: CallableRequest<unknown>, requiredPermission: string) {
   const token = request.auth?.token as Record<string, unknown> | undefined;
   const permissions = normalizePermissions(token?.permissions);
