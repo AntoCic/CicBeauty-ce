@@ -8,7 +8,6 @@ import HeaderApp from '../../components/HeaderApp.vue'
 import { Auth } from '../../main'
 
 type ProjectMessageForm = {
-  apiKey: string
   typeMessage: string
   title: string
   message: string
@@ -37,7 +36,6 @@ watch(
 )
 
 const form = reactive<ProjectMessageForm>({
-  apiKey: '',
   typeMessage: 'info',
   title: 'Nuova versione rilasciata',
   message: 'Deploy completato con successo da CicBeauty CE',
@@ -46,12 +44,6 @@ const form = reactive<ProjectMessageForm>({
 })
 
 async function submitProjectMessage() {
-  const apiKey = form.apiKey.trim()
-  if (!apiKey) {
-    toast.error('Il campo apiKey e obbligatorio')
-    return
-  }
-
   const message = form.message.trim()
   if (!message) {
     toast.error('Il campo messaggio e obbligatorio')
@@ -78,7 +70,6 @@ async function submitProjectMessage() {
 
   try {
     const response = await callPublishProjectMessage({
-      apiKey,
       typeMessage: normalizeOptional(form.typeMessage),
       title: normalizeOptional(form.title),
       message,
@@ -121,18 +112,6 @@ function normalizeOptional(value: string) {
 
       <section class="card border-0 shadow-sm p-3 p-md-4 mb-3">
         <form class="row g-3" @submit.prevent="submitProjectMessage">
-          <div class="col-12">
-            <label class="form-label">apiKey *</label>
-            <input
-              v-model="form.apiKey"
-              class="form-control font-monospace"
-              type="password"
-              placeholder="PROJECT_API_KEY"
-              autocomplete="off"
-              required
-            />
-          </div>
-
           <div class="col-12 col-md-4">
             <label class="form-label">typeMessage</label>
             <input v-model="form.typeMessage" class="form-control" type="text" placeholder="info" />

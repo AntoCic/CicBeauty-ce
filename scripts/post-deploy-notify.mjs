@@ -14,13 +14,19 @@ async function main() {
   const packageJson = JSON.parse(packageRaw)
   const version = String(packageJson.version || 'unknown')
   const sourceProjectId = String(packageJson.name || 'cicbeauty-ce')
+  const notifyTypeMessage = normalizeOptional(process.env.NOTIFY_TYPE_MESSAGE) || 'info'
+  const notifyTitle = normalizeOptional(process.env.NOTIFY_TITLE) || 'Nuova versione rilasciata'
+  const notifyMessage =
+    normalizeOptional(process.env.NOTIFY_MESSAGE) || `Deploy completato: ${sourceProjectId} v${version}`
+  const notifyPayload = readOptionalJsonObject(process.env.NOTIFY_PAYLOAD_JSON, 'NOTIFY_PAYLOAD_JSON')
+  const notifySendPush = readOptionalBoolean(process.env.NOTIFY_SEND_PUSH, 'NOTIFY_SEND_PUSH') ?? true
 
   const body = {
-    typeMessage: 'info',
-    title: 'Nuova versione rilasciata',
-    message: `Deploy completato: ${sourceProjectId} v${version}`,
+    typeMessage: notifyTypeMessage,
+    title: notifyTitle,
+    message: notifyMessage,
     apiKey,
-    sendPush: true,
+    sendPush: notifySendPush,
     payload: {
       version,
       project: sourceProjectId,
@@ -30,6 +36,7 @@ async function main() {
       gitSha: process.env.DEPLOY_SHA || '',
       workflowRunUrl: process.env.DEPLOY_RUN_URL || '',
       timestamp: new Date().toISOString(),
+      ...(notifyPayload || {}),
     },
   }
 
@@ -64,3 +71,34 @@ main().catch((error) => {
   console.error(error)
   process.exit(1)
 })
+
+function normalizeOptional(value) {
+  const normalized = String(value ?? '').trim()
+  return normalized || ''
+}
+
+function readOptionalBoolean(value, key) {
+  const normalized = normalizeOptional(value).toLowerCase()
+  if (!normalized) return undefined
+  if (normalized === 'true') return true
+  if (normalized === 'false') return false
+  throw new Error(`${key} must be "true" or "false".`)
+}
+
+function readOptionalJsonObject(value, key) {
+  const normalized = normalizeOptional(value)
+  if (!normalized) return undefined
+
+  let parsed
+  try {
+    parsed = JSON.parse(normalized)
+  } catch {
+    throw new Error(`${key} must be a valid JSON object string.`)
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${key} must be a JSON object.`)
+  }
+
+  return parsed
+}
