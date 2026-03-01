@@ -10,8 +10,8 @@
     "i:o": "npm uninstall cic-kit && npm install cic-kit@latest",
     "i:l": "npm uninstall cic-kit && npm i ../../__PACKAGE/root_cic-kit/cic-kit/cic-kit-0.0.29.tgz",
     "only-deploy": "firebase deploy --only hosting,firestore,functions,storage",
-    "deploy": "npm run build && npx cic-bump && npx cic-push && npm run only-deploy",
-    "deploy-no-push": "npm run build && npx cic-bump && npm run only-deploy",
+    "deploy": "npm run build && npx cic-bump && npx cic-push && npm run only-deploy && npm run notify:release",
+    "deploy-no-push": "npm run build && npx cic-bump && npm run only-deploy && npm run notify:release",
     "docker:build": "docker compose -f docker-compose.emu.yml build --no-cache",
     "docker:c": "docker compose -f docker-compose.emu.yml exec firebase-emulator sh",
     "start": "docker compose -f docker-compose.emu.yml up",
@@ -23,7 +23,8 @@
     "emu:list": "node ./.firebase-emulators/emu.js list",
     "emu:delete": "node ./.firebase-emulators/emu.js delete",
     "i:cic": "npm uninstall firebase-secrets-cli && npm install -D firebase-secrets-cli@latest",
-    "cic": "npx cic-index"
+    "cic": "npx cic-index",
+    "notify:release": "node ./scripts/post-deploy-notify.mjs"
   },
   "dependencies": {
     "@vee-validate/yup": "^4.15.1",
