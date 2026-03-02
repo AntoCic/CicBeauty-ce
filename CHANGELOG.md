@@ -1,3 +1,9 @@
+## v0.0.24 - 2026-03-02
+
+add get backup
+
+---
+
 ## v0.0.23 - 2026-03-01
 
 Edit trattamenti: prodotti consigliati in accordion con sottotitolo; aggiornato flusso deploy codex.

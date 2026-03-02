@@ -39,6 +39,12 @@ const toolbarOffcanvasTabConfigs: OffcanvasTabConfig[] = [
     requiresSuperAdmin: true,
   },
   {
+    name: 'Backup Catalogo JSON',
+    icon: 'download',
+    to: { name: 'CatalogBackupView' },
+    requiresSuperAdmin: true,
+  },
+  {
     name: 'Prompt Agenti AI',
     icon: 'psychology',
     to: { name: 'AgentPromptsView' },

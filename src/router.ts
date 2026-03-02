@@ -27,6 +27,7 @@ import AiTransparencyView from './views/legal/AiTransparencyView.vue';
 import AppConfigView from './views/app-config/AppConfigView.vue';
 import AgentPromptsView from './views/ai/AgentPromptsView.vue';
 import TestPlaygroundView from './views/tools/TestPlaygroundView.vue';
+import CatalogBackupView from './views/settings/CatalogBackupView.vue';
 
 
 // ===================================================================================================
@@ -45,6 +46,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/announcements', name: 'AnnouncementsView', component: AnnouncementsView },
   { path: '/settings/app-config', name: 'AppConfigView', component: AppConfigView, meta: { loginStatus: true } },
   { path: '/settings/agent-prompts', name: 'AgentPromptsView', component: AgentPromptsView, meta: { loginStatus: true } },
+  { path: '/settings/catalog-backup', name: 'CatalogBackupView', component: CatalogBackupView, meta: { loginStatus: true } },
   { path: '/ai/beauty-chat', name: 'AiBeautyChatView', component: AiBeautyChatView },
   { path: '/legal/privacy', name: 'PrivacyPolicyView', component: PrivacyPolicyView },
   { path: '/legal/cookie', name: 'CookiePolicyView', component: CookiePolicyView },
