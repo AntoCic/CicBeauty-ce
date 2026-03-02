@@ -27,17 +27,6 @@ import AiTransparencyView from './views/legal/AiTransparencyView.vue';
 import AppConfigView from './views/app-config/AppConfigView.vue';
 import AgentPromptsView from './views/ai/AgentPromptsView.vue';
 import TestPlaygroundView from './views/tools/TestPlaygroundView.vue';
-import CatalogBackupView from './views/settings/CatalogBackupView.vue';
-import CalendarView from './views/calendar/CalendarView.vue';
-import CalendarDayView from './views/calendar/CalendarDayView.vue';
-import AppointmentEditView from './views/calendar/AppointmentEditView.vue';
-import ClientsView from './views/clients/ClientsView.vue';
-import ClientEditView from './views/clients/ClientEditView.vue';
-import ExpensesView from './views/expenses/ExpensesView.vue';
-import CouponsView from './views/coupons/CouponsView.vue';
-import StatsView from './views/stats/StatsView.vue';
-import RelationsView from './views/relations/RelationsView.vue';
-import MigrationImportView from './views/migration/MigrationImportView.vue';
 
 
 // ===================================================================================================
