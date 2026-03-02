@@ -8,7 +8,7 @@ import ProductCategoriesView from './views/products/ProductCategoriesView.vue';
 import ProductCategoriesManageView from './views/products/ProductCategoriesManageView.vue';
 import ProductEditView from './views/products/ProductEditView.vue';
 import ProductView from './views/products/ProductView.vue';
-import HomeView from './views/HomeView.vue';
+import HomeView from './views/home/HomeView.vue';
 import TreatmentsView from './views/treatments/TreatmentsView.vue';
 import TreatmentsManageView from './views/treatments/TreatmentsManageView.vue';
 import TreatmentCategoriesView from './views/treatments/TreatmentCategoriesView.vue';
