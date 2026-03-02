@@ -2,6 +2,7 @@
 import { cicKitStore, defaultUserPermission, useChangeHeader } from 'cic-kit'
 import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import AiPromptLauncherCard from '../../components/ai/AiPromptLauncherCard.vue'
 import BtnAi from '../../components/BtnAi.vue'
 import HeaderApp from '../../components/HeaderApp.vue'
 import { Auth } from '../../main'
@@ -85,11 +86,13 @@ watch(
           <BtnAi size="md" variant="ghost" aria-label="AI variant ghost md" />
         </div>
       </section>
+
+      <AiPromptLauncherCard class="mt-3" />
     </div>
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .test-wrapper {
   max-width: 720px;
 }

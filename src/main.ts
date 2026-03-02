@@ -3,12 +3,10 @@ import App from "./App.vue";
 // import * as bootstrap from 'bootstrap';
 import { router } from "./router";
 import "./main.scss";
-import "v-calendar/style.css";
 import { setupFirebase, initAuth, _CurrentUser, initCicKitStore, cicKitStore, headerStore, toolbarStore, loading } from "cic-kit";
 import { firebaseConfig, VAPID_PUBLIC_KEY } from "./firebase-config";
 import pkg from '../package.json';
 import { applyConsentToAnalytics, bootstrapConsentBeforeFirebase } from "./legal/cookieConsent";
-import VCalendar from "v-calendar";
 
 loading.on('loading:initApp');
 bootstrapConsentBeforeFirebase(firebaseConfig.measurementId);
@@ -35,6 +33,5 @@ headerStore.show = false;
 toolbarStore.show = false
 
 const app = createApp(App);
-app.use(VCalendar, {});
 app.use(router);
 app.mount("#app");
