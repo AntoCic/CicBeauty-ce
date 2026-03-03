@@ -151,6 +151,14 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     permissionRule: { requiresSuperAdmin: true },
   },
   {
+    id: 'catalog-backup',
+    title: 'Backup JSON',
+    to: { name: 'CatalogBackupView' },
+    icon: 'download',
+    iconClass: 'app-icon-night',
+    permissionRule: { requiresSuperAdmin: true },
+  },
+  {
     id: 'agent-prompts',
     title: 'Prompt Agenti AI',
     to: { name: 'AgentPromptsView' },

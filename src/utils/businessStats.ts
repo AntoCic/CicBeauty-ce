@@ -2,15 +2,13 @@ import { asDate } from './date'
 import { appointmentEndDate, computeAppointmentDurationMinutes } from './calendar'
 
 type AppointmentLike = {
-  date_time: Date
-  end_time?: Date
+  date_time: unknown
   client_id?: string
   user_id?: string
   treatment_ids?: string[]
   discount?: number
   extra?: number
   fix_duration?: number
-  custom_duration_minutes?: number
   coupon_id?: string
 }
 

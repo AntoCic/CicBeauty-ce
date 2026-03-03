@@ -28,8 +28,8 @@ const canOperate = computed(() => hasOperatorAccess())
 useStoreWatch(
   canOperate.value
     ? [
-        { store: couponStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' }, forceLocalSet: true } },
-        { store: clientStore, getOpts: { forceLocalSet: true } },
+        { store: couponStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' },  } },
+        { store: clientStore, getOpts: {  } },
       ]
     : [],
 )

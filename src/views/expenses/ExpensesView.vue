@@ -42,10 +42,10 @@ const fileValue = ref<FieldFileValue>([])
 useStoreWatch(
   canOperate.value
     ? [
-        { store: expenseStore, getOpts: { orderBy: { fieldPath: 'paidAt', directionStr: 'desc' }, forceLocalSet: true } },
-        { store: typeExpenseStore, getOpts: { forceLocalSet: true } },
-        { store: couponStore, getOpts: { forceLocalSet: true } },
-        { store: clientStore, getOpts: { forceLocalSet: true } },
+        { store: expenseStore, getOpts: { orderBy: { fieldPath: 'paidAt', directionStr: 'desc' },  } },
+        { store: typeExpenseStore, getOpts: {  } },
+        { store: couponStore, getOpts: {  } },
+        { store: clientStore, getOpts: {  } },
       ]
     : [],
 )

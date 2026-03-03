@@ -7,12 +7,13 @@ import { setupFirebase, initAuth, _CurrentUser, initCicKitStore, cicKitStore, he
 import { firebaseConfig, VAPID_PUBLIC_KEY } from "./firebase-config";
 import pkg from '../package.json';
 import { applyConsentToAnalytics, bootstrapConsentBeforeFirebase } from "./legal/cookieConsent";
+import { CurrentUser } from "./models/CurrentUser";
 
 loading.on('loading:initApp');
 bootstrapConsentBeforeFirebase(firebaseConfig.measurementId);
 setupFirebase(firebaseConfig, VAPID_PUBLIC_KEY);
 applyConsentToAnalytics(firebaseConfig.measurementId);
-export const Auth = initAuth(_CurrentUser);
+export const Auth = initAuth(CurrentUser);
 initCicKitStore({
     packageJson: pkg, defaultViews: {
         ...cicKitStore.defaultViews,

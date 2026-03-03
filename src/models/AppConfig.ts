@@ -185,6 +185,7 @@ export function hasLegalPlaceholdersInConfig(config: Pick<AppConfigFields, 'owne
 
 export class AppConfig extends FirestoreModel<AppConfigData> {
   static collectionName = 'appConfig'
+  protected localStorageKey() { return 'APP_CONFIG' }
 
   brandName: string
   legalLastUpdated: string

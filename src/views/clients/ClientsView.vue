@@ -5,7 +5,10 @@ import { useRouter } from 'vue-router'
 import HeaderApp from '../../components/HeaderApp.vue'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
+import ClientPersonCard from './components/ClientPersonCard.vue'
+import { appointmentClientId, buildClientAppointmentSummary } from './clientAppointmentUtils'
 import { hasOperatorAccess } from '../../utils/permissions'
+import { asDate } from '../../utils/date'
 
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
@@ -17,40 +20,55 @@ useStoreWatch(
     ? [
         {
           store: clientStore,
-          getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' }, forceLocalSet: true },
+          getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' },  },
         },
         {
           store: appointmentStore,
-          getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' }, forceLocalSet: true },
+          getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' },  },
         },
       ]
     : [],
 )
 
-const appointmentCountByClient = computed(() => {
-  const map = new Map<string, number>()
+const appointmentSummaryByClient = computed(() => {
+  const grouped = new Map<string, (typeof appointmentStore.itemsActiveArray)[number][]>()
   for (const appointment of appointmentStore.itemsActiveArray) {
-    const clientId = String(appointment.client_id ?? appointment.user_id ?? '').trim()
+    const clientId = appointmentClientId(appointment)
     if (!clientId) continue
-    map.set(clientId, (map.get(clientId) ?? 0) + 1)
+    if (!grouped.has(clientId)) {
+      grouped.set(clientId, [])
+    }
+    grouped.get(clientId)?.push(appointment)
   }
+
+  const map = new Map<
+    string,
+    ReturnType<typeof buildClientAppointmentSummary>
+  >()
+  for (const [clientId, appointments] of grouped.entries()) {
+    map.set(clientId, buildClientAppointmentSummary(appointments))
+  }
+
   return map
 })
 
-const filteredClients = computed(() => {
+const filteredClientCards = computed(() => {
   const term = search.value.trim().toLowerCase()
   const source = [...clientStore.itemsActiveArray].sort((a, b) =>
     `${a.surname} ${a.name}`.localeCompare(`${b.surname} ${b.name}`, 'it'),
   )
-  if (!term) return source
+  const filtered = term
+    ? source.filter((client) =>
+        [client.name, client.surname, client.note]
+          .map((v) => String(v ?? '').toLowerCase())
+          .some((v) => v.includes(term)),
+      )
+    : source
 
-  return source.filter((client) => {
-    const phoneText = [client.phone_number, ...(client.phone_numbers ?? [])].join(' ')
-    const emailText = [client.email, ...(client.emails ?? [])].join(' ')
-    return [client.name, client.surname, phoneText, emailText, client.note]
-      .map((v) => String(v ?? '').toLowerCase())
-      .some((v) => v.includes(term))
-  })
+  return filtered.map((client) => ({
+    client,
+    summary: appointmentSummaryByClient.value.get(client.id),
+  }))
 })
 
 function openClientEditor(id: string) {
@@ -59,6 +77,17 @@ function openClientEditor(id: string) {
 
 function openCreateClient() {
   router.push({ name: 'ClientEditView', params: { id: 'new' } })
+}
+
+function appointmentMiniLabel(appointment?: { date_time?: unknown }) {
+  const date = asDate(appointment?.date_time)
+  if (!date) return '--'
+  return date.toLocaleString('it-IT', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 </script>
 
@@ -79,40 +108,99 @@ function openCreateClient() {
       </p>
 
       <div v-else class="vstack gap-2">
+        <p class="client-list-legend mb-0">
+          <span>&#x25C0; precedente</span>
+          <span>&#x25B6; prossimo</span>
+          <span>&#x1F4C5; oggi</span>
+        </p>
+
         <article
-          v-for="client in filteredClients"
+          v-for="{ client, summary } in filteredClientCards"
           :key="client.id"
-          class="card border-0 shadow-sm p-3"
+          class="client-row"
           @click="openClientEditor(client.id)"
         >
-          <div class="d-flex justify-content-between align-items-center gap-2">
-            <div class="min-w-0">
-              <p class="fw-semibold mb-0 text-truncate">{{ client.name }} {{ client.surname }}</p>
-              <p class="small text-muted mb-0 text-truncate">
-                {{ [client.phone_number, ...(client.phone_numbers ?? [])].filter(Boolean).join(' | ') || 'Nessun telefono' }}
-              </p>
-              <p class="small text-muted mb-0 text-truncate">
-                {{ [client.email, ...(client.emails ?? [])].filter(Boolean).join(' | ') || 'Nessuna email' }}
-              </p>
+          <ClientPersonCard
+            :name="client.name"
+            :surname="client.surname"
+            :phone-number="client.phone_number"
+            :note="client.note"
+            :compact="true"
+          >
+            <div class="client-row__appointments">
+              <span class="client-row__appointment client-row__appointment--prev" title="Appuntamento precedente">
+                <span aria-hidden="true">&#x25C0;</span>
+                <span>{{ appointmentMiniLabel(summary?.previous) }}</span>
+              </span>
+              <span class="client-row__appointment client-row__appointment--next" title="Prossimo appuntamento">
+                <span aria-hidden="true">&#x25B6;</span>
+                <span>{{ appointmentMiniLabel(summary?.next) }}</span>
+              </span>
+              <span
+                v-if="summary?.hasTodayAppointment"
+                class="client-row__appointment client-row__appointment--today"
+                title="Appuntamento oggi"
+                aria-label="Appuntamento oggi"
+              >
+                <span aria-hidden="true">&#x1F4C5;</span>
+              </span>
             </div>
-            <span class="badge text-bg-secondary">
-              {{ appointmentCountByClient.get(client.id) ?? 0 }} app.
-            </span>
-          </div>
+          </ClientPersonCard>
         </article>
 
-        <p v-if="!filteredClients.length" class="text-muted small mt-2 mb-0">Nessun cliente trovato.</p>
+        <p v-if="!filteredClientCards.length" class="text-muted small mt-2 mb-0">Nessun cliente trovato.</p>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped lang="scss">
-article {
+.client-row {
   cursor: pointer;
 }
 
-.min-w-0 {
-  min-width: 0;
+.client-list-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.62rem;
+  font-size: 0.66rem;
+  color: #7a5a67;
+  padding-left: 0.1rem;
+}
+
+.client-row__appointments {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.42rem;
+  white-space: nowrap;
+}
+
+.client-row__appointment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.14rem;
+  font-size: 0.65rem;
+  line-height: 1;
+  color: #6b4a58;
+  border-radius: 0.34rem;
+  padding: 0.2rem 0.32rem;
+}
+
+.client-row__appointment--prev {
+  background: #eef3ff;
+  color: #445d95;
+}
+
+.client-row__appointment--next {
+  background: #edf9f1;
+  color: #2f7450;
+}
+
+.client-row__appointment--today {
+  font-size: 0.74rem;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
 }
 </style>

@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, toast, useStoreWatch } from 'cic-kit'
+import { Btn, cicKitStore, normalizeGender, toast, useStoreWatch } from 'cic-kit'
+import { Timestamp } from 'firebase/firestore'
 import { computed, ref } from 'vue'
 import HeaderApp from '../../components/HeaderApp.vue'
 import { Auth } from '../../main'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
 import { treatmentStore } from '../../stores/treatmentStore'
+import { asDate } from '../../utils/date'
 import { hasBetaFeaturesAccess, hasOperatorAccess } from '../../utils/permissions'
 
 type ImportSummary = {
@@ -27,9 +29,9 @@ const appointmentsSummary = ref<ImportSummary | null>(null)
 useStoreWatch(
   canOperate.value
     ? [
-        { store: clientStore, getOpts: { forceLocalSet: true } },
-        { store: treatmentStore, getOpts: { forceLocalSet: true }, checkLogin: false },
-        { store: appointmentStore, getOpts: { forceLocalSet: true } },
+        { store: clientStore, getOpts: {  } },
+        { store: treatmentStore, getOpts: {  }, checkLogin: false },
+        { store: appointmentStore, getOpts: {  } },
       ]
     : [],
 )
@@ -48,12 +50,6 @@ function parseJsonArray(raw: string, label: string) {
   } catch (error) {
     throw new Error(`${label}: JSON non valido (${(error as Error).message})`)
   }
-}
-
-function asDate(value: unknown) {
-  const next = new Date(String(value ?? ''))
-  if (Number.isNaN(next.getTime())) return undefined
-  return next
 }
 
 function updateBy() {
@@ -82,9 +78,9 @@ async function importClients() {
       name,
       surname,
       phone_number: normalizeString(row.phone_number ?? row.telefono),
-      phone_numbers: [],
+      gender: normalizeGender(row.gender) || 'f',
       email: normalizeString(row.email),
-      emails: [],
+      birthdate: normalizeString(row.birthdate),
       note: normalizeString(row.note ?? row.notes),
       old_id: oldId,
       updateBy: updateBy(),
@@ -138,25 +134,31 @@ async function importAppointments() {
     const mappedTreatments = legacyTreatmentIds
       .map((id) => treatmentByOldId.get(normalizeString(id)) ?? normalizeString(id))
       .filter(Boolean)
+    const productIds = Array.isArray(row.product_ids) ? row.product_ids.map((id) => normalizeString(id)).filter(Boolean) : []
+    const legacyOperatorIds = Array.isArray(row.operator_ids) ? row.operator_ids : [row.operator_id ?? Auth.uid]
+    const operatorIds = legacyOperatorIds.map((id) => normalizeString(id)).filter(Boolean)
+    const normalizedOperatorIds = operatorIds.length
+      ? operatorIds
+      : [normalizeString(Auth.uid)].filter(Boolean)
+    const googleCalendarSyncedAt = asDate(row.googleCalendarSyncedAt)
 
     const payload = {
-      date_time: start,
-      end_time: asDate(row.end_time),
+      date_time: Timestamp.fromDate(start),
       user_id: clientId,
       client_id: clientId,
       treatment_ids: mappedTreatments,
-      operator_id: normalizeString(row.operator_id ?? Auth.uid),
-      operator_ids: [normalizeString(row.operator_id ?? Auth.uid)].filter(Boolean),
-      ownerOperatorId: normalizeString(row.ownerOperatorId),
+      product_ids: productIds,
+      operator_ids: normalizedOperatorIds,
       isPersonal: Boolean(row.isPersonal),
       discount: Number(row.discount ?? 0),
       extra: Number(row.extra ?? 0),
       fix_duration: Number(row.fix_duration ?? 0),
-      custom_duration_minutes: Number(row.custom_duration_minutes ?? 0),
-      coupon_id: normalizeString(row.coupon_id),
-      old_id: oldId,
-      status: normalizeString(row.status) || 'planned',
-      notes: normalizeString(row.notes),
+      coupon_id: normalizeString(row.coupon_id) || undefined,
+      old_id: oldId || undefined,
+      notes: normalizeString(row.notes ?? row.note),
+      reminded: Boolean(row.reminded),
+      googleCalendarEventId: normalizeString(row.googleCalendarEventId) || undefined,
+      googleCalendarSyncedAt: googleCalendarSyncedAt ? Timestamp.fromDate(googleCalendarSyncedAt) : undefined,
       updateBy: updateBy(),
     }
 

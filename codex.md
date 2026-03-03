@@ -15,6 +15,8 @@ Quando in un task viene nominato `codex.md`, devi seguire questa lista come rego
 - Nelle notifiche HubCortex si puo passare un `payload`, ma se possibile evita il payload e spiega in modo completo il contesto direttamente nel campo `message`.
 - Passa il `payload` solo quando e realmente utile/necessario.
 - Mi piace la presenza di emoji nel frontend: usale quando utili anche per log di debug e notifiche Hub (es. `:bug:` debug, `:white_check_mark:` successo, `:warning:` warning, `:rocket:` deploy).
+- se ti servono altre info sul pacchetto anche se non è ancora tutto documentato trovi molte info in https://github.com/AntoCic/cic-kit/tree/main/docs
+- quando hai bisogno di text aree preferisco sempre che usi FieldTiptap di cic-kit
 
 Prompt da applicare:
 "Quando ti chiedo un task e nomino `codex.md`, devi applicare tutte le regole della lista in questa pagina."

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, toast, useStoreWatch } from 'cic-kit'
-import { computed, onMounted, watch } from 'vue'
+import { Btn, cicKitStore, useStoreWatch } from 'cic-kit'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import HeaderApp from '../../components/HeaderApp.vue'
 import { Auth } from '../../main'
@@ -25,10 +25,10 @@ const canOperate = computed(() => hasOperatorAccess())
 useStoreWatch(
   canOperate.value
     ? [
-        { store: appointmentStore, getOpts: { forceLocalSet: true } },
-        { store: clientStore, getOpts: { forceLocalSet: true } },
-        { store: treatmentStore, getOpts: { forceLocalSet: true }, checkLogin: false },
-        { store: appConfigStore, getOpts: { forceLocalSet: true }, checkLogin: false },
+        { store: appointmentStore, getOpts: {  } },
+        { store: clientStore, getOpts: {  } },
+        { store: treatmentStore, getOpts: {  }, checkLogin: false },
+        { store: appConfigStore, getOpts: {  }, checkLogin: false },
       ]
     : [],
 )
@@ -48,6 +48,10 @@ const defaultDuration = computed(() => appConfigStore.getConfigData().defaultApp
 const treatmentsById = computed(() => new Map(treatmentStore.itemsActiveArray.map((item) => [item.id, item])))
 const clientsById = computed(() => new Map(clientStore.itemsActiveArray.map((item) => [item.id, item])))
 
+function primaryOperatorId(appointment: (typeof appointmentStore.itemsActiveArray)[number]) {
+  return String((appointment.operator_ids ?? [])[0] ?? '').trim()
+}
+
 const dayAppointments = computed(() => {
   const dayStart = startOfDay(selectedDate.value)
   const dayEnd = endOfDay(selectedDate.value)
@@ -59,19 +63,17 @@ const dayAppointments = computed(() => {
       if (start < dayStart || start > dayEnd) return false
 
       const isPersonal = appointment.isPersonal ?? false
-      if (isPersonal && String(appointment.ownerOperatorId ?? '').trim() !== String(Auth.uid ?? '').trim()) {
+      const primary = primaryOperatorId(appointment)
+      const me = String(Auth.uid ?? '').trim()
+      if (isPersonal && primary && primary !== me) {
         return false
       }
+      if (isPersonal && !primary && !(appointment.operator_ids ?? []).includes(me)) return false
 
       const selectedOperator = selectedOperatorId.value
       if (!selectedOperator) return true
-      if (isPersonal) {
-        return String(appointment.ownerOperatorId ?? '').trim() === selectedOperator
-      }
-      return (
-        (appointment.operator_ids ?? []).includes(selectedOperator) ||
-        String(appointment.operator_id ?? '').trim() === selectedOperator
-      )
+      if (isPersonal && primary) return primary === selectedOperator
+      return (appointment.operator_ids ?? []).includes(selectedOperator)
     })
     .map((appointment) => {
       const start = asDate(appointment.date_time) ?? dayStart
@@ -124,25 +126,6 @@ function createFromSlot(slotStart: Date) {
   })
 }
 
-async function ensureDayLoaded() {
-  if (!canOperate.value) return
-  const dayStart = startOfDay(selectedDate.value)
-  const dayEnd = endOfDay(selectedDate.value)
-  try {
-    await appointmentStore.getRange(dayStart, dayEnd, true)
-  } catch (error) {
-    console.error(error)
-    toast.error('Errore caricamento appuntamenti del giorno')
-  }
-}
-
-onMounted(() => {
-  void ensureDayLoaded()
-})
-
-watch(() => selectedDate.value.getTime(), () => {
-  void ensureDayLoaded()
-})
 </script>
 
 <template>

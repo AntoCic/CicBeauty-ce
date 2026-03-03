@@ -21,6 +21,7 @@ import { Auth } from '../../main'
 import { productStore } from '../../stores/productStore'
 import { typeExpenseStore } from '../../stores/typeExpenseStore'
 import { productCategoryStore } from '../../stores/productCategoryStore'
+import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
 import HeaderApp from '../../components/HeaderApp.vue'
 import CatalogCard from '../../components/CatalogCard.vue'
@@ -43,9 +44,13 @@ type SetFieldValueFn = (field: string, value: unknown, shouldValidate?: boolean)
 
 useChangeHeader('Modifica prodotto', { name: 'ProductCategoriesView' })
 useStoreWatch([
-  { store: typeExpenseStore, getOpts: { forceLocalSet: true } },
+  { store: typeExpenseStore, getOpts: {  } },
   {
     store: productCategoryStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+  },
+  {
+    store: treatmentCategoryStore,
     getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
   },
   {
@@ -89,6 +94,47 @@ const categoryOptions = computed(() =>
 const treatmentOptions = computed(() =>
   [...treatmentStore.itemsActiveArray].sort((a, b) => a.title.localeCompare(b.title, 'it')),
 )
+const treatmentCategoryTitleById = computed(() =>
+  new Map(treatmentCategoryStore.itemsActiveArray.map((item) => [item.id, String(item.title ?? '').trim()])),
+)
+const groupedTreatmentOptions = computed(() => {
+  const groups = new Map<
+    string,
+    {
+      id: string
+      title: string
+      items: (typeof treatmentOptions.value)[number][]
+    }
+  >()
+
+  for (const option of treatmentOptions.value) {
+    const categoryIds = normalizeRelationIds(option.categoryIds ?? [])
+    let groupId = 'no-category'
+    let groupTitle = 'Senza categoria'
+
+    for (const categoryId of categoryIds) {
+      const categoryTitle = String(treatmentCategoryTitleById.value.get(categoryId) ?? '').trim()
+      if (!categoryTitle) continue
+      groupId = categoryId
+      groupTitle = categoryTitle
+      break
+    }
+
+    const currentGroup = groups.get(groupId)
+    if (currentGroup) {
+      currentGroup.items.push(option)
+      continue
+    }
+
+    groups.set(groupId, {
+      id: groupId,
+      title: groupTitle,
+      items: [option],
+    })
+  }
+
+  return [...groups.values()].sort((a, b) => a.title.localeCompare(b.title, 'it'))
+})
 const selectedCategoryItems = computed(() =>
   selectedCategoryIds.value
     .map((id) => productCategoryStore.findItemsById(id))
@@ -133,6 +179,12 @@ function typeExpenseLabel(typeExpense: { emoji?: string; name: string }) {
   const emoji = String(typeExpense.emoji ?? '').trim()
   const name = String(typeExpense.name ?? '').trim()
   return [emoji, name].filter(Boolean).join(' ')
+}
+
+function categoryLabel(category: { title: string; emoji?: string }) {
+  const emoji = String(category.emoji ?? '').trim()
+  const title = String(category.title ?? '').trim()
+  return [emoji, title].filter(Boolean).join(' ')
 }
 
 function normalizeString(value: unknown, fallback = '') {
@@ -602,7 +654,7 @@ watch(() => route.params.id, loadItem)
                   :class="{ 'relation-chip--active': isCategorySelected(option.id) }"
                   @click="toggleCategory(option.id)"
                 >
-                  {{ option.title }}
+                  {{ categoryLabel(option) }}
                 </button>
               </div>
               <div v-else class="form-text">Nessuna categoria disponibile.</div>
@@ -612,7 +664,7 @@ watch(() => route.params.id, loadItem)
 
               <div v-if="selectedCategoryItems.length" class="selected-relations mt-2">
                 <span v-for="item in selectedCategoryItems" :key="item.id" class="selected-relation">
-                  {{ item.title }}
+                  {{ categoryLabel(item) }}
                   <button type="button" aria-label="Rimuovi categoria" @click="removeCategorySelection(item.id)">
                     x
                   </button>
@@ -622,17 +674,22 @@ watch(() => route.params.id, loadItem)
 
             <div class="col-12">
               <label class="form-label mb-1">Trattamenti consigliati</label>
-              <div v-if="treatmentOptions.length" class="relation-grid">
-                <button
-                  v-for="option in treatmentOptions"
-                  :key="option.id"
-                  type="button"
-                  class="relation-chip relation-chip--secondary"
-                  :class="{ 'relation-chip--active': isTreatmentSelected(option.id) }"
-                  @click="toggleTreatment(option.id)"
-                >
-                  {{ option.title }}
-                </button>
+              <div v-if="groupedTreatmentOptions.length">
+                <div v-for="(group, index) in groupedTreatmentOptions" :key="group.id" :class="{ 'mt-3': index > 0 }">
+                  <p class="small text-muted fw-semibold mb-2">{{ group.title }}</p>
+                  <div class="relation-grid">
+                    <button
+                      v-for="option in group.items"
+                      :key="option.id"
+                      type="button"
+                      class="relation-chip relation-chip--secondary"
+                      :class="{ 'relation-chip--active': isTreatmentSelected(option.id) }"
+                      @click="toggleTreatment(option.id)"
+                    >
+                      {{ option.title }}
+                    </button>
+                  </div>
+                </div>
               </div>
               <div v-else class="form-text">Nessun trattamento disponibile.</div>
               <small class="form-text text-muted d-block mt-1">

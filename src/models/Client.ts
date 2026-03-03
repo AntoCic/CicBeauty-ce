@@ -1,18 +1,17 @@
 // src/models/Client.ts
-import { FirestoreModel, type Timestampble } from 'cic-kit'
+import { FirestoreModel, normalizeGender, type Gender, type Timestampble } from 'cic-kit'
 
 export interface ClientData extends Partial<Timestampble> {
   id: string
   name: string
   surname: string
   phone_number?: string
-  phone_numbers?: string[]
-  birthdate?: Date
-  gender?: string
+  birthdate?: string
+  gender: Gender
   email?: string
-  emails?: string[]
   preferredOperatorIds?: string[]
-  tags?: string[]
+  preferred?: string[]
+  user_id?: string
   old_id?: string
   note?: string
   updateBy: string
@@ -20,17 +19,17 @@ export interface ClientData extends Partial<Timestampble> {
 
 export class Client extends FirestoreModel<ClientData> {
   static collectionName = 'clients'
+  // protected localStorageKey() { return 'clients' }
 
   name: string
   surname: string
   phone_number?: string
-  phone_numbers?: string[]
-  birthdate?: Date
-  gender?: string
+  birthdate?: string
+  gender: Gender
   email?: string
-  emails?: string[]
   preferredOperatorIds?: string[]
-  tags?: string[]
+  preferred?: string[]
+  user_id?: string
   old_id?: string
   note?: string
   updateBy: string
@@ -40,13 +39,13 @@ export class Client extends FirestoreModel<ClientData> {
     this.name = data.name
     this.surname = data.surname
     this.phone_number = data.phone_number
-    this.phone_numbers = Array.isArray(data.phone_numbers) ? data.phone_numbers : []
     this.birthdate = data.birthdate
-    this.gender = data.gender
+    const normalizedGender = normalizeGender(data.gender)
+    this.gender = normalizedGender || 'f'
     this.email = data.email
-    this.emails = Array.isArray(data.emails) ? data.emails : []
     this.preferredOperatorIds = Array.isArray(data.preferredOperatorIds) ? data.preferredOperatorIds : []
-    this.tags = Array.isArray(data.tags) ? data.tags : []
+    this.preferred = Array.isArray(data.preferred) ? data.preferred : []
+    this.user_id = data.user_id
     this.old_id = data.old_id
     this.note = data.note
     this.updateBy = data.updateBy
@@ -58,13 +57,12 @@ export class Client extends FirestoreModel<ClientData> {
       name: this.name,
       surname: this.surname,
       phone_number: this.phone_number,
-      phone_numbers: this.phone_numbers,
       birthdate: this.birthdate,
       gender: this.gender,
       email: this.email,
-      emails: this.emails,
       preferredOperatorIds: this.preferredOperatorIds,
-      tags: this.tags,
+      preferred: this.preferred,
+      user_id: this.user_id,
       old_id: this.old_id,
       note: this.note,
       updateBy: this.updateBy,

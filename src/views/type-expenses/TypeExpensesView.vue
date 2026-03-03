@@ -10,7 +10,7 @@ import { hasBetaFeaturesAccess } from "../../utils/permissions";
 
 useChangeHeader("Tipi di spesa", "/");
 const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin);
-useStoreWatch(canManage.value ? [{ store: typeExpenseStore, getOpts: { forceLocalSet: true } }] : []);
+useStoreWatch(canManage.value ? [{ store: typeExpenseStore, getOpts: {  } }] : []);
 
 type TypeExpenseForm = {
   emoji: string;

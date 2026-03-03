@@ -17,13 +17,13 @@ const canOperate = computed(() => hasOperatorAccess())
 useStoreWatch(
   canOperate.value
     ? [
-        { store: appointmentStore, getOpts: { forceLocalSet: true } },
-        { store: clientStore, getOpts: { forceLocalSet: true } },
-        { store: treatmentStore, getOpts: { forceLocalSet: true }, checkLogin: false },
-        { store: productStore, getOpts: { forceLocalSet: true }, checkLogin: false },
-        { store: typeExpenseStore, getOpts: { forceLocalSet: true } },
-        { store: expenseStore, getOpts: { forceLocalSet: true } },
-        { store: couponStore, getOpts: { forceLocalSet: true } },
+        { store: appointmentStore, getOpts: {  } },
+        { store: clientStore, getOpts: {  } },
+        { store: treatmentStore, getOpts: {  }, checkLogin: false },
+        { store: productStore, getOpts: {  }, checkLogin: false },
+        { store: typeExpenseStore, getOpts: {  } },
+        { store: expenseStore, getOpts: {  } },
+        { store: couponStore, getOpts: {  } },
       ]
     : [],
 )
@@ -63,13 +63,13 @@ const relationships = computed(() => {
       name: 'Appuntamento N -> N Operatori',
       connected: appointmentStore.itemsActiveArray.filter((item) => (item.operator_ids ?? []).length > 0).length,
       total: appointmentStore.itemsActiveArray.length,
-      note: 'operator_ids[] + operator_id primario',
+      note: 'operator_ids[] (primario = primo elemento)',
     },
     {
       name: 'Appuntamenti personali (solo owner)',
       connected: appointmentPersonal,
       total: appointmentStore.itemsActiveArray.length,
-      note: 'isPersonal + ownerOperatorId',
+      note: 'isPersonal + operator_ids[0]',
     },
     {
       name: 'TipoSpesa 1 -> N Trattamenti',

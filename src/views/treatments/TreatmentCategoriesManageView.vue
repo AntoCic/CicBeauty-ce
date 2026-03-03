@@ -22,6 +22,7 @@ import { Auth } from '../../main'
 type TreatmentCategoryForm = {
   title: string
   subtitle: string
+  emoji: string
   updateBy: string
 }
 
@@ -60,6 +61,7 @@ const schema = toTypedSchema(
   yup.object({
     title: yup.string().required('Campo obbligatorio'),
     subtitle: yup.string().default(''),
+    emoji: yup.string().default(''),
     updateBy: yup.string().required('Campo obbligatorio'),
   }),
 )
@@ -67,6 +69,7 @@ const schema = toTypedSchema(
 const defaultValues = computed<TreatmentCategoryForm>(() => ({
   title: editingCategory.value?.title ?? '',
   subtitle: editingCategory.value?.subtitle ?? '',
+  emoji: editingCategory.value?.emoji ?? '',
   updateBy: editingCategory.value?.updateBy ?? defaultUpdateBy.value,
 }))
 
@@ -134,6 +137,7 @@ async function onSubmit(values: Record<string, unknown>) {
   const payload: TreatmentCategoryForm = {
     title: normalizeString(values.title),
     subtitle: normalizeString(values.subtitle, ''),
+    emoji: normalizeString(values.emoji, ''),
     updateBy: normalizeString(values.updateBy, defaultUpdateBy.value),
   }
 
@@ -155,6 +159,7 @@ async function onSubmit(values: Record<string, unknown>) {
       await editingCategory.value.update({
         title: payload.title,
         subtitle: payload.subtitle,
+        emoji: payload.emoji || undefined,
         imgUrls: nextImgUrls,
         updateBy: payload.updateBy,
       })
@@ -167,6 +172,7 @@ async function onSubmit(values: Record<string, unknown>) {
     const created = await treatmentCategoryStore.add({
       title: payload.title,
       subtitle: payload.subtitle,
+      emoji: payload.emoji || undefined,
       imgUrls: [],
       updateBy: payload.updateBy,
     })
@@ -199,6 +205,7 @@ async function addDefaultCategories() {
       await treatmentCategoryStore.add({
         title: category.title,
         subtitle: category.subtitle,
+        emoji: normalizeString(category.emoji, '') || undefined,
         imgUrls: [],
         updateBy: defaultUpdateBy.value,
       })
@@ -293,6 +300,11 @@ async function removeCategoryImage(category: (typeof treatmentCategoryStore.item
           <ErrorMessage name="title" class="text-danger small" />
         </div>
         <div class="col-12 col-md-6">
+          <label class="form-label">Emoji</label>
+          <Field name="emoji" class="form-control" placeholder="Es. ✨" />
+          <ErrorMessage name="emoji" class="text-danger small" />
+        </div>
+        <div class="col-12 col-md-6">
           <label class="form-label">Aggiornato da</label>
           <Field name="updateBy" class="form-control" />
           <ErrorMessage name="updateBy" class="text-danger small" />
@@ -369,7 +381,7 @@ async function removeCategoryImage(category: (typeof treatmentCategoryStore.item
       <article v-for="item in treatmentCategoryStore.itemsActiveArray" :key="item.id" class="card border-0 shadow-sm p-3">
         <div class="d-flex justify-content-between align-items-center gap-2 mb-2 flex-wrap">
           <div>
-            <strong>{{ item.title }}</strong>
+            <strong>{{ item.emoji }} {{ item.title }}</strong>
             <p v-if="item.subtitle" class="small text-muted mb-0">{{ item.subtitle }}</p>
           </div>
           <div class="d-flex align-items-center gap-2">

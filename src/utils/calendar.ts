@@ -1,13 +1,12 @@
 import type { AppConfigData } from '../models/AppConfig'
+import { asDate } from './date'
 type TreatmentDurationLike = { duration?: number }
 type AppointmentDurationLike = {
-  custom_duration_minutes?: number
   fix_duration?: number
   treatment_ids?: string[]
 }
 type AppointmentTimingLike = AppointmentDurationLike & {
-  date_time: Date
-  end_time?: Date
+  date_time: unknown
 }
 
 const MINUTE_MS = 60_000
@@ -69,10 +68,6 @@ export function computeAppointmentDurationMinutes(
   treatmentsById: Map<string, TreatmentDurationLike>,
   fallbackMinutes: number,
 ) {
-  if (typeof appointment.custom_duration_minutes === 'number' && appointment.custom_duration_minutes > 0) {
-    return appointment.custom_duration_minutes
-  }
-
   const treatmentDuration = (appointment.treatment_ids ?? [])
     .map((id) => treatmentsById.get(id)?.duration ?? 0)
     .filter((v) => Number.isFinite(v))
@@ -88,9 +83,10 @@ export function appointmentEndDate(
   treatmentsById: Map<string, TreatmentDurationLike>,
   fallbackMinutes: number,
 ) {
-  if (appointment.end_time instanceof Date) return appointment.end_time
+  const start = asDate(appointment.date_time)
+  if (!start) return new Date()
   const minutes = computeAppointmentDurationMinutes(appointment, treatmentsById, fallbackMinutes)
-  return new Date(appointment.date_time.getTime() + minutes * MINUTE_MS)
+  return new Date(start.getTime() + minutes * MINUTE_MS)
 }
 
 export function isWorkingDay(date: Date, appConfig: AppConfigData) {

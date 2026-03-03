@@ -10,6 +10,7 @@ import { Auth } from '../../main'
 import { treatmentStore } from '../../stores/treatmentStore'
 import { typeExpenseStore } from '../../stores/typeExpenseStore'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
+import { productCategoryStore } from '../../stores/productCategoryStore'
 import { productStore } from '../../stores/productStore'
 import HeaderApp from '../../components/HeaderApp.vue'
 import CatalogCard from '../../components/CatalogCard.vue'
@@ -36,9 +37,13 @@ type SetFieldValueFn = (field: string, value: unknown, shouldValidate?: boolean)
 
 useChangeHeader('Modifica trattamento', { name: 'TreatmentCategoriesView' })
 useStoreWatch([
-  { store: typeExpenseStore, getOpts: { forceLocalSet: true } },
+  { store: typeExpenseStore, getOpts: {  } },
   {
     store: treatmentCategoryStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+  },
+  {
+    store: productCategoryStore,
     getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
   },
   {
@@ -83,6 +88,47 @@ const categoryOptions = computed(() =>
 const productOptions = computed(() =>
   [...productStore.itemsActiveArray].sort((a, b) => a.title.localeCompare(b.title, 'it')),
 )
+const productCategoryTitleById = computed(() =>
+  new Map(productCategoryStore.itemsActiveArray.map((item) => [item.id, String(item.title ?? '').trim()])),
+)
+const groupedProductOptions = computed(() => {
+  const groups = new Map<
+    string,
+    {
+      id: string
+      title: string
+      items: (typeof productOptions.value)[number][]
+    }
+  >()
+
+  for (const option of productOptions.value) {
+    const categoryIds = normalizeRelationIds(option.categoryIds ?? [])
+    let groupId = 'no-category'
+    let groupTitle = 'Senza categoria'
+
+    for (const categoryId of categoryIds) {
+      const categoryTitle = String(productCategoryTitleById.value.get(categoryId) ?? '').trim()
+      if (!categoryTitle) continue
+      groupId = categoryId
+      groupTitle = categoryTitle
+      break
+    }
+
+    const currentGroup = groups.get(groupId)
+    if (currentGroup) {
+      currentGroup.items.push(option)
+      continue
+    }
+
+    groups.set(groupId, {
+      id: groupId,
+      title: groupTitle,
+      items: [option],
+    })
+  }
+
+  return [...groups.values()].sort((a, b) => a.title.localeCompare(b.title, 'it'))
+})
 const selectedCategoryItems = computed(() =>
   selectedCategoryIds.value
     .map((id) => treatmentCategoryStore.findItemsById(id))
@@ -131,6 +177,12 @@ function typeExpenseLabel(typeExpense: { emoji?: string; name: string }) {
   const emoji = String(typeExpense.emoji ?? '').trim()
   const name = String(typeExpense.name ?? '').trim()
   return [emoji, name].filter(Boolean).join(' ')
+}
+
+function categoryLabel(category: { title: string; emoji?: string }) {
+  const emoji = String(category.emoji ?? '').trim()
+  const title = String(category.title ?? '').trim()
+  return [emoji, title].filter(Boolean).join(' ')
 }
 
 function normalizeString(value: unknown, fallback = '') {
@@ -612,7 +664,7 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
                 <button v-for="option in categoryOptions" :key="option.id" type="button" class="relation-chip"
                   :class="{ 'relation-chip--active': isCategorySelected(option.id) }"
                   @click="toggleCategory(option.id)">
-                  {{ option.title }}
+                  {{ categoryLabel(option) }}
                 </button>
               </div>
               <div v-else class="form-text">Nessuna categoria disponibile.</div>
@@ -622,7 +674,7 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
 
               <div v-if="selectedCategoryItems.length" class="selected-relations mt-2">
                 <span v-for="item in selectedCategoryItems" :key="item.id" class="selected-relation">
-                  {{ item.title }}
+                  {{ categoryLabel(item) }}
                   <button type="button" aria-label="Rimuovi categoria" @click="removeCategorySelection(item.id)">
                     x
                   </button>
@@ -634,15 +686,20 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
               <label class="form-label mb-1">Prodotti consigliati</label>
               <Accordion id="treatment-products-accordion" title="Seleziona prodotti consigliati"
                 class="recommended-products-accordion">
-                <div v-if="productOptions.length" class="relation-grid">
-                  <button v-for="option in productOptions" :key="option.id" type="button"
-                    class="relation-chip relation-chip--secondary relation-chip--multiline"
-                    :class="{ 'relation-chip--active': isProductSelected(option.id) }" @click="toggleProduct(option.id)">
-                    <span class="relation-chip__title">{{ option.title }}</span>
-                    <span v-if="String(option.subtitle ?? '').trim()" class="relation-chip__subtitle">
-                      {{ option.subtitle }}
-                    </span>
-                  </button>
+                <div v-if="groupedProductOptions.length">
+                  <div v-for="(group, index) in groupedProductOptions" :key="group.id" :class="{ 'mt-3': index > 0 }">
+                    <p class="small text-muted fw-semibold mb-2">{{ group.title }}</p>
+                    <div class="relation-grid">
+                      <button v-for="option in group.items" :key="option.id" type="button"
+                        class="relation-chip relation-chip--secondary relation-chip--multiline"
+                        :class="{ 'relation-chip--active': isProductSelected(option.id) }" @click="toggleProduct(option.id)">
+                        <span class="relation-chip__title">{{ option.title }}</span>
+                        <span v-if="String(option.subtitle ?? '').trim()" class="relation-chip__subtitle">
+                          {{ option.subtitle }}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div v-else class="form-text">Nessun prodotto disponibile.</div>
               </Accordion>
