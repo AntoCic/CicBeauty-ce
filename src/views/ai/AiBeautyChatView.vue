@@ -2,7 +2,7 @@
 import { Btn, cicKitStore, useChangeHeader, useStoreWatch } from 'cic-kit'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import CatalogCard from '../../components/CatalogCard.vue'
 import { callCatalogChatAgent, type CatalogChatHistoryItem, type CatalogChatAgentResponse } from '../../call/callCatalogChatAgent'
 import { parseAiError } from '../../call/_utilityApi'
@@ -644,3 +644,4 @@ watch(
   }
 }
 </style>
+

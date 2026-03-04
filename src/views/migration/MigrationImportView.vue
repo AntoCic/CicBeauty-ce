@@ -2,7 +2,7 @@
 import { Btn, cicKitStore, normalizeGender, toast, useStoreWatch } from 'cic-kit'
 import { Timestamp } from 'firebase/firestore'
 import { computed, ref } from 'vue'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { Auth } from '../../main'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
@@ -259,3 +259,4 @@ async function runImport() {
     </div>
   </div>
 </template>
+

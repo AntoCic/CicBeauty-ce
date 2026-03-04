@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { cicKitStore, useStoreWatch } from 'cic-kit'
 import { computed } from 'vue'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
 import { couponStore } from '../../stores/couponStore'
@@ -161,3 +161,4 @@ const relationships = computed(() => {
     </div>
   </div>
 </template>
+

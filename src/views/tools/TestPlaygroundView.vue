@@ -4,7 +4,7 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AiPromptLauncherCard from '../../components/ai/AiPromptLauncherCard.vue'
 import BtnAi from '../../components/BtnAi.vue'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { callTestFillMissingCategoryEmojis, type TestFillMissingCategoryEmojisResponse } from '../../call/callTestFillMissingCategoryEmojis'
 import { parseAiError } from '../../call/_utilityApi'
 import { Auth } from '../../main'
@@ -173,3 +173,4 @@ async function fillMissingCategoryEmojis() {
   background: rgba(255, 255, 255, 0.75);
 }
 </style>
+

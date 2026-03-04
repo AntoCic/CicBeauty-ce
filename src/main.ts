@@ -2,12 +2,16 @@ import { createApp } from "vue";
 import App from "./App.vue";
 // import * as bootstrap from 'bootstrap';
 import { router } from "./router";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "cic-kit/style.css";
 import "./main.scss";
+import { MotionPlugin } from "@vueuse/motion";
 import { setupFirebase, initAuth, _CurrentUser, initCicKitStore, cicKitStore, headerStore, toolbarStore, loading } from "cic-kit";
 import { firebaseConfig, VAPID_PUBLIC_KEY } from "./firebase-config";
 import pkg from '../package.json';
 import { applyConsentToAnalytics, bootstrapConsentBeforeFirebase } from "./legal/cookieConsent";
 import { CurrentUser } from "./models/CurrentUser";
+import { createMotionPresets } from "./motion/presets";
 
 loading.on('loading:initApp');
 bootstrapConsentBeforeFirebase(firebaseConfig.measurementId);
@@ -33,6 +37,13 @@ headerStore.show = false;
 
 toolbarStore.show = false
 
+const reduceMotionEnabled = typeof window !== 'undefined'
+  ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  : false
+
 const app = createApp(App);
+app.use(MotionPlugin, {
+  directives: createMotionPresets(reduceMotionEnabled),
+});
 app.use(router);
 app.mount("#app");

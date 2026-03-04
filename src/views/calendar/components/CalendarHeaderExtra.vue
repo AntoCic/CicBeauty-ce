@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import HeaderApp from '../../../components/HeaderApp.vue'
+import { Btn } from 'cic-kit'
+import HeaderApp from '../../../components/headers/HeaderApp.vue'
 
 defineProps<{
   hasActiveFilters?: boolean
@@ -15,11 +16,19 @@ defineEmits<{
   <HeaderApp
     title="Calendario"
     :to="{ name: 'home' }"
-    btn-icon="add"
-    btn-color="dark"
-    btn2-icon="tune"
-    :btn2-color="hasActiveFilters ? 'warning' : 'dark'"
-    @btn-click="$emit('createAppointment')"
-    @btn2-click="$emit('openFilters')"
-  />
+  >
+    <Btn
+      icon="add"
+      variant="ghost"
+      color="dark"
+      @click="$emit('createAppointment')"
+    />
+    <Btn
+      icon="tune"
+      variant="ghost"
+      :color="hasActiveFilters ? 'warning' : 'dark'"
+      @click="$emit('openFilters')"
+    />
+  </HeaderApp>
 </template>
+

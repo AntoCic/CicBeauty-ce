@@ -1,0 +1,16 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" role="img" aria-labelledby="t5 d5">
+  <title id="t5">Case 05 placeholder</title>
+  <desc id="d5">Narrative collage placeholder.</desc>
+  <defs>
+    <linearGradient id="g5" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#3a2c27"/>
+      <stop offset="100%" stop-color="#d6bca9"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1200" fill="url(#g5)"/>
+  <rect x="200" y="180" width="520" height="840" rx="28" fill="#f1e5d8" fill-opacity="0.82"/>
+  <rect x="790" y="180" width="620" height="400" rx="28" fill="#f4e9de" fill-opacity="0.64"/>
+  <rect x="790" y="620" width="620" height="400" rx="28" fill="#fff" fill-opacity="0.22"/>
+  <circle cx="980" cy="760" r="160" fill="#6f4f44" fill-opacity="0.45"/>
+  <text x="260" y="1060" fill="#f8f0e8" font-size="70" font-family="Georgia, serif">CASE 05</text>
+</svg>

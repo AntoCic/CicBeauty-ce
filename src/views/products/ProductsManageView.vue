@@ -2,7 +2,7 @@
 import { Btn, cicKitStore, useStoreWatch } from 'cic-kit'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { productStore } from '../../stores/productStore'
 import { productCategoryStore } from '../../stores/productCategoryStore'
 import { Auth } from '../../main'
@@ -136,11 +136,21 @@ function goToEdit(productId: string) {
     <HeaderApp
       title="Prodotti"
       :to="{ name: 'home' }"
-      v-model="search"
-      search-placeholder="Cerca per titolo, sottotitolo, prezzo o categoria..."
-      :btn2-icon="canManage ? 'add' : undefined"
-      @btn2-click="goToCreate"
-    />
+    >
+      <input
+        v-model="search"
+        class="app-header__search"
+        type="search"
+        placeholder="Cerca per titolo, sottotitolo, prezzo o categoria..."
+        aria-label="Cerca prodotti"
+      />
+      <Btn
+        v-if="canManage"
+        icon="add"
+        variant="ghost"
+        @click="goToCreate"
+      />
+    </HeaderApp>
 
     <section class="compact-list">
       <p v-if="!canManage" class="text-muted small mt-2">
@@ -220,3 +230,4 @@ function goToEdit(productId: string) {
   }
 }
 </style>
+

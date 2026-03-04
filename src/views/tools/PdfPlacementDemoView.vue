@@ -4,7 +4,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist'
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { computed, onBeforeUnmount, ref, type ComponentPublicInstance } from 'vue'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 
 type FieldId = 'firstName' | 'lastName'
 
@@ -607,3 +607,4 @@ onBeforeUnmount(() => {
   }
 }
 </style>
+

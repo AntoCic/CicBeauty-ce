@@ -12,7 +12,7 @@ import { typeExpenseStore } from '../../stores/typeExpenseStore'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { productCategoryStore } from '../../stores/productCategoryStore'
 import { productStore } from '../../stores/productStore'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import CatalogCard from '../../components/CatalogCard.vue'
 import BtnAi from '../../components/BtnAi.vue'
 import { callMarketingAgent } from '../../call/callMarketingAgent'
@@ -594,8 +594,14 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
 
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp :title="isCreateMode ? 'Nuovo trattamento' : 'Modifica trattamento'" :to="headerTo"
-      :btn-icon="!isCreateMode ? 'visibility' : undefined" @btn-click="goPageDettaglio" />
+    <HeaderApp :title="isCreateMode ? 'Nuovo trattamento' : 'Modifica trattamento'" :to="headerTo">
+      <Btn
+        v-if="!isCreateMode"
+        icon="visibility"
+        variant="ghost"
+        @click="goPageDettaglio"
+      />
+    </HeaderApp>
 
     <div class="edit-wrapper mx-auto py-3 py-md-4">
       <div v-if="isLoading" class="text-muted small">Caricamento...</div>
@@ -913,3 +919,4 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
   line-height: 1;
 }
 </style>
+

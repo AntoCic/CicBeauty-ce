@@ -4,7 +4,7 @@ import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { computed } from 'vue'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { Auth } from '../../main'
 import { clientStore } from '../../stores/clientStore'
 import { couponStore } from '../../stores/couponStore'
@@ -243,3 +243,4 @@ async function deleteCoupon(id: string) {
     </div>
   </div>
 </template>
+

@@ -23,7 +23,7 @@ import { typeExpenseStore } from '../../stores/typeExpenseStore'
 import { productCategoryStore } from '../../stores/productCategoryStore'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import CatalogCard from '../../components/CatalogCard.vue'
 import BtnAi from '../../components/BtnAi.vue'
 import { callMetaAIAgent } from '../../call/callMetaAIAgent'
@@ -574,9 +574,14 @@ watch(() => route.params.id, loadItem)
     <HeaderApp
       :title="isCreateMode ? 'Nuovo prodotto' : 'Modifica prodotto'"
       :to="headerTo"
-      :btn-icon="!isCreateMode ? 'visibility' : undefined"
-      @btn-click="goPageDettaglio"
-    />
+    >
+      <Btn
+        v-if="!isCreateMode"
+        icon="visibility"
+        variant="ghost"
+        @click="goPageDettaglio"
+      />
+    </HeaderApp>
 
     <div class="edit-wrapper mx-auto py-3 py-md-4">
       <div v-if="isLoading" class="text-muted small">Caricamento...</div>
@@ -940,3 +945,4 @@ watch(() => route.params.id, loadItem)
   line-height: 1;
 }
 </style>
+

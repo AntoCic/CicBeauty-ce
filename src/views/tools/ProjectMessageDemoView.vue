@@ -4,7 +4,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { hub } from '../../call/hub'
 import { defaultCatch } from '../../call/_utilityApi'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { Auth } from '../../main'
 
 type ProjectMessageForm = {
@@ -188,3 +188,4 @@ function normalizeOptional(value: string) {
   font-size: 0.82rem;
 }
 </style>
+

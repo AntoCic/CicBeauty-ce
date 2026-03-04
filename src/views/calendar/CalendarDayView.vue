@@ -2,7 +2,7 @@
 import { Btn, cicKitStore, useStoreWatch } from 'cic-kit'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { Auth } from '../../main'
 import { appConfigStore } from '../../stores/appConfigStore'
 import { appointmentStore } from '../../stores/appointmentStore'
@@ -218,3 +218,4 @@ function createFromSlot(slotStart: Date) {
   min-width: 0;
 }
 </style>
+

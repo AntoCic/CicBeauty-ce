@@ -2,11 +2,13 @@
 import { Btn, cicKitStore, useStoreWatch } from 'cic-kit'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import HeaderApp from '../../components/HeaderApp.vue'
 import CategoryCatalogCard from '../../components/CategoryCatalogCard.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
+import AppHeaderCatalogNav from '../../components/headers/AppHeaderCatalogNav.vue'
+import SectionHeader from '../../components/public/SectionHeader.vue'
 import { Auth } from '../../main'
-import { treatmentStore } from '../../stores/treatmentStore'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
+import { treatmentStore } from '../../stores/treatmentStore'
 
 useStoreWatch([
   {
@@ -81,19 +83,35 @@ function goToNewTreatment() {
 </script>
 
 <template>
-  <div class="container-fluid pb-t pt-3 pt-md-4 overflow-auto h-100" :style="bgStyle">
-    <HeaderApp
-      title="Categorie trattamenti"
-      :to="{ name: 'home' }"
-      v-model="search"
-      search-placeholder="Cerca categoria..."
-      :btn-icon="canManage ? 'edit_note' : undefined"
-      :btn2-icon="canManage ? 'add' : undefined"
-      @btn-click="goToManageCategories"
-      @btn2-click="goToNewTreatment"
-    />
+  <div class="container-fluid pb-t pt-3 pt-md-4 overflow-auto vh-100" :style="bgStyle">
+    <HeaderApp :to="{ name: 'home' }">
+      <AppHeaderCatalogNav />
+      <div v-if="canManage" class="d-inline-flex align-items-center gap-1">
+        <Btn icon="edit_note" variant="ghost" @click="goToManageCategories" />
+        <Btn icon="add" variant="ghost" @click="goToNewTreatment" />
+      </div>
+    </HeaderApp>
 
     <section class="catalog-view">
+      <div class="row g-3 g-md-4 mt-1 mb-3 mb-lg-4">
+        <div class="col-12 col-md-6 col-lg-8">
+          <SectionHeader
+            eyebrow="Categorie"
+            title="Trattamenti"
+            description="Scegli una categoria trattamenti CNC Beauty e apri il catalogo per confrontare durata, obiettivo e risultato atteso."
+          />
+        </div>
+        <div class="col-12 col-md-6 col-lg-4">
+          <input
+            v-model="search"
+            type="search"
+            class="form-control catalog-search"
+            placeholder="Cerca categoria..."
+            aria-label="Cerca categoria trattamenti"
+          />
+        </div>
+      </div>
+
       <div class="row g-3 g-lg-4 mt-1">
         <div v-for="item in categoryCards" :key="item.id" class="col-12 col-md-6">
           <CategoryCatalogCard
@@ -121,6 +139,34 @@ function goToNewTreatment() {
 <style scoped>
 .catalog-view {
   padding: 0 12px 1.5rem;
+}
+
+.catalog-view :deep(.section-header) {
+  margin-bottom: 0;
+}
+
+.catalog-search {
+  min-height: 44px;
+  border: 1px solid rgba(84, 44, 58, 0.3);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 0 0.9rem;
+  font-family: 'Space Grotesk', Arial, sans-serif;
+  font-size: 0.98rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: #4b2935;
+  outline: none;
+}
+
+.catalog-search::placeholder {
+  color: rgba(75, 41, 53, 0.58);
+  letter-spacing: 0.02em;
+}
+
+.catalog-search:focus {
+  border-color: rgba(84, 44, 58, 0.55);
+  box-shadow: 0 0 0 2px rgba(232, 179, 190, 0.25);
 }
 
 @media (max-width: 575.98px) {

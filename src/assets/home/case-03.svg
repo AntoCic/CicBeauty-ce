@@ -1,0 +1,15 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" role="img" aria-labelledby="t3 d3">
+  <title id="t3">Case 03 placeholder</title>
+  <desc id="d3">Material detail placeholder.</desc>
+  <defs>
+    <linearGradient id="g3" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2f2522"/>
+      <stop offset="100%" stop-color="#ab816f"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1200" fill="url(#g3)"/>
+  <path d="M0 930C290 760 500 750 820 890C1120 1020 1330 1030 1600 910V1200H0Z" fill="#f5ece2" fill-opacity="0.72"/>
+  <circle cx="500" cy="370" r="250" fill="#f5ede4" fill-opacity="0.25"/>
+  <rect x="900" y="170" width="500" height="820" rx="35" fill="#f5ece2" fill-opacity="0.4"/>
+  <text x="170" y="1080" fill="#f7efe8" font-size="70" font-family="Georgia, serif">CASE 03</text>
+</svg>

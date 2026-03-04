@@ -7,7 +7,7 @@ import { Timestamp, where } from 'firebase/firestore'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { callAvailabilityAgent } from '../../call/callAvailabilityAgent'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { Auth } from '../../main'
 import type { Appointment } from '../../models/Appointment'
 import { appConfigStore } from '../../stores/appConfigStore'
@@ -1173,3 +1173,4 @@ watch(() => route.params.id, loadItem)
   padding: 0.45rem 0.55rem;
 }
 </style>
+

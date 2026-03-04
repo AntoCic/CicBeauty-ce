@@ -11,7 +11,7 @@ import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
 import { asDate } from '../../utils/date'
 import { hasOperatorAccess } from '../../utils/permissions'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import ClientAppointmentCard from './components/ClientAppointmentCard.vue'
 import ClientPersonCard from './components/ClientPersonCard.vue'
 import { appointmentClientId, buildClientAppointmentSummary, type AppointmentLike } from './clientAppointmentUtils'
@@ -470,3 +470,4 @@ watch(() => route.params.id, loadItem)
   color: #ffffff;
 }
 </style>
+

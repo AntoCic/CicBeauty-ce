@@ -3,7 +3,7 @@ import { cicKitStore, useStoreWatch } from 'cic-kit'
 import { ArcElement, BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, LineElement, PointElement, Tooltip } from 'chart.js'
 import { computed } from 'vue'
 import { Bar, Line, Pie } from 'vue-chartjs'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
 import { couponStore } from '../../stores/couponStore'
@@ -219,3 +219,4 @@ function euro(value: number) {
     </div>
   </div>
 </template>
+

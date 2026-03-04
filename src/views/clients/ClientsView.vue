@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { cicKitStore, useStoreWatch } from 'cic-kit'
+import { Btn, cicKitStore, useStoreWatch } from 'cic-kit'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
 import ClientPersonCard from './components/ClientPersonCard.vue'
@@ -96,11 +96,21 @@ function appointmentMiniLabel(appointment?: { date_time?: unknown }) {
     <HeaderApp
       title="Clienti"
       :to="{ name: 'home' }"
-      v-model="search"
-      search-placeholder="Cerca cliente..."
-      :btn2-icon="canOperate ? 'add' : undefined"
-      @btn2-click="openCreateClient"
-    />
+    >
+      <input
+        v-model="search"
+        class="app-header__search"
+        type="search"
+        placeholder="Cerca cliente..."
+        aria-label="Cerca cliente"
+      />
+      <Btn
+        v-if="canOperate"
+        icon="add"
+        variant="ghost"
+        @click="openCreateClient"
+      />
+    </HeaderApp>
 
     <div class="px-2 pb-4">
       <p v-if="!canOperate" class="text-muted small mt-3">
@@ -204,3 +214,4 @@ function appointmentMiniLabel(appointment?: { date_time?: unknown }) {
   background: transparent;
 }
 </style>
+
