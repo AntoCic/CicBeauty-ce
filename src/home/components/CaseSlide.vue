@@ -7,6 +7,9 @@ import { useScrollReveal } from '../composables/useScrollReveal'
 const props = defineProps<{
   item: CaseStudy
   index: number
+  problemLabel?: string
+  interventionLabel?: string
+  resultLabel?: string
 }>()
 
 const { target, revealClass } = useScrollReveal({ threshold: 0.3, once: true })
@@ -18,7 +21,7 @@ const paddedIndex = computed(() => String(props.index + 1).padStart(2, '0'))
 <template>
   <article ref="target" class="home-case-slide home-reveal" :class="revealClass">
     <div class="home-case-slide__media">
-      <ParallaxImage :src="item.image" :alt="item.title" :speed="0.055" />
+      <ParallaxImage :src="item.image" :alt="item.title" :speed="0.055" loading="eager" fetchpriority="low" />
     </div>
 
     <div class="home-case-slide__content">
@@ -28,15 +31,15 @@ const paddedIndex = computed(() => String(props.index + 1).padStart(2, '0'))
 
       <ul class="home-case-slide__steps">
         <li>
-          <strong>Problema</strong>
+          <strong>{{ problemLabel || 'Problema' }}</strong>
           <span>{{ item.problem }}</span>
         </li>
         <li>
-          <strong>Intervento</strong>
+          <strong>{{ interventionLabel || 'Intervento' }}</strong>
           <span>{{ item.intervention }}</span>
         </li>
         <li>
-          <strong>Risultato</strong>
+          <strong>{{ resultLabel || 'Risultato' }}</strong>
           <span>{{ item.result }}</span>
         </li>
       </ul>

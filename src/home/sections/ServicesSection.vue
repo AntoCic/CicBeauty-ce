@@ -1,65 +1,30 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useWindowSize } from '@vueuse/core'
-import iconStrategy from '../../assets/home/icons/strategy.svg'
-import iconNarrative from '../../assets/home/icons/narrative.svg'
-import iconContent from '../../assets/home/icons/content.svg'
-import iconVisual from '../../assets/home/icons/visual.svg'
-import iconExperience from '../../assets/home/icons/experience.svg'
-import iconGovernance from '../../assets/home/icons/governance.svg'
-import type { ServiceItem } from '../types'
 import SectionTitle from '../components/SectionTitle.vue'
 import { usePrefersReducedMotion } from '../composables/usePrefersReducedMotion'
+import type { HomeContent } from '../homeContent'
 
-const services: ServiceItem[] = [
-  {
-    id: 'strategy',
-    title: 'Strategia',
-    summary: 'Posizionamento, priorita e mappa decisionale.',
-    details: 'Definiamo a chi parli, cosa prometti e con quale sequenza argomentativa.',
-    icon: iconStrategy,
-  },
-  {
-    id: 'narrative',
-    title: 'Identita narrativa',
-    summary: 'Tono, lessico e codici editoriali.',
-    details: 'Costruiamo una voce distintiva applicabile da homepage a schede prodotto.',
-    icon: iconNarrative,
-  },
-  {
-    id: 'architecture',
-    title: 'Architettura contenuti',
-    summary: 'Layout informativo orientato alla scelta.',
-    details: 'Organizziamo i blocchi in base al percorso reale di lettura e confronto.',
-    icon: iconContent,
-  },
-  {
-    id: 'visual',
-    title: 'Direzione visiva',
-    summary: 'Moodboard, texture e regole immagine.',
-    details: 'Allineiamo fotografia e UI per una percezione premium coerente nel tempo.',
-    icon: iconVisual,
-  },
-  {
-    id: 'ux',
-    title: 'UX editoriale',
-    summary: 'Microcopy, CTA e segnali di fiducia.',
-    details: 'Scriviamo interfacce che guidano verso trattamenti e prodotti senza attrito.',
-    icon: iconExperience,
-  },
-  {
-    id: 'governance',
-    title: 'Governance',
-    summary: 'Template e linee guida operative.',
-    details: 'Consegniamo un sistema facile da mantenere anche con team distribuiti.',
-    icon: iconGovernance,
-  },
-]
+const props = defineProps<{
+  content: HomeContent['services']
+}>()
+
+const services = computed(() => props.content.items)
 
 const { width } = useWindowSize()
 const { isReducedMotion } = usePrefersReducedMotion()
 const isMobile = computed(() => width.value <= 900)
-const activeId = ref(services[0]?.id ?? '')
+const activeId = ref(services.value[0]?.id ?? '')
+
+watch(
+  services,
+  (nextServices) => {
+    if (!nextServices.some((item) => item.id === activeId.value)) {
+      activeId.value = nextServices[0]?.id ?? ''
+    }
+  },
+  { immediate: true },
+)
 
 function setActive(id: string) {
   if (isMobile.value) return
@@ -70,9 +35,9 @@ function setActive(id: string) {
 <template>
   <section id="servizi" class="home-services home-panel">
     <SectionTitle
-      eyebrow="Servizi"
-      title="Deliverable che diventano sistema"
-      description="Dalla direzione strategica ai moduli pronti per homepage, prodotti e trattamenti."
+      :eyebrow="content.eyebrow"
+      :title="content.title"
+      :description="content.description"
     />
 
     <div v-if="!isMobile" class="home-services__grid">

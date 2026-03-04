@@ -33,7 +33,7 @@ const workingDaysLabel = computed(() =>
     .filter(Boolean)
     .join(' | '),
 )
-const slotLabel = computed(() => `${props.dayStart} - ${props.breakStart} | ${props.breakEnd} - ${props.dayEnd}`)
+const slotLabel = computed(() => `${props.dayStart} - ${props.dayEnd}`)
 </script>
 
 <template>

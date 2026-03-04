@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import abstractImage from '../../assets/home/case-07.svg'
 import { usePrefersReducedMotion } from '../composables/usePrefersReducedMotion'
+import type { HomeContent } from '../homeContent'
+
+defineProps<{
+  content: HomeContent['finalCta']
+}>()
 
 const { isReducedMotion } = usePrefersReducedMotion()
 
@@ -22,29 +26,33 @@ const ctaMotion = computed(() => {
 <template>
   <section id="contatti" class="home-final-cta home-panel" v-motion :initial="{ opacity: 0, scale: 0.98, y: 18 }" :visible-once="ctaMotion">
     <div class="home-final-cta__texture" aria-hidden="true">
-      <img :src="abstractImage" alt="" loading="lazy" decoding="async" />
+      <img :src="content.image" alt="" loading="lazy" decoding="async" />
     </div>
 
     <div class="home-final-cta__content">
-      <p class="home-kicker">Prossimo step</p>
-      <h2>Parti da cio che serve oggi: trattamenti o prodotti</h2>
-      <p>
-        Seleziona il percorso piu utile adesso. La Home rimane una porta chiara verso entrambe le aree principali.
-      </p>
+      <p class="home-kicker">{{ content.kicker }}</p>
+      <h2>{{ content.title }}</h2>
+      <p>{{ content.description }}</p>
 
       <div class="home-final-cta__actions">
         <RouterLink class="home-btn home-btn--primary" :to="{ name: 'TreatmentCategoriesView' }">
-          Vai ai trattamenti
+          {{ content.primaryCtaLabel }}
         </RouterLink>
         <RouterLink class="home-btn home-btn--ghost" :to="{ name: 'ProductCategoriesView' }">
-          Vai ai prodotti
+          {{ content.secondaryCtaLabel }}
         </RouterLink>
       </div>
 
       <div class="home-final-cta__links">
-        <a href="mailto:hello@cicbeauty.it">hello@cicbeauty.it</a>
-        <a href="tel:+390212345678">+39 02 1234 5678</a>
-        <a href="https://instagram.com" target="_blank" rel="noreferrer">Instagram</a>
+        <a
+          v-for="link in content.links"
+          :key="link.href + link.label"
+          :href="link.href"
+          :target="link.isExternal ? '_blank' : undefined"
+          :rel="link.isExternal ? 'noreferrer' : undefined"
+        >
+          {{ link.label }}
+        </a>
       </div>
     </div>
   </section>

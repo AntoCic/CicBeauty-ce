@@ -3,8 +3,9 @@ import { cicKitStore, loading, toast, useStoreWatch } from 'cic-kit'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CatalogCard from '../../components/CatalogCard.vue'
+import AppHeaderCatalogNav from '../../components/headers/AppHeaderCatalogNav.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import PublicSideNavigator from '../../components/public/PublicSideNavigator.vue'
-import PublicTopNav from '../../components/public/PublicTopNav.vue'
 import type { PublicSideLink } from '../../components/public/types'
 import { usePublicSeo } from '../../composables/usePublicSeo'
 import type { Treatment } from '../../models/Treatment'
@@ -193,7 +194,9 @@ async function onDeleteItem() {
 
 <template>
   <div class="public-page" :style="bgStyle">
-    <PublicTopNav />
+    <HeaderApp :to="{ name: 'home' }">
+      <AppHeaderCatalogNav />
+    </HeaderApp>
 
     <main class="public-page__shell">
       <div class="public-layout">

@@ -141,7 +141,7 @@ export const APP_CONFIG_DEFAULTS: AppConfigFields = {
   breakStart: '13:00',
   breakEnd: '14:00',
   dayEnd: '19:00',
-  workingDays: [1, 2, 3, 4, 5, 6],
+  workingDays: [1, 2, 3, 4, 5],
   appointmentSlotMinutes: 15,
   defaultAppointmentDurationMinutes: 60,
   personalAppointmentDurationMinutes: 30,

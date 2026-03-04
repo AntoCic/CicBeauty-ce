@@ -2,6 +2,11 @@
 import { computed } from 'vue'
 import SectionTitle from '../components/SectionTitle.vue'
 import { usePrefersReducedMotion } from '../composables/usePrefersReducedMotion'
+import type { HomeContent } from '../homeContent'
+
+defineProps<{
+  content: HomeContent['manifesto']
+}>()
 
 const { isReducedMotion } = usePrefersReducedMotion()
 
@@ -17,47 +22,21 @@ const cardMotionBase = computed(() => {
   }
 })
 
-const manifestoPoints = [
-  {
-    number: '01',
-    title: 'Analisi editoriale',
-    description:
-      'Mappiamo tono, linguaggio e immagini per capire dove il brand e il catalogo perdono chiarezza.',
-  },
-  {
-    number: '02',
-    title: 'Architettura dei messaggi',
-    description:
-      'Definiamo priorita narrative per homepage, categorie e schede: promessa, prova, azione.',
-  },
-  {
-    number: '03',
-    title: 'Direzione visiva',
-    description:
-      'Allineiamo fotografia, texture e ritmo dei contenuti per mantenere una percezione premium coerente.',
-  },
-  {
-    number: '04',
-    title: 'Sistema operativo',
-    description:
-      'Trasformiamo il metodo in linee guida replicabili: headline, layout, micro-copy e CTA utili.',
-  },
-]
 </script>
 
 <template>
   <section id="metodo" class="home-manifesto home-panel">
     <aside class="home-manifesto__aside">
       <SectionTitle
-        eyebrow="Manifesto"
-        title="Metodo in quattro movimenti"
-        description="Una struttura concreta per far trovare rapidamente trattamenti e prodotti."
+        :eyebrow="content.eyebrow"
+        :title="content.title"
+        :description="content.description"
       />
     </aside>
 
     <div class="home-manifesto__cards">
       <article
-        v-for="(point, index) in manifestoPoints"
+        v-for="(point, index) in content.points"
         :key="point.number"
         class="home-manifesto-card"
         v-motion

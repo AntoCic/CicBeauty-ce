@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import type { HomeContent } from '../../home/homeContent'
+
+defineProps<{
+  content: HomeContent['header']
+}>()
 
 const route = useRoute()
 const routeName = computed(() => String(route.name ?? ''))
@@ -38,30 +43,30 @@ function isCatalogActive(key: 'products' | 'treatments') {
         <RouterLink
           :to="{ name: 'home' }"
           class="home-header__brand text-decoration-none"
-          aria-label="Vai alla home CNC Beauty"
+          :aria-label="`Vai alla home ${content.brandTitle}`"
         >
-          <img class="home-header__logo" src="/img/logo/logo.png" alt="Logo CNC Beauty" />
-          <span class="home-header__title">CNC Beauty</span>
+          <img class="home-header__logo" src="/img/logo/logo.png" :alt="`Logo ${content.brandTitle}`" />
+          <span class="home-header__title">{{ content.brandTitle }}</span>
         </RouterLink>
       </div>
 
       <div class="col-12 col-lg">
         <nav class="home-header__catalog-nav" aria-label="Navigazione home">
-          <a class="home-header__catalog-link text-decoration-none" href="#metodo">Metodo</a>
-          <a class="home-header__catalog-link text-decoration-none" href="#case-studies">Case studies</a>
+          <a class="home-header__catalog-link text-decoration-none" href="#metodo">{{ content.methodLabel }}</a>
+          <a class="home-header__catalog-link text-decoration-none" href="#case-studies">{{ content.pathsLabel }}</a>
           <RouterLink
             :to="{ name: 'ProductCategoriesView' }"
             class="home-header__catalog-link text-decoration-none"
             :class="{ 'is-active': isCatalogActive('products') }"
           >
-            Prodotti
+            {{ content.productsLabel }}
           </RouterLink>
           <RouterLink
             :to="{ name: 'TreatmentCategoriesView' }"
             class="home-header__catalog-link text-decoration-none"
             :class="{ 'is-active': isCatalogActive('treatments') }"
           >
-            Trattamenti
+            {{ content.treatmentsLabel }}
           </RouterLink>
         </nav>
       </div>

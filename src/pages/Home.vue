@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { usePublicSeo } from '../composables/usePublicSeo'
 import HeroSection from '../home/sections/HeroSection.vue'
 import ManifestoSection from '../home/sections/ManifestoSection.vue'
@@ -7,11 +8,16 @@ import HorizontalShowcaseSection from '../home/sections/HorizontalShowcaseSectio
 import ServicesSection from '../home/sections/ServicesSection.vue'
 import FinalCtaSection from '../home/sections/FinalCtaSection.vue'
 import HomeHeaderApp from '../components/headers/HomeHeaderApp.vue'
+import LegalLinks from '../components/LegalLinks.vue'
+import { appConfigStore } from '../stores/appConfigStore'
+import { buildHomeContent } from '../home/homeContent'
 import '../styles/home.scss'
 
+const homeContent = computed(() => buildHomeContent(appConfigStore.getConfigData()))
+
 usePublicSeo(
-  'CNC Beauty | Home editoriale tra trattamenti e prodotti',
-  'Homepage in stile editoriale con percorso immersivo verso trattamenti e prodotti CNC Beauty.',
+  computed(() => homeContent.value.seo.title),
+  computed(() => homeContent.value.seo.description),
 )
 
 const year = new Date().getFullYear()
@@ -19,24 +25,26 @@ const year = new Date().getFullYear()
 
 <template>
   <div class="home-page home-editorial">
-    <a class="home-skip-link" href="#home-main">Salta al contenuto</a>
+    <a class="home-skip-link" href="#home-main">{{ homeContent.header.skipLinkLabel }}</a>
 
     <div class="home-editorial__grain" aria-hidden="true"></div>
 
-    <HomeHeaderApp />
+    <HomeHeaderApp :content="homeContent.header" />
 
     <div id="home-main" class="home-editorial__main" tabindex="-1">
-      <HeroSection />
-      <ManifestoSection />
-      <CredibilitySection />
-      <HorizontalShowcaseSection />
-      <ServicesSection />
-      <FinalCtaSection />
+      <HeroSection :content="homeContent.hero" />
+      <ManifestoSection :content="homeContent.manifesto" />
+      <CredibilitySection :content="homeContent.credibility" />
+      <HorizontalShowcaseSection :content="homeContent.showcase" />
+      <ServicesSection :content="homeContent.services" />
+      <FinalCtaSection :content="homeContent.finalCta" />
     </div>
 
     <footer class="home-editorial__footer">
-      <p>(c) {{ year }} CNC Beauty</p>
-      <p>Editorial studio experience per percorsi beauty.</p>
+      <p>(c) {{ year }} {{ homeContent.footer.brandName }}</p>
+      <p>{{ homeContent.footer.tagline }}</p>
+      <p>{{ homeContent.footer.legalLine }}</p>
+      <LegalLinks />
     </footer>
   </div>
 </template>
