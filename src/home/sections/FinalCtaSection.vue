@@ -32,16 +32,8 @@ const ctaMotion = computed(() => {
     <div class="home-final-cta__content">
       <p class="home-kicker">{{ content.kicker }}</p>
       <h2>{{ content.title }}</h2>
-      <p>{{ content.description }}</p>
+      <p class="mt-2">{{ content.description }}</p>
 
-      <div class="home-final-cta__actions">
-        <RouterLink class="home-btn home-btn--primary" :to="{ name: 'TreatmentCategoriesView' }">
-          {{ content.primaryCtaLabel }}
-        </RouterLink>
-        <RouterLink class="home-btn home-btn--ghost" :to="{ name: 'ProductCategoriesView' }">
-          {{ content.secondaryCtaLabel }}
-        </RouterLink>
-      </div>
 
       <div class="home-final-cta__contact-card">
         <p class="home-final-cta__contact-kicker">Contatto rapido</p>
@@ -74,6 +66,14 @@ const ctaMotion = computed(() => {
         </a>
       </div>
 
+      <div class="home-final-cta__actions">
+        <RouterLink class="home-btn home-btn--primary" :to="{ name: 'TreatmentCategoriesView' }">
+          {{ content.primaryCtaLabel }}
+        </RouterLink>
+        <RouterLink class="home-btn home-btn--ghost" :to="{ name: 'ProductCategoriesView' }">
+          {{ content.secondaryCtaLabel }}
+        </RouterLink>
+      </div>
       <div class="home-final-cta__links">
         <a
           v-for="link in content.links"

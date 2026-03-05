@@ -608,7 +608,7 @@
   scroll-snap-type: x mandatory;
   scroll-padding-inline: clamp(0.15rem, 1.4vw, 0.55rem);
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;
   overscroll-behavior-x: contain;
   padding-bottom: 0.4rem;
 }
@@ -765,7 +765,6 @@
 }
 
 .home-final-cta p {
-  margin: 0.9rem 0 0;
   color: rgba(244, 237, 230, 0.86);
   line-height: 1.72;
 }
