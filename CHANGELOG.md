@@ -1,3 +1,9 @@
+## v0.0.26 - 2026-03-05
+
+home
+
+---
+
 ## v0.0.24 - 2026-03-01
 
 Migrazione operatori calendario statistiche coupon

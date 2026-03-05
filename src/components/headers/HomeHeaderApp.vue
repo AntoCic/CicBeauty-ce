@@ -45,15 +45,15 @@ function isCatalogActive(key: 'products' | 'treatments') {
           class="home-header__brand text-decoration-none"
           :aria-label="`Vai alla home ${content.brandTitle}`"
         >
-          <img class="home-header__logo" src="/img/logo/logo.png" :alt="`Logo ${content.brandTitle}`" />
+          <img class="home-header__logo" src="/img/logo/logo.svg" :alt="`Logo ${content.brandTitle}`" />
           <span class="home-header__title">{{ content.brandTitle }}</span>
         </RouterLink>
       </div>
 
       <div class="col-12 col-lg">
         <nav class="home-header__catalog-nav" aria-label="Navigazione home">
-          <a class="home-header__catalog-link text-decoration-none" href="#metodo">{{ content.methodLabel }}</a>
-          <a class="home-header__catalog-link text-decoration-none" href="#case-studies">{{ content.pathsLabel }}</a>
+          <!-- <a class="home-header__catalog-link text-decoration-none" href="#metodo">{{ content.methodLabel }}</a> -->
+          <a class="home-header__catalog-link text-decoration-none" href="#percorsi">{{ content.pathsLabel }}</a>
           <RouterLink
             :to="{ name: 'ProductCategoriesView' }"
             class="home-header__catalog-link text-decoration-none"
@@ -68,6 +68,7 @@ function isCatalogActive(key: 'products' | 'treatments') {
           >
             {{ content.treatmentsLabel }}
           </RouterLink>
+          <a class="home-header__catalog-link text-decoration-none" href="#contatti">{{ content.contactsLabel }}</a>
         </nav>
       </div>
     </div>

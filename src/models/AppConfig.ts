@@ -12,6 +12,7 @@ export type AppConfigFields = {
   legalEntity: string
   vatOrTaxCode: string
   officeAddress: string
+  publicPhone: string
   privacyEmail: string
   pec: string
   aiModel: string
@@ -51,6 +52,7 @@ export const APP_CONFIG_DEFAULTS: AppConfigFields = {
   legalEntity: 'Carla Ciancimino',
   vatOrTaxCode: '03055730844',
   officeAddress: 'Via Enrico de Nicola, 16, 92019 Sciacca AG',
+  publicPhone: '+39 329 709 4859',
   privacyEmail: 'carla.ciancimino99@gmail.com',
   pec: '',
   aiModel: 'gemini-2.5-flash-lite',
@@ -170,12 +172,13 @@ export function buildCookieConsentStorageKey(cookieConsentKeyDate: unknown): str
   return `${COOKIE_CONSENT_STORAGE_KEY_PREFIX}${normalizeCookieConsentKeyDate(cookieConsentKeyDate)}`
 }
 
-export function hasLegalPlaceholdersInConfig(config: Pick<AppConfigFields, 'ownerName' | 'legalEntity' | 'vatOrTaxCode' | 'officeAddress' | 'privacyEmail'>): boolean {
+export function hasLegalPlaceholdersInConfig(config: Pick<AppConfigFields, 'ownerName' | 'legalEntity' | 'vatOrTaxCode' | 'officeAddress' | 'publicPhone' | 'privacyEmail'>): boolean {
   return [
     config.ownerName,
     config.legalEntity,
     config.vatOrTaxCode,
     config.officeAddress,
+    config.publicPhone,
     config.privacyEmail,
   ].some((value) => {
     const normalized = String(value ?? '').trim()
@@ -194,6 +197,7 @@ export class AppConfig extends FirestoreModel<AppConfigData> {
   legalEntity: string
   vatOrTaxCode: string
   officeAddress: string
+  publicPhone: string
   privacyEmail: string
   pec: string
   aiModel: string
@@ -229,6 +233,7 @@ export class AppConfig extends FirestoreModel<AppConfigData> {
     this.legalEntity = data.legalEntity ?? APP_CONFIG_DEFAULTS.legalEntity
     this.vatOrTaxCode = data.vatOrTaxCode ?? APP_CONFIG_DEFAULTS.vatOrTaxCode
     this.officeAddress = data.officeAddress ?? APP_CONFIG_DEFAULTS.officeAddress
+    this.publicPhone = data.publicPhone ?? APP_CONFIG_DEFAULTS.publicPhone
     this.privacyEmail = data.privacyEmail ?? APP_CONFIG_DEFAULTS.privacyEmail
     this.pec = data.pec ?? APP_CONFIG_DEFAULTS.pec
     this.aiModel = data.aiModel ?? APP_CONFIG_DEFAULTS.aiModel
@@ -269,6 +274,7 @@ export class AppConfig extends FirestoreModel<AppConfigData> {
       legalEntity: this.legalEntity,
       vatOrTaxCode: this.vatOrTaxCode,
       officeAddress: this.officeAddress,
+      publicPhone: this.publicPhone,
       privacyEmail: this.privacyEmail,
       pec: this.pec,
       aiModel: this.aiModel,

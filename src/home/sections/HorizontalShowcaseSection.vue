@@ -43,7 +43,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <section id="case-studies" ref="sectionRef" class="home-horizontal" :style="sectionStyle">
+  <section id="percorsi" ref="sectionRef" class="home-horizontal" :style="sectionStyle">
     <div ref="stickyRef" class="home-horizontal__sticky" :class="{ 'is-pinned': isPinned }">
       <div class="home-horizontal__header">
         <SectionTitle

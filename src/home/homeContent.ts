@@ -1,4 +1,4 @@
-import type { AppConfigData } from '../models/AppConfig'
+import { APP_CONFIG_DEFAULTS, type AppConfigData } from '../models/AppConfig'
 import type { CaseStudy, ServiceItem } from './types'
 import iconStrategy from '../assets/home/icons/strategy.svg'
 import iconNarrative from '../assets/home/icons/narrative.svg'
@@ -19,6 +19,7 @@ type HomeHeaderContent = {
   pathsLabel: string
   productsLabel: string
   treatmentsLabel: string
+  contactsLabel: string
 }
 
 type HomeFooterContent = {
@@ -90,6 +91,7 @@ type HomeServicesContent = {
 }
 
 type HomeFinalCtaLink = {
+  kind?: 'default' | 'map'
   label: string
   href: string
   isExternal?: boolean
@@ -102,6 +104,10 @@ type HomeFinalCtaContent = {
   image: string
   primaryCtaLabel: string
   secondaryCtaLabel: string
+  phoneLabel: string
+  phoneHref: string
+  whatsappHref: string
+  whatsappLabel: string
   links: HomeFinalCtaLink[]
 }
 
@@ -151,11 +157,25 @@ function toMapsUrl(address: string) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmed)}`
 }
 
+function toTelHref(phone: string) {
+  const trimmed = String(phone ?? '').trim()
+  if (!trimmed) return ''
+  const normalized = trimmed.replace(/[^\d+]/g, '')
+  if (!normalized) return ''
+  return `tel:${normalized}`
+}
+
+function toWhatsAppUrl(phone: string) {
+  const digits = String(phone ?? '').replace(/\D/g, '')
+  if (!digits) return ''
+  return `https://wa.me/${digits}`
+}
+
 export function buildHomeContent(config: AppConfigData): HomeContent {
   const brandName = normalizeBrandName(config.brandName)
   const ownerName = normalizeOwner(config.ownerName)
   const address = String(config.officeAddress ?? '').trim()
-  const email = String(config.privacyEmail ?? '').trim()
+  const phone = String(config.publicPhone ?? '').trim() || APP_CONFIG_DEFAULTS.publicPhone
   const dayStart = String(config.dayStart ?? '').trim() || '09:00'
   const dayEnd = String(config.dayEnd ?? '').trim() || '19:00'
   // const breakStart = String(config.breakStart ?? '').trim()
@@ -248,13 +268,9 @@ export function buildHomeContent(config: AppConfigData): HomeContent {
   ]
 
   const links: HomeFinalCtaLink[] = []
-  if (email) {
-    links.push({ label: email, href: `mailto:${email}` })
-  }
-
   const mapsUrl = toMapsUrl(address)
   if (mapsUrl) {
-    links.push({ label: 'Apri su Google Maps', href: mapsUrl, isExternal: true })
+    links.push({ kind: 'map', label: 'Apri su Google Maps', href: mapsUrl, isExternal: true })
   }
 
   return {
@@ -270,6 +286,7 @@ export function buildHomeContent(config: AppConfigData): HomeContent {
       pathsLabel: 'Percorsi',
       productsLabel: 'Prodotti',
       treatmentsLabel: 'Trattamenti',
+      contactsLabel: 'Contatti',
     },
     footer: {
       brandName,
@@ -290,7 +307,7 @@ export function buildHomeContent(config: AppConfigData): HomeContent {
       primaryCtaLabel: 'Vai ai trattamenti',
       secondaryCtaLabel: 'Vai ai prodotti',
       inlineCtaLabel: 'Scopri i percorsi piu richiesti',
-      inlineCtaHref: '#case-studies',
+      inlineCtaHref: '#percorsi',
     },
     manifesto: {
       eyebrow: 'Metodo',
@@ -370,6 +387,10 @@ export function buildHomeContent(config: AppConfigData): HomeContent {
       image: '/img/home/ingresso-centro.jpg',
       primaryCtaLabel: 'Apri trattamenti',
       secondaryCtaLabel: 'Apri prodotti',
+      phoneLabel: phone,
+      phoneHref: toTelHref(phone),
+      whatsappHref: toWhatsAppUrl(phone),
+      whatsappLabel: 'Scrivi su WhatsApp',
       links,
     },
   }

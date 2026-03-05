@@ -57,6 +57,7 @@ const schema = toTypedSchema(
     legalEntity: yup.string().trim().required("Campo obbligatorio"),
     vatOrTaxCode: yup.string().trim().required("Campo obbligatorio"),
     officeAddress: yup.string().trim().required("Campo obbligatorio"),
+    publicPhone: yup.string().trim().required("Campo obbligatorio"),
     privacyEmail: yup.string().trim().email("Email non valida").required("Campo obbligatorio"),
     pec: yup.string().trim().default(""),
     aiModel: yup.string().trim().required("Campo obbligatorio"),
@@ -93,6 +94,7 @@ const initialValues = computed<AppConfigForm>(() => ({
   legalEntity: currentConfigData.value.legalEntity,
   vatOrTaxCode: currentConfigData.value.vatOrTaxCode,
   officeAddress: currentConfigData.value.officeAddress,
+  publicPhone: currentConfigData.value.publicPhone,
   privacyEmail: currentConfigData.value.privacyEmail,
   pec: currentConfigData.value.pec,
   aiModel: currentConfigData.value.aiModel,
@@ -139,6 +141,7 @@ async function onSubmit(values: Record<string, unknown>) {
     legalEntity: String(values.legalEntity ?? "").trim(),
     vatOrTaxCode: String(values.vatOrTaxCode ?? "").trim(),
     officeAddress: String(values.officeAddress ?? "").trim(),
+    publicPhone: String(values.publicPhone ?? "").trim(),
     privacyEmail: String(values.privacyEmail ?? "").trim(),
     pec: String(values.pec ?? "").trim(),
     aiModel: String(values.aiModel ?? "").trim(),
@@ -364,6 +367,22 @@ function resetFieldToDefault(field: AppConfigFieldKey, setFieldValue: (field: st
             </div>
             <Field name="privacyEmail" class="form-control" />
             <ErrorMessage name="privacyEmail" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="field-title-row">
+              <label class="form-label mb-0">Telefono pubblico / WhatsApp</label>
+              <Btn
+                v-if="hasDefaultForField('publicPhone')"
+                type="button"
+                color="secondary"
+                class="btn-sm"
+                @click="resetFieldToDefault('publicPhone', setFieldValue)"
+              >
+                Default
+              </Btn>
+            </div>
+            <Field name="publicPhone" class="form-control" placeholder="+39..." />
+            <ErrorMessage name="publicPhone" class="text-danger small" />
           </div>
           <div class="col-12 col-md-6">
             <div class="field-title-row">

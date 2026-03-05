@@ -29,21 +29,27 @@ export function useHorizontalScroll(options: UseHorizontalScrollOptions = {}) {
   const isMobile = computed(() => windowWidth.value <= mobileBreakpoint)
   const isReducedMotion = computed(() => Boolean(toValue(options.reducedMotion ?? false)))
   const isPinned = computed(() => !isMobile.value && !isReducedMotion.value && maxOffset.value > 0)
+  const leadInOffset = computed(() => {
+    if (!isPinned.value) return 0
+    return clamp(windowHeight.value * 0.12, 72, 140)
+  })
 
   const sectionStart = computed(() => scrollY.value + sectionBounds.top.value)
-  const sectionScrollDistance = computed(() =>
-    Math.max(1, sectionBounds.height.value - windowHeight.value),
-  )
 
   const sectionStyle = computed(() => {
     if (!isPinned.value) {
-      return { height: 'auto' }
+      return {
+        height: 'auto',
+        '--home-horizontal-pin-offset': '0px',
+      }
     }
 
     return {
       // La sezione viene allungata esattamente della distanza orizzontale da percorrere:
-      // il tratto extra di scroll verticale "pilota" il translateX del track.
-      height: `${windowHeight.value + maxOffset.value}px`,
+      // + un lead-in iniziale per iniziare lo spostamento quando le card sono piu in alto.
+      // Il tratto extra di scroll verticale "pilota" il translateX del track.
+      height: `${windowHeight.value + maxOffset.value + leadInOffset.value}px`,
+      '--home-horizontal-pin-offset': `${leadInOffset.value}px`,
     }
   })
 
@@ -84,7 +90,11 @@ export function useHorizontalScroll(options: UseHorizontalScrollOptions = {}) {
     // Da quel punto il delta di scroll verticale viene normalizzato
     // sulla distanza reale scrollabile della sezione.
     const distanceInsideSection = scrollY.value - sectionStart.value
-    progress.value = clamp(distanceInsideSection / sectionScrollDistance.value, 0, 1)
+    progress.value = clamp(
+      (distanceInsideSection - leadInOffset.value) / Math.max(1, maxOffset.value),
+      0,
+      1,
+    )
   }
 
   function onFallbackScroll() {
@@ -105,7 +115,7 @@ export function useHorizontalScroll(options: UseHorizontalScrollOptions = {}) {
   )
 
   watch(
-    [() => scrollY.value, () => sectionStart.value, () => maxOffset.value, () => isPinned.value],
+    [() => scrollY.value, () => sectionStart.value, () => maxOffset.value, () => leadInOffset.value, () => isPinned.value],
     () => {
       syncProgressWithScroll()
     },
