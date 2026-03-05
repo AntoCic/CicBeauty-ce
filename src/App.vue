@@ -33,11 +33,7 @@ const publicMainInlineStyle = computed<CSSProperties | undefined>(() => {
 
 function applyToolbarMenu() {
   toolbarOffcanvasStore.title = "Menu";
-  const hasBetaFeatures = Auth?.user?.hasPermission(defaultUserPermission.BETA_FEATURES) ?? false;
-  const hasSuperAdmin = Auth?.user?.hasPermission(defaultUserPermission.SUPERADMIN) ?? false;
-  const hasAdmin = Auth.isAdmin || hasSuperAdmin;
-  const hasOperator = hasAdmin || (Auth?.user?.hasPermission(UserPermission.OPERATORE) ?? false);
-  toolbarOffcanvasStore.setTabs(getToolbarOffcanvasTabs(hasBetaFeatures, hasSuperAdmin, hasAdmin, hasOperator));
+  toolbarOffcanvasStore.setTabs(getToolbarOffcanvasTabs());
 }
 useStoreWatch([{ store: appConfigStore, checkLogin: false }, { store: publicUserStore }]);
 

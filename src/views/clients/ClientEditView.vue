@@ -10,7 +10,6 @@ import { Auth } from '../../main'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
 import { asDate } from '../../utils/date'
-import { hasOperatorAccess } from '../../utils/permissions'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import ClientAppointmentCard from './components/ClientAppointmentCard.vue'
 import ClientPersonCard from './components/ClientPersonCard.vue'
@@ -48,18 +47,13 @@ const isLoading = ref(false)
 const isDeleting = ref(false)
 const isEditMode = ref(false)
 
-const canOperate = computed(() => hasOperatorAccess())
 const routeId = computed(() => String(route.params.id ?? '').trim())
 const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
 
-useStoreWatch(
-  canOperate.value
-    ? [
-        { store: clientStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' },  } },
-        { store: appointmentStore, getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' },  } },
-      ]
-    : [],
-)
+useStoreWatch([
+  { store: clientStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' },  } },
+  { store: appointmentStore, getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' },  } },
+])
 
 const schema = toTypedSchema(
   yup.object({
@@ -134,7 +128,6 @@ function openAppointment(appointment: AppointmentLike) {
 }
 
 async function loadItem() {
-  if (!canOperate.value) return
   if (isCreateMode.value) {
     current.value = undefined
     isEditMode.value = true
@@ -158,11 +151,6 @@ async function loadItem() {
 }
 
 async function onSubmit(values: Record<string, unknown>) {
-  if (!canOperate.value) {
-    toast.error('Permesso OPERATORE richiesto')
-    return
-  }
-
   const payload = {
     name: normalizeString(values.name),
     surname: normalizeString(values.surname),
@@ -222,8 +210,7 @@ watch(() => route.params.id, loadItem)
     <HeaderApp :title="isCreateMode ? 'Nuovo cliente' : 'Cliente'" :to="{ name: 'ClientsView' }" />
 
     <div class="edit-wrapper mx-auto py-3">
-      <p v-if="!canOperate" class="text-muted small mt-3">Permesso `OPERATORE` richiesto.</p>
-      <p v-else-if="isLoading" class="text-muted small mt-3">Caricamento...</p>
+      <p v-if="isLoading" class="text-muted small mt-3">Caricamento...</p>
 
       <Form
         v-else-if="isEditMode && (isCreateMode || current)"

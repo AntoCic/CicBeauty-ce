@@ -1,13 +1,7 @@
+import { defaultUserPermission } from 'cic-kit'
 import type { RouteLocationRaw } from 'vue-router'
-
-export type HomeAppPermissionRule = {
-  requiresOperator?: boolean
-  requiresAdmin?: boolean
-  requiresSuperAdmin?: boolean
-  requiresBetaFeatures?: boolean
-  requiresAi?: boolean
-  requiresAiBetaFeatures?: boolean
-}
+import { UserPermission } from '../../enums/UserPermission'
+import type { AppPermissionInput } from '../../utils/permissions'
 
 export type HomeAppShortcut = {
   id: string
@@ -15,7 +9,7 @@ export type HomeAppShortcut = {
   to: RouteLocationRaw
   icon: string
   iconClass: string
-  permissionRule?: HomeAppPermissionRule
+  permission?: AppPermissionInput
 }
 
 export const GUEST_HOME_APPS: HomeAppShortcut[] = [
@@ -33,13 +27,6 @@ export const GUEST_HOME_APPS: HomeAppShortcut[] = [
     icon: 'shopping_bag',
     iconClass: 'app-icon-warm',
   },
-  {
-    id: 'announcements',
-    title: 'Avvisi',
-    to: { name: 'AnnouncementsView' },
-    icon: 'campaign',
-    iconClass: 'app-icon-soft',
-  },
 ]
 
 export const AUTH_HOME_APPS: HomeAppShortcut[] = [
@@ -49,7 +36,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'CalendarView' },
     icon: 'calendar_month',
     iconClass: 'app-icon-rose',
-    permissionRule: { requiresOperator: true },
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
   },
   {
     id: 'clients',
@@ -57,7 +44,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'ClientsView' },
     icon: 'groups',
     iconClass: 'app-icon-ocean',
-    permissionRule: { requiresOperator: true },
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
   },
   {
     id: 'expenses',
@@ -65,7 +52,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'ExpensesView' },
     icon: 'account_balance_wallet',
     iconClass: 'app-icon-amber',
-    permissionRule: { requiresOperator: true },
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
   },
   {
     id: 'coupons',
@@ -73,7 +60,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'CouponsView' },
     icon: 'local_offer',
     iconClass: 'app-icon-calm',
-    permissionRule: { requiresOperator: true },
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
   },
   {
     id: 'stats',
@@ -81,7 +68,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'StatsView' },
     icon: 'bar_chart',
     iconClass: 'app-icon-sky',
-    permissionRule: { requiresOperator: true },
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
   },
   {
     id: 'relations',
@@ -89,7 +76,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'RelationsView' },
     icon: 'schema',
     iconClass: 'app-icon-night',
-    permissionRule: { requiresOperator: true },
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
   },
   {
     id: 'products-manage',
@@ -132,7 +119,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'AiBeautyChatView' },
     icon: 'chat',
     iconClass: 'app-icon-sky',
-    permissionRule: { requiresAi: true, requiresAiBetaFeatures: true },
+    permission: UserPermission.AI_BETA_FEATURES,
   },
   {
     id: 'announcements',
@@ -140,7 +127,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'AnnouncementsView' },
     icon: 'notifications',
     iconClass: 'app-icon-rose',
-    permissionRule: { requiresBetaFeatures: true },
+    permission: defaultUserPermission.BETA_FEATURES,
   },
   {
     id: 'app-config',
@@ -148,7 +135,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'AppConfigView' },
     icon: 'settings',
     iconClass: 'app-icon-night',
-    permissionRule: { requiresSuperAdmin: true },
+    permission: defaultUserPermission.SUPERADMIN,
   },
   {
     id: 'catalog-backup',
@@ -156,7 +143,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'CatalogBackupView' },
     icon: 'download',
     iconClass: 'app-icon-night',
-    permissionRule: { requiresSuperAdmin: true },
+    permission: defaultUserPermission.SUPERADMIN,
   },
   {
     id: 'agent-prompts',
@@ -164,7 +151,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'AgentPromptsView' },
     icon: 'psychology',
     iconClass: 'app-icon-sky',
-    permissionRule: { requiresAdmin: true },
+    permission: defaultUserPermission.ADMIN,
   },
   {
     id: 'test-playground',
@@ -172,7 +159,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'TestPlaygroundView' },
     icon: 'science',
     iconClass: 'app-icon-night',
-    permissionRule: { requiresBetaFeatures: true },
+    permission: defaultUserPermission.BETA_FEATURES,
   },
   {
     id: 'migration-import',
@@ -180,6 +167,6 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'MigrationImportView' },
     icon: 'upload_file',
     iconClass: 'app-icon-amber',
-    permissionRule: { requiresBetaFeatures: true, requiresOperator: true },
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
   },
 ]

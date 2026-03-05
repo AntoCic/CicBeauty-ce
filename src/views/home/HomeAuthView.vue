@@ -1,30 +1,14 @@
 <script setup lang="ts">
-import { cicKitStore, defaultUserPermission } from 'cic-kit'
+import { cicKitStore } from 'cic-kit'
 import { computed, ref } from 'vue'
-import { UserPermission } from '../../enums/UserPermission'
 import { Auth } from '../../main'
-import { hasOperatorAccess } from '../../utils/permissions'
 import { AUTH_HOME_APPS, type HomeAppShortcut } from './homeApps'
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const isQrModalOpen = ref(false)
-const hasOperator = computed(() => hasOperatorAccess())
-const hasAdmin = computed(() => Boolean(Auth.isAdmin || Auth.isSuperAdmin))
-const hasSuperAdmin = computed(() => Boolean(Auth.isSuperAdmin))
-const hasBetaFeatures = computed(() => Auth?.user?.hasPermission(defaultUserPermission.BETA_FEATURES) ?? false)
-const hasAi = computed(() => Auth?.user?.hasPermission(UserPermission.AI) ?? false)
-const hasAiBetaFeatures = computed(() => Auth?.user?.hasPermission(UserPermission.AI_BETA_FEATURES) ?? false)
 
 function canOpenApp(app: HomeAppShortcut) {
-  const rule = app.permissionRule
-  if (!rule) return true
-  if (rule.requiresOperator && !hasOperator.value) return false
-  if (rule.requiresAdmin && !hasAdmin.value) return false
-  if (rule.requiresSuperAdmin && !hasSuperAdmin.value) return false
-  if (rule.requiresBetaFeatures && !hasBetaFeatures.value) return false
-  if (rule.requiresAi && !hasAi.value) return false
-  if (rule.requiresAiBetaFeatures && !hasAiBetaFeatures.value) return false
-  return true
+  return !app.permission || (Auth?.user?.hasPermission(app.permission) ?? false)
 }
 
 function openQrModal() {
@@ -41,7 +25,7 @@ function onQrKeydown(event: KeyboardEvent) {
   openQrModal()
 }
 
-const visibleApps = computed(() => AUTH_HOME_APPS.filter((app) => canOpenApp(app)))
+const visibleApps = computed(() => AUTH_HOME_APPS.filter(canOpenApp))
 </script>
 
 <template>

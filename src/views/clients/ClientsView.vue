@@ -7,28 +7,22 @@ import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
 import ClientPersonCard from './components/ClientPersonCard.vue'
 import { appointmentClientId, buildClientAppointmentSummary } from './clientAppointmentUtils'
-import { hasOperatorAccess } from '../../utils/permissions'
 import { asDate } from '../../utils/date'
 
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const search = ref('')
-const canOperate = computed(() => hasOperatorAccess())
 
-useStoreWatch(
-  canOperate.value
-    ? [
-        {
-          store: clientStore,
-          getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' },  },
-        },
-        {
-          store: appointmentStore,
-          getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' },  },
-        },
-      ]
-    : [],
-)
+useStoreWatch([
+  {
+    store: clientStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' },  },
+  },
+  {
+    store: appointmentStore,
+    getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' },  },
+  },
+])
 
 const appointmentSummaryByClient = computed(() => {
   const grouped = new Map<string, (typeof appointmentStore.itemsActiveArray)[number][]>()
@@ -105,7 +99,6 @@ function appointmentMiniLabel(appointment?: { date_time?: unknown }) {
         aria-label="Cerca cliente"
       />
       <Btn
-        v-if="canOperate"
         icon="add"
         variant="ghost"
         @click="openCreateClient"
@@ -113,11 +106,7 @@ function appointmentMiniLabel(appointment?: { date_time?: unknown }) {
     </HeaderApp>
 
     <div class="px-2 pb-4">
-      <p v-if="!canOperate" class="text-muted small mt-3">
-        Permesso `OPERATORE` richiesto per visualizzare i clienti.
-      </p>
-
-      <div v-else class="vstack gap-2">
+      <div class="vstack gap-2">
         <p class="client-list-legend mb-0">
           <span>&#x25C0; precedente</span>
           <span>&#x25B6; prossimo</span>

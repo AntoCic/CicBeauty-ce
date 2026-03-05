@@ -17,25 +17,19 @@ import {
   buildTreatmentUsage,
   buildTypeExpenseCosts,
 } from '../../utils/businessStats'
-import { hasOperatorAccess } from '../../utils/permissions'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, LineElement, PointElement, Legend, Tooltip)
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
-const canOperate = computed(() => hasOperatorAccess())
 
-useStoreWatch(
-  canOperate.value
-    ? [
-        { store: appointmentStore, getOpts: {  } },
-        { store: clientStore, getOpts: {  } },
-        { store: treatmentStore, getOpts: {  }, checkLogin: false },
-        { store: expenseStore, getOpts: {  } },
-        { store: typeExpenseStore, getOpts: {  } },
-        { store: couponStore, getOpts: {  } },
-      ]
-    : [],
-)
+useStoreWatch([
+  { store: appointmentStore, getOpts: {  } },
+  { store: clientStore, getOpts: {  } },
+  { store: treatmentStore, getOpts: {  }, checkLogin: false },
+  { store: expenseStore, getOpts: {  } },
+  { store: typeExpenseStore, getOpts: {  } },
+  { store: couponStore, getOpts: {  } },
+])
 
 const fallbackDuration = computed(() => 60)
 const treatmentsById = computed(() => new Map(treatmentStore.itemsActiveArray.map((item) => [item.id, item])))
@@ -146,76 +140,72 @@ function euro(value: number) {
     <HeaderApp title="Statistiche" :to="{ name: 'home' }" />
 
     <div class="px-2 pb-4">
-      <p v-if="!canOperate" class="text-muted small mt-3">Permesso `OPERATORE` richiesto per vedere le statistiche.</p>
-
-      <template v-else>
-        <div class="row g-2">
-          <div class="col-12 col-xl-6">
-            <div class="card border-0 shadow-sm p-3 h-100">
-              <h3 class="h6">Top clienti per spesa</h3>
-              <Bar :data="customersSpendChart" />
-            </div>
-          </div>
-          <div class="col-12 col-xl-6">
-            <div class="card border-0 shadow-sm p-3 h-100">
-              <h3 class="h6">Top clienti per tempo dedicato</h3>
-              <Bar :data="customerMinutesChart" />
-            </div>
-          </div>
-          <div class="col-12 col-xl-6">
-            <div class="card border-0 shadow-sm p-3 h-100">
-              <h3 class="h6">Trattamenti piu richiesti</h3>
-              <Bar :data="treatmentUsageChart" />
-            </div>
-          </div>
-          <div class="col-12 col-xl-6">
-            <div class="card border-0 shadow-sm p-3 h-100">
-              <h3 class="h6">Distribuzione spese per tipo</h3>
-              <Pie :data="expensePieChart" />
-            </div>
-          </div>
-          <div class="col-12">
-            <div class="card border-0 shadow-sm p-3">
-              <h3 class="h6">Carico giornaliero (minuti prenotati)</h3>
-              <Line :data="dailyLoadChart" />
-            </div>
+      <div class="row g-2">
+        <div class="col-12 col-xl-6">
+          <div class="card border-0 shadow-sm p-3 h-100">
+            <h3 class="h6">Top clienti per spesa</h3>
+            <Bar :data="customersSpendChart" />
           </div>
         </div>
-
-        <div class="row g-2 mt-1">
-          <div class="col-12 col-lg-4">
-            <div class="card border-0 shadow-sm p-3 h-100">
-              <h3 class="h6">Clienti top frequenza</h3>
-              <ol class="small mb-0">
-                <li v-for="item in topCustomersByVisits" :key="item.clientId">
-                  {{ item.label }} - {{ item.appointments }} appuntamenti
-                </li>
-              </ol>
-            </div>
-          </div>
-          <div class="col-12 col-lg-4">
-            <div class="card border-0 shadow-sm p-3 h-100">
-              <h3 class="h6">Clienti top spesa</h3>
-              <ol class="small mb-0">
-                <li v-for="item in topCustomersBySpend" :key="item.clientId">
-                  {{ item.label }} - {{ euro(item.spend) }}
-                </li>
-              </ol>
-            </div>
-          </div>
-          <div class="col-12 col-lg-4">
-            <div class="card border-0 shadow-sm p-3 h-100">
-              <h3 class="h6">Uso coupon</h3>
-              <ol class="small mb-0">
-                <li v-for="item in couponUsage" :key="item.couponId">
-                  {{ item.label }} - {{ item.usage }} usi
-                </li>
-              </ol>
-              <p v-if="!couponUsage.length" class="small text-muted mb-0">Nessun coupon usato negli appuntamenti.</p>
-            </div>
+        <div class="col-12 col-xl-6">
+          <div class="card border-0 shadow-sm p-3 h-100">
+            <h3 class="h6">Top clienti per tempo dedicato</h3>
+            <Bar :data="customerMinutesChart" />
           </div>
         </div>
-      </template>
+        <div class="col-12 col-xl-6">
+          <div class="card border-0 shadow-sm p-3 h-100">
+            <h3 class="h6">Trattamenti piu richiesti</h3>
+            <Bar :data="treatmentUsageChart" />
+          </div>
+        </div>
+        <div class="col-12 col-xl-6">
+          <div class="card border-0 shadow-sm p-3 h-100">
+            <h3 class="h6">Distribuzione spese per tipo</h3>
+            <Pie :data="expensePieChart" />
+          </div>
+        </div>
+        <div class="col-12">
+          <div class="card border-0 shadow-sm p-3">
+            <h3 class="h6">Carico giornaliero (minuti prenotati)</h3>
+            <Line :data="dailyLoadChart" />
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-2 mt-1">
+        <div class="col-12 col-lg-4">
+          <div class="card border-0 shadow-sm p-3 h-100">
+            <h3 class="h6">Clienti top frequenza</h3>
+            <ol class="small mb-0">
+              <li v-for="item in topCustomersByVisits" :key="item.clientId">
+                {{ item.label }} - {{ item.appointments }} appuntamenti
+              </li>
+            </ol>
+          </div>
+        </div>
+        <div class="col-12 col-lg-4">
+          <div class="card border-0 shadow-sm p-3 h-100">
+            <h3 class="h6">Clienti top spesa</h3>
+            <ol class="small mb-0">
+              <li v-for="item in topCustomersBySpend" :key="item.clientId">
+                {{ item.label }} - {{ euro(item.spend) }}
+              </li>
+            </ol>
+          </div>
+        </div>
+        <div class="col-12 col-lg-4">
+          <div class="card border-0 shadow-sm p-3 h-100">
+            <h3 class="h6">Uso coupon</h3>
+            <ol class="small mb-0">
+              <li v-for="item in couponUsage" :key="item.couponId">
+                {{ item.label }} - {{ item.usage }} usi
+              </li>
+            </ol>
+            <p v-if="!couponUsage.length" class="small text-muted mb-0">Nessun coupon usato negli appuntamenti.</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>

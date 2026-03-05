@@ -8,7 +8,6 @@ import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
 import { treatmentStore } from '../../stores/treatmentStore'
 import { asDate } from '../../utils/date'
-import { hasBetaFeaturesAccess, hasOperatorAccess } from '../../utils/permissions'
 
 type ImportSummary = {
   created: number
@@ -17,8 +16,6 @@ type ImportSummary = {
 }
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
-const canOperate = computed(() => hasOperatorAccess())
-const hasBetaFeatures = computed(() => hasBetaFeaturesAccess())
 
 const clientsJson = ref('')
 const appointmentsJson = ref('')
@@ -26,15 +23,11 @@ const isImporting = ref(false)
 const clientsSummary = ref<ImportSummary | null>(null)
 const appointmentsSummary = ref<ImportSummary | null>(null)
 
-useStoreWatch(
-  canOperate.value
-    ? [
-        { store: clientStore, getOpts: {  } },
-        { store: treatmentStore, getOpts: {  }, checkLogin: false },
-        { store: appointmentStore, getOpts: {  } },
-      ]
-    : [],
-)
+useStoreWatch([
+  { store: clientStore, getOpts: {  } },
+  { store: treatmentStore, getOpts: {  }, checkLogin: false },
+  { store: appointmentStore, getOpts: {  } },
+])
 
 function normalizeString(value: unknown) {
   return String(value ?? '').trim()
@@ -177,11 +170,6 @@ async function importAppointments() {
 }
 
 async function runImport() {
-  if (!canOperate.value || !hasBetaFeatures.value) {
-    toast.error('Permessi OPERATORE + BETA_FEATURES richiesti')
-    return
-  }
-
   isImporting.value = true
   try {
     if (clientsJson.value.trim()) {
@@ -205,57 +193,50 @@ async function runImport() {
     <HeaderApp title="Import Migrazione JSON" :to="{ name: 'home' }" />
 
     <div class="px-2 pb-4">
-      <p v-if="!canOperate" class="text-muted small mt-3">Permesso `OPERATORE` richiesto.</p>
-      <p v-else-if="!hasBetaFeatures" class="text-muted small mt-3">
-        Questa funzione e disponibile solo con `BETA_FEATURES`.
-      </p>
+      <div class="card border-0 shadow-sm p-3 mb-3">
+        <h3 class="h6">Clienti JSON</h3>
+        <textarea
+          v-model="clientsJson"
+          class="form-control"
+          rows="8"
+          placeholder='[{"old_id":"123","name":"Mario","surname":"Rossi","phone_number":"+39..."}]'
+        />
+      </div>
 
-      <template v-else>
-        <div class="card border-0 shadow-sm p-3 mb-3">
-          <h3 class="h6">Clienti JSON</h3>
-          <textarea
-            v-model="clientsJson"
-            class="form-control"
-            rows="8"
-            placeholder='[{"old_id":"123","name":"Mario","surname":"Rossi","phone_number":"+39..."}]'
-          />
-        </div>
+      <div class="card border-0 shadow-sm p-3 mb-3">
+        <h3 class="h6">Appuntamenti JSON</h3>
+        <textarea
+          v-model="appointmentsJson"
+          class="form-control"
+          rows="8"
+          placeholder='[{"old_id":"a1","date_time":"2026-03-01T10:00:00.000Z","user_id":"123","treatment_ids":["t1"]}]'
+        />
+      </div>
 
-        <div class="card border-0 shadow-sm p-3 mb-3">
-          <h3 class="h6">Appuntamenti JSON</h3>
-          <textarea
-            v-model="appointmentsJson"
-            class="form-control"
-            rows="8"
-            placeholder='[{"old_id":"a1","date_time":"2026-03-01T10:00:00.000Z","user_id":"123","treatment_ids":["t1"]}]'
-          />
-        </div>
+      <Btn color="dark" icon="upload_file" :loading="isImporting" @click="runImport">
+        Avvia import
+      </Btn>
 
-        <Btn color="dark" icon="upload_file" :loading="isImporting" @click="runImport">
-          Avvia import
-        </Btn>
-
-        <div class="row g-2 mt-1">
-          <div class="col-12 col-md-6">
-            <div class="card border-0 shadow-sm p-3 h-100">
-              <h4 class="h6">Esito clienti</h4>
-              <p v-if="clientsSummary" class="small mb-0">
-                Creati: {{ clientsSummary.created }} | Aggiornati: {{ clientsSummary.updated }} | Saltati: {{ clientsSummary.skipped }}
-              </p>
-              <p v-else class="small text-muted mb-0">Nessun import eseguito.</p>
-            </div>
-          </div>
-          <div class="col-12 col-md-6">
-            <div class="card border-0 shadow-sm p-3 h-100">
-              <h4 class="h6">Esito appuntamenti</h4>
-              <p v-if="appointmentsSummary" class="small mb-0">
-                Creati: {{ appointmentsSummary.created }} | Aggiornati: {{ appointmentsSummary.updated }} | Saltati: {{ appointmentsSummary.skipped }}
-              </p>
-              <p v-else class="small text-muted mb-0">Nessun import eseguito.</p>
-            </div>
+      <div class="row g-2 mt-1">
+        <div class="col-12 col-md-6">
+          <div class="card border-0 shadow-sm p-3 h-100">
+            <h4 class="h6">Esito clienti</h4>
+            <p v-if="clientsSummary" class="small mb-0">
+              Creati: {{ clientsSummary.created }} | Aggiornati: {{ clientsSummary.updated }} | Saltati: {{ clientsSummary.skipped }}
+            </p>
+            <p v-else class="small text-muted mb-0">Nessun import eseguito.</p>
           </div>
         </div>
-      </template>
+        <div class="col-12 col-md-6">
+          <div class="card border-0 shadow-sm p-3 h-100">
+            <h4 class="h6">Esito appuntamenti</h4>
+            <p v-if="appointmentsSummary" class="small mb-0">
+              Creati: {{ appointmentsSummary.created }} | Aggiornati: {{ appointmentsSummary.updated }} | Saltati: {{ appointmentsSummary.skipped }}
+            </p>
+            <p v-else class="small text-muted mb-0">Nessun import eseguito.</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>

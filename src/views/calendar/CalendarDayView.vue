@@ -15,23 +15,17 @@ import {
   startOfDay,
 } from '../../utils/calendar'
 import { asDate } from '../../utils/date'
-import { hasOperatorAccess } from '../../utils/permissions'
 
 const route = useRoute()
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
-const canOperate = computed(() => hasOperatorAccess())
 
-useStoreWatch(
-  canOperate.value
-    ? [
-        { store: appointmentStore, getOpts: {  } },
-        { store: clientStore, getOpts: {  } },
-        { store: treatmentStore, getOpts: {  }, checkLogin: false },
-        { store: appConfigStore, getOpts: {  }, checkLogin: false },
-      ]
-    : [],
-)
+useStoreWatch([
+  { store: appointmentStore, getOpts: {  } },
+  { store: clientStore, getOpts: {  } },
+  { store: treatmentStore, getOpts: {  }, checkLogin: false },
+  { store: appConfigStore, getOpts: {  }, checkLogin: false },
+])
 
 const selectedDate = computed(() => {
   const raw = String(route.query.date ?? '').trim()
@@ -133,65 +127,61 @@ function createFromSlot(slotStart: Date) {
     <HeaderApp title="Dettaglio giorno" :to="{ name: 'CalendarView' }" />
 
     <div class="px-2 pb-4">
-      <p v-if="!canOperate" class="text-muted small mt-3">Permesso `OPERATORE` richiesto.</p>
+      <div class="card border-0 shadow-sm p-3 mb-2">
+        <h2 class="h6 mb-1 text-capitalize">{{ dayLabel }}</h2>
+        <small class="text-muted">Appuntamenti: {{ dayAppointments.length }} | Slot liberi: {{ freeSlots.length }}</small>
+      </div>
 
-      <template v-else>
-        <div class="card border-0 shadow-sm p-3 mb-2">
-          <h2 class="h6 mb-1 text-capitalize">{{ dayLabel }}</h2>
-          <small class="text-muted">Appuntamenti: {{ dayAppointments.length }} | Slot liberi: {{ freeSlots.length }}</small>
-        </div>
-
-        <div class="row g-2">
-          <div class="col-12 col-lg-7">
-            <div class="card border-0 shadow-sm p-3 h-100">
-              <h3 class="h6 mb-2">Appuntamenti del giorno</h3>
-              <div class="vstack gap-2">
-                <article
-                  v-for="item in dayAppointments"
-                  :key="item.appointment.id"
-                  class="appointment-row"
-                  @click="openAppointment(item.appointment.id)"
-                >
-                  <div class="d-flex justify-content-between align-items-start gap-2">
-                    <div class="min-w-0">
-                      <p class="fw-semibold mb-0 text-truncate">{{ item.clientLabel }}</p>
-                      <p class="small text-muted mb-0">
-                        {{ formatHour(item.start) }} - {{ formatHour(item.end) }}
-                        <span v-if="item.appointment.isPersonal" class="badge text-bg-secondary ms-1">personale</span>
-                      </p>
-                      <p class="small text-muted mb-0 text-truncate">{{ item.appointment.notes || 'Nessuna nota' }}</p>
-                    </div>
-                    <Btn type="button" color="dark" variant="outline" icon="edit" @click.stop="openAppointment(item.appointment.id)">
-                      Edit
-                    </Btn>
+      <div class="row g-2">
+        <div class="col-12 col-lg-7">
+          <div class="card border-0 shadow-sm p-3 h-100">
+            <h3 class="h6 mb-2">Appuntamenti del giorno</h3>
+            <div class="vstack gap-2">
+              <article
+                v-for="item in dayAppointments"
+                :key="item.appointment.id"
+                class="appointment-row"
+                @click="openAppointment(item.appointment.id)"
+              >
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                  <div class="min-w-0">
+                    <p class="fw-semibold mb-0 text-truncate">{{ item.clientLabel }}</p>
+                    <p class="small text-muted mb-0">
+                      {{ formatHour(item.start) }} - {{ formatHour(item.end) }}
+                      <span v-if="item.appointment.isPersonal" class="badge text-bg-secondary ms-1">personale</span>
+                    </p>
+                    <p class="small text-muted mb-0 text-truncate">{{ item.appointment.notes || 'Nessuna nota' }}</p>
                   </div>
-                </article>
-                <p v-if="!dayAppointments.length" class="text-muted small mb-0">Nessun appuntamento nel giorno selezionato.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-12 col-lg-5">
-            <div class="card border-0 shadow-sm p-3 h-100">
-              <h3 class="h6 mb-2">Buchi di disponibilita</h3>
-              <div class="vstack gap-2">
-                <button
-                  v-for="(slot, index) in freeSlots"
-                  :key="`${slot.start.toISOString()}-${index}`"
-                  type="button"
-                  class="slot-btn"
-                  @click="createFromSlot(slot.start)"
-                >
-                  {{ formatHour(slot.start) }} - {{ formatHour(slot.end) }}
-                </button>
-                <p v-if="!freeSlots.length" class="text-muted small mb-0">
-                  Nessuno slot disponibile con la durata di default.
-                </p>
-              </div>
+                  <Btn type="button" color="dark" variant="outline" icon="edit" @click.stop="openAppointment(item.appointment.id)">
+                    Edit
+                  </Btn>
+                </div>
+              </article>
+              <p v-if="!dayAppointments.length" class="text-muted small mb-0">Nessun appuntamento nel giorno selezionato.</p>
             </div>
           </div>
         </div>
-      </template>
+
+        <div class="col-12 col-lg-5">
+          <div class="card border-0 shadow-sm p-3 h-100">
+            <h3 class="h6 mb-2">Buchi di disponibilita</h3>
+            <div class="vstack gap-2">
+              <button
+                v-for="(slot, index) in freeSlots"
+                :key="`${slot.start.toISOString()}-${index}`"
+                type="button"
+                class="slot-btn"
+                @click="createFromSlot(slot.start)"
+              >
+                {{ formatHour(slot.start) }} - {{ formatHour(slot.end) }}
+              </button>
+              <p v-if="!freeSlots.length" class="text-muted small mb-0">
+                Nessuno slot disponibile con la durata di default.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>

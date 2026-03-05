@@ -8,7 +8,6 @@ import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { Auth } from '../../main'
 import { clientStore } from '../../stores/clientStore'
 import { couponStore } from '../../stores/couponStore'
-import { hasOperatorAccess } from '../../utils/permissions'
 
 type CouponForm = {
   code: string
@@ -23,16 +22,11 @@ type CouponForm = {
 }
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
-const canOperate = computed(() => hasOperatorAccess())
 
-useStoreWatch(
-  canOperate.value
-    ? [
-        { store: couponStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' },  } },
-        { store: clientStore, getOpts: {  } },
-      ]
-    : [],
-)
+useStoreWatch([
+  { store: couponStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' },  } },
+  { store: clientStore, getOpts: {  } },
+])
 
 const schema = toTypedSchema(
   yup.object({
@@ -78,11 +72,6 @@ function updateBy() {
 }
 
 async function onSubmit(values: Record<string, unknown>) {
-  if (!canOperate.value) {
-    toast.error('Permesso OPERATORE richiesto')
-    return
-  }
-
   try {
     await couponStore.add({
       code: normalizeString(values.code).toUpperCase(),
@@ -138,109 +127,104 @@ async function deleteCoupon(id: string) {
     <HeaderApp title="Coupon" :to="{ name: 'home' }" />
 
     <div class="px-2 pb-4">
-      <p v-if="!canOperate" class="text-muted small mt-3">Permesso `OPERATORE` richiesto.</p>
-
-      <template v-else>
-        <Form
-          class="card border-0 shadow-sm p-3 mb-3"
-          :validation-schema="schema"
-          :initial-values="initialValues"
-          @submit="onSubmit"
-          v-slot="{ isSubmitting }"
-        >
-          <div class="row g-3">
-            <div class="col-12 col-md-3">
-              <label class="form-label">Codice</label>
-              <Field name="code" class="form-control" placeholder="WELCOME10" />
-              <ErrorMessage name="code" class="text-danger small" />
-            </div>
-            <div class="col-12 col-md-5">
-              <label class="form-label">Titolo</label>
-              <Field name="title" class="form-control" />
-              <ErrorMessage name="title" class="text-danger small" />
-            </div>
-            <div class="col-12 col-md-2">
-              <label class="form-label">Tipo sconto</label>
-              <Field name="discount_type" as="select" class="form-select">
-                <option value="fixed">Importo</option>
-                <option value="percent">Percentuale</option>
-              </Field>
-              <ErrorMessage name="discount_type" class="text-danger small" />
-            </div>
-            <div class="col-12 col-md-2">
-              <label class="form-label">Valore</label>
-              <Field name="discount_value" type="number" step="0.01" class="form-control" />
-              <ErrorMessage name="discount_value" class="text-danger small" />
-            </div>
-
-            <div class="col-12 col-md-4">
-              <label class="form-label">Cliente dedicato (opzionale)</label>
-              <Field name="client_id" as="select" class="form-select">
-                <option value="">Nessuno</option>
-                <option v-for="client in clientStore.itemsActiveArray" :key="client.id" :value="client.id">
-                  {{ client.name }} {{ client.surname }}
-                </option>
-              </Field>
-              <ErrorMessage name="client_id" class="text-danger small" />
-            </div>
-            <div class="col-12 col-md-2">
-              <label class="form-label">Uso massimo</label>
-              <Field name="usage_limit" type="number" min="0" class="form-control" />
-              <ErrorMessage name="usage_limit" class="text-danger small" />
-            </div>
-            <div class="col-12 col-md-3">
-              <label class="form-label">Valido dal</label>
-              <Field name="valid_from" type="date" class="form-control" />
-              <ErrorMessage name="valid_from" class="text-danger small" />
-            </div>
-            <div class="col-12 col-md-3">
-              <label class="form-label">Valido fino al</label>
-              <Field name="valid_to" type="date" class="form-control" />
-              <ErrorMessage name="valid_to" class="text-danger small" />
-            </div>
-
-            <div class="col-12">
-              <label class="form-label">Descrizione</label>
-              <Field name="description" as="textarea" rows="2" class="form-control" />
-              <ErrorMessage name="description" class="text-danger small" />
-            </div>
+      <Form
+        class="card border-0 shadow-sm p-3 mb-3"
+        :validation-schema="schema"
+        :initial-values="initialValues"
+        @submit="onSubmit"
+        v-slot="{ isSubmitting }"
+      >
+        <div class="row g-3">
+          <div class="col-12 col-md-3">
+            <label class="form-label">Codice</label>
+            <Field name="code" class="form-control" placeholder="WELCOME10" />
+            <ErrorMessage name="code" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-5">
+            <label class="form-label">Titolo</label>
+            <Field name="title" class="form-control" />
+            <ErrorMessage name="title" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-2">
+            <label class="form-label">Tipo sconto</label>
+            <Field name="discount_type" as="select" class="form-select">
+              <option value="fixed">Importo</option>
+              <option value="percent">Percentuale</option>
+            </Field>
+            <ErrorMessage name="discount_type" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-2">
+            <label class="form-label">Valore</label>
+            <Field name="discount_value" type="number" step="0.01" class="form-control" />
+            <ErrorMessage name="discount_value" class="text-danger small" />
           </div>
 
-          <Btn class="mt-3" type="submit" color="dark" icon="add" :loading="isSubmitting">
-            Crea coupon
-          </Btn>
-        </Form>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Cliente dedicato (opzionale)</label>
+            <Field name="client_id" as="select" class="form-select">
+              <option value="">Nessuno</option>
+              <option v-for="client in clientStore.itemsActiveArray" :key="client.id" :value="client.id">
+                {{ client.name }} {{ client.surname }}
+              </option>
+            </Field>
+            <ErrorMessage name="client_id" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-2">
+            <label class="form-label">Uso massimo</label>
+            <Field name="usage_limit" type="number" min="0" class="form-control" />
+            <ErrorMessage name="usage_limit" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Valido dal</label>
+            <Field name="valid_from" type="date" class="form-control" />
+            <ErrorMessage name="valid_from" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Valido fino al</label>
+            <Field name="valid_to" type="date" class="form-control" />
+            <ErrorMessage name="valid_to" class="text-danger small" />
+          </div>
 
-        <div class="vstack gap-2">
-          <article v-for="coupon in sortedCoupons" :key="coupon.id" class="card border-0 shadow-sm p-3">
-            <div class="d-flex justify-content-between align-items-start gap-2">
-              <div>
-                <p class="fw-semibold mb-0">{{ coupon.code }} - {{ coupon.title }}</p>
-                <p class="small text-muted mb-0">
-                  {{ coupon.discount_type === 'percent' ? `${coupon.discount_value}%` : `${coupon.discount_value} EUR` }}
-                  | usi: {{ coupon.usage_count ?? 0 }} / {{ coupon.usage_limit ?? '∞' }}
-                </p>
-                <p class="small text-muted mb-0">{{ coupon.description || 'Nessuna descrizione' }}</p>
-              </div>
-              <div class="d-flex gap-2">
-                <Btn
-                  type="button"
-                  :color="coupon.active ? 'secondary' : 'dark'"
-                  variant="outline"
-                  @click="toggleCouponActive(coupon.id, !coupon.active)"
-                >
-                  {{ coupon.active ? 'Disattiva' : 'Attiva' }}
-                </Btn>
-                <Btn type="button" color="danger" variant="outline" icon="delete" @click="deleteCoupon(coupon.id)">
-                  Elimina
-                </Btn>
-              </div>
-            </div>
-          </article>
-          <p v-if="!sortedCoupons.length" class="text-muted small mt-2 mb-0">Nessun coupon configurato.</p>
+          <div class="col-12">
+            <label class="form-label">Descrizione</label>
+            <Field name="description" as="textarea" rows="2" class="form-control" />
+            <ErrorMessage name="description" class="text-danger small" />
+          </div>
         </div>
-      </template>
+
+        <Btn class="mt-3" type="submit" color="dark" icon="add" :loading="isSubmitting">
+          Crea coupon
+        </Btn>
+      </Form>
+
+      <div class="vstack gap-2">
+        <article v-for="coupon in sortedCoupons" :key="coupon.id" class="card border-0 shadow-sm p-3">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div>
+              <p class="fw-semibold mb-0">{{ coupon.code }} - {{ coupon.title }}</p>
+              <p class="small text-muted mb-0">
+                {{ coupon.discount_type === 'percent' ? `${coupon.discount_value}%` : `${coupon.discount_value} EUR` }}
+                | usi: {{ coupon.usage_count ?? 0 }} / {{ coupon.usage_limit ?? 'infinito' }}
+              </p>
+              <p class="small text-muted mb-0">{{ coupon.description || 'Nessuna descrizione' }}</p>
+            </div>
+            <div class="d-flex gap-2">
+              <Btn
+                type="button"
+                :color="coupon.active ? 'secondary' : 'dark'"
+                variant="outline"
+                @click="toggleCouponActive(coupon.id, !coupon.active)"
+              >
+                {{ coupon.active ? 'Disattiva' : 'Attiva' }}
+              </Btn>
+              <Btn type="button" color="danger" variant="outline" icon="delete" @click="deleteCoupon(coupon.id)">
+                Elimina
+              </Btn>
+            </div>
+          </div>
+        </article>
+        <p v-if="!sortedCoupons.length" class="text-muted small mt-2 mb-0">Nessun coupon configurato.</p>
+      </div>
     </div>
   </div>
 </template>
-

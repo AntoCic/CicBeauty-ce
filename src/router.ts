@@ -1,7 +1,8 @@
 // router.ts
 
 import { createWebHistory, type RouteRecordRaw } from 'vue-router';
-import { initRouter } from 'cic-kit';
+import { defaultUserPermission, initRouter } from 'cic-kit';
+import { UserPermission } from './enums/UserPermission';
 const ProductsView = () => import('./views/products/ProductsView.vue');
 const ProductsManageView = () => import('./views/products/ProductsManageView.vue');
 const ProductCategoriesView = () => import('./views/products/ProductCategoriesView.vue');
@@ -123,28 +124,28 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   { path: '/type-expenses', name: 'TypeExpensesView', component: TypeExpensesView, meta: { loginStatus: true } },
-  { path: '/calendar', name: 'CalendarView', component: CalendarView, meta: { loginStatus: true } },
-  { path: '/calendar/day', name: 'CalendarDayView', component: CalendarDayView, meta: { loginStatus: true } },
-  { path: '/appointments/:id', name: 'AppointmentEditView', component: AppointmentEditView, meta: { loginStatus: true } },
-  { path: '/clients', name: 'ClientsView', component: ClientsView, meta: { loginStatus: true } },
-  { path: '/clients/:id', name: 'ClientEditView', component: ClientEditView, meta: { loginStatus: true } },
-  { path: '/expenses', name: 'ExpensesView', component: ExpensesView, meta: { loginStatus: true } },
-  { path: '/coupons', name: 'CouponsView', component: CouponsView, meta: { loginStatus: true } },
-  { path: '/stats', name: 'StatsView', component: StatsView, meta: { loginStatus: true } },
-  { path: '/relations', name: 'RelationsView', component: RelationsView, meta: { loginStatus: true } },
-  { path: '/migration/import', name: 'MigrationImportView', component: MigrationImportView, meta: { loginStatus: true } },
-  { path: '/announcements', name: 'AnnouncementsView', component: AnnouncementsView },
-  { path: '/settings/app-config', name: 'AppConfigView', component: AppConfigView, meta: { loginStatus: true } },
-  { path: '/settings/agent-prompts', name: 'AgentPromptsView', component: AgentPromptsView, meta: { loginStatus: true } },
-  { path: '/settings/catalog-backup', name: 'CatalogBackupView', component: CatalogBackupView, meta: { loginStatus: true } },
+  { path: '/calendar', name: 'CalendarView', component: CalendarView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  { path: '/calendar/day', name: 'CalendarDayView', component: CalendarDayView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  { path: '/appointments/:id', name: 'AppointmentEditView', component: AppointmentEditView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  { path: '/clients', name: 'ClientsView', component: ClientsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  { path: '/clients/:id', name: 'ClientEditView', component: ClientEditView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  { path: '/expenses', name: 'ExpensesView', component: ExpensesView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  { path: '/coupons', name: 'CouponsView', component: CouponsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  { path: '/stats', name: 'StatsView', component: StatsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  { path: '/relations', name: 'RelationsView', component: RelationsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  { path: '/migration/import', name: 'MigrationImportView', component: MigrationImportView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  { path: '/announcements', name: 'AnnouncementsView', component: AnnouncementsView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
+  { path: '/settings/app-config', name: 'AppConfigView', component: AppConfigView, meta: { loginStatus: true, permission: defaultUserPermission.SUPERADMIN } },
+  { path: '/settings/agent-prompts', name: 'AgentPromptsView', component: AgentPromptsView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
+  { path: '/settings/catalog-backup', name: 'CatalogBackupView', component: CatalogBackupView, meta: { loginStatus: true, permission: defaultUserPermission.SUPERADMIN } },
   { path: '/ai/beauty-chat', name: 'AiBeautyChatView', component: AiBeautyChatView },
   { path: '/legal/privacy', name: 'PrivacyPolicyView', component: PrivacyPolicyView },
   { path: '/legal/cookie', name: 'CookiePolicyView', component: CookiePolicyView },
   { path: '/legal/terms', name: 'TermsConditionsView', component: TermsConditionsView },
   { path: '/legal/ai-transparency', name: 'AiTransparencyView', component: AiTransparencyView },
-  { path: '/tools/pdf-placement-demo', name: 'PdfPlacementDemoView', component: PdfPlacementDemoView, meta: { loginStatus: true } },
-  { path: '/tools/project-message-demo', name: 'ProjectMessageDemoView', component: ProjectMessageDemoView, meta: { loginStatus: true } },
-  { path: '/tools/test-playground', name: 'TestPlaygroundView', component: TestPlaygroundView, meta: { loginStatus: true } },
+  { path: '/tools/pdf-placement-demo', name: 'PdfPlacementDemoView', component: PdfPlacementDemoView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
+  { path: '/tools/project-message-demo', name: 'ProjectMessageDemoView', component: ProjectMessageDemoView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
+  { path: '/tools/test-playground', name: 'TestPlaygroundView', component: TestPlaygroundView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
   { path: '/products/categories/manage', name: 'ProductCategoriesManageView', component: ProductCategoriesManageView, meta: { loginStatus: true } },
   { path: '/treatments/categories/manage', name: 'TreatmentCategoriesManageView', component: TreatmentCategoriesManageView, meta: { loginStatus: true } },
 
@@ -180,4 +181,3 @@ router.afterEach((to) => {
 })
 
 export default router
-

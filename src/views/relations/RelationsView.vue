@@ -9,24 +9,18 @@ import { expenseStore } from '../../stores/expenseStore'
 import { productStore } from '../../stores/productStore'
 import { treatmentStore } from '../../stores/treatmentStore'
 import { typeExpenseStore } from '../../stores/typeExpenseStore'
-import { hasOperatorAccess } from '../../utils/permissions'
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
-const canOperate = computed(() => hasOperatorAccess())
 
-useStoreWatch(
-  canOperate.value
-    ? [
-        { store: appointmentStore, getOpts: {  } },
-        { store: clientStore, getOpts: {  } },
-        { store: treatmentStore, getOpts: {  }, checkLogin: false },
-        { store: productStore, getOpts: {  }, checkLogin: false },
-        { store: typeExpenseStore, getOpts: {  } },
-        { store: expenseStore, getOpts: {  } },
-        { store: couponStore, getOpts: {  } },
-      ]
-    : [],
-)
+useStoreWatch([
+  { store: appointmentStore, getOpts: {  } },
+  { store: clientStore, getOpts: {  } },
+  { store: treatmentStore, getOpts: {  }, checkLogin: false },
+  { store: productStore, getOpts: {  }, checkLogin: false },
+  { store: typeExpenseStore, getOpts: {  } },
+  { store: expenseStore, getOpts: {  } },
+  { store: couponStore, getOpts: {  } },
+])
 
 const relationships = computed(() => {
   const appointmentWithClient = appointmentStore.itemsActiveArray.filter((item) => item.client_id || item.user_id).length
@@ -134,30 +128,27 @@ const relationships = computed(() => {
     <HeaderApp title="Relazioni Dati" :to="{ name: 'home' }" />
 
     <div class="px-2 pb-4">
-      <p v-if="!canOperate" class="text-muted small mt-3">Permesso `OPERATORE` richiesto.</p>
-      <template v-else>
-        <div class="card border-0 shadow-sm p-3">
-          <h2 class="h6 mb-2">Lista relazioni possibili e copertura attuale</h2>
-          <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Relazione</th>
-                  <th>Copertura</th>
-                  <th>Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in relationships" :key="row.name">
-                  <td>{{ row.name }}</td>
-                  <td>{{ row.connected }} / {{ row.total }}</td>
-                  <td class="text-muted small">{{ row.note }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+      <div class="card border-0 shadow-sm p-3">
+        <h2 class="h6 mb-2">Lista relazioni possibili e copertura attuale</h2>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Relazione</th>
+                <th>Copertura</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in relationships" :key="row.name">
+                <td>{{ row.name }}</td>
+                <td>{{ row.connected }} / {{ row.total }}</td>
+                <td class="text-muted small">{{ row.note }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </template>
+      </div>
     </div>
   </div>
 </template>

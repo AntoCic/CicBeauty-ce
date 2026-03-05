@@ -11,7 +11,6 @@ import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
 import { addMonths, computeAppointmentDurationMinutes, startOfDay } from '../../utils/calendar'
 import { asDate } from '../../utils/date'
-import { hasOperatorAccess } from '../../utils/permissions'
 import CalendarAppointmentCard from './components/CalendarAppointmentCard.vue'
 import CalendarHeaderExtra from './components/CalendarHeaderExtra.vue'
 
@@ -51,7 +50,6 @@ const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
 
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
-const canOperate = computed(() => hasOperatorAccess())
 const selectedDate = ref(startOfDay(new Date()))
 const visibleMonth = ref(normalizeMonth(selectedDate.value))
 const selectedOperatorId = ref<'all' | string>('all')
@@ -60,37 +58,33 @@ const isFilterModalOpen = ref(false)
 const draftOperatorId = ref<'all' | string>('all')
 const draftShowOnlyMyPersonal = ref(false)
 
-useStoreWatch(
-  canOperate.value
-    ? [
-        {
-          store: appointmentStore,
-          getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' } },
-        },
-        {
-          store: clientStore,
-          getOpts: { orderBy: { fieldPath: 'surname', directionStr: 'asc' } },
-        },
-        {
-          store: treatmentStore,
-          getOpts: { orderBy: { fieldPath: 'title', directionStr: 'asc' } },
-          checkLogin: false,
-        },
-        {
-          store: treatmentCategoryStore,
-          getOpts: { orderBy: { fieldPath: 'title', directionStr: 'asc' } },
-          checkLogin: false,
-        },
-        {
-          store: appConfigStore,
-          checkLogin: false,
-        },
-        {
-          store: publicUserStore,
-        },
-      ]
-    : [],
-)
+useStoreWatch([
+  {
+    store: appointmentStore,
+    getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' } },
+  },
+  {
+    store: clientStore,
+    getOpts: { orderBy: { fieldPath: 'surname', directionStr: 'asc' } },
+  },
+  {
+    store: treatmentStore,
+    getOpts: { orderBy: { fieldPath: 'title', directionStr: 'asc' } },
+    checkLogin: false,
+  },
+  {
+    store: treatmentCategoryStore,
+    getOpts: { orderBy: { fieldPath: 'title', directionStr: 'asc' } },
+    checkLogin: false,
+  },
+  {
+    store: appConfigStore,
+    checkLogin: false,
+  },
+  {
+    store: publicUserStore,
+  },
+])
 
 const operators = computed(() => {
   return publicUserStore.itemsActiveArray
@@ -387,68 +381,62 @@ function applyFilters() {
     />
 
     <div class="px-2 pb-4">
-      <p v-if="!canOperate" class="text-muted small mt-3">
-        Permesso `OPERATORE` richiesto per accedere al calendario.
-      </p>
+      <section class="card border-0 shadow-sm p-2 mb-2">
+        <div class="month-switcher">
+          <button type="button" class="month-arrow-btn" aria-label="Mese precedente" @click="goToPreviousMonth">
+            <span class="material-symbols-outlined">chevron_left</span>
+          </button>
+          <strong class="month-label">{{ monthLabel }}</strong>
+          <button type="button" class="month-arrow-btn" aria-label="Mese successivo" @click="goToNextMonth">
+            <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
 
-      <template v-else>
-        <section class="card border-0 shadow-sm p-2 mb-2">
-          <div class="month-switcher">
-            <button type="button" class="month-arrow-btn" aria-label="Mese precedente" @click="goToPreviousMonth">
-              <span class="material-symbols-outlined">chevron_left</span>
-            </button>
-            <strong class="month-label">{{ monthLabel }}</strong>
-            <button type="button" class="month-arrow-btn" aria-label="Mese successivo" @click="goToNextMonth">
-              <span class="material-symbols-outlined">chevron_right</span>
-            </button>
+        <div v-if="activeFilters.length" class="active-filters">
+          <span v-for="filterLabel in activeFilters" :key="filterLabel" class="badge rounded-pill text-bg-light border">
+            {{ filterLabel }}
+          </span>
+        </div>
+      </section>
+
+      <section class="card border-0 shadow-sm p-1 calendar-shell">
+        <div class="calendar-grid">
+          <div v-for="label in WEEKDAY_LABELS" :key="label" class="calendar-weekday">
+            {{ label }}
           </div>
 
-          <div v-if="activeFilters.length" class="active-filters">
-            <span v-for="filterLabel in activeFilters" :key="filterLabel" class="badge rounded-pill text-bg-light border">
-              {{ filterLabel }}
-            </span>
-          </div>
-        </section>
+          <article
+            v-for="day in calendarDays"
+            :key="day.key"
+            class="calendar-day"
+            :class="{
+              'calendar-day--outside': !day.isCurrentMonth,
+              'calendar-day--today': day.isToday,
+              'calendar-day--selected': day.isSelected,
+            }"
+            role="button"
+            tabindex="0"
+            @click="openDay(day.date)"
+            @keydown="onDayKeydown($event, day.date)"
+          >
+            <header class="calendar-day__header">
+              <span class="calendar-day__number">{{ day.dayNumber }}</span>
+              <span v-if="day.appointments.length" class="calendar-day__count">
+                {{ day.appointments.length }}
+              </span>
+            </header>
 
-        <section class="card border-0 shadow-sm p-1 calendar-shell">
-          <div class="calendar-grid">
-            <div v-for="label in WEEKDAY_LABELS" :key="label" class="calendar-weekday">
-              {{ label }}
+            <div class="calendar-day__appointments">
+              <CalendarAppointmentCard
+                v-for="appointment in day.appointments"
+                :key="appointment.id"
+                :appointment="appointment"
+                @open="openAppointment"
+              />
             </div>
-
-            <article
-              v-for="day in calendarDays"
-              :key="day.key"
-              class="calendar-day"
-              :class="{
-                'calendar-day--outside': !day.isCurrentMonth,
-                'calendar-day--today': day.isToday,
-                'calendar-day--selected': day.isSelected,
-              }"
-              role="button"
-              tabindex="0"
-              @click="openDay(day.date)"
-              @keydown="onDayKeydown($event, day.date)"
-            >
-              <header class="calendar-day__header">
-                <span class="calendar-day__number">{{ day.dayNumber }}</span>
-                <span v-if="day.appointments.length" class="calendar-day__count">
-                  {{ day.appointments.length }}
-                </span>
-              </header>
-
-              <div class="calendar-day__appointments">
-                <CalendarAppointmentCard
-                  v-for="appointment in day.appointments"
-                  :key="appointment.id"
-                  :appointment="appointment"
-                  @open="openAppointment"
-                />
-              </div>
-            </article>
-          </div>
-        </section>
-      </template>
+          </article>
+        </div>
+      </section>
     </div>
 
     <div

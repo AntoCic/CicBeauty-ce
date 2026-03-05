@@ -21,7 +21,6 @@ import { couponStore } from '../../stores/couponStore'
 import { expenseStore } from '../../stores/expenseStore'
 import { typeExpenseStore } from '../../stores/typeExpenseStore'
 import { asDate } from '../../utils/date'
-import { hasOperatorAccess } from '../../utils/permissions'
 
 type ExpenseForm = {
   name: string
@@ -36,19 +35,14 @@ type ExpenseForm = {
 }
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
-const canOperate = computed(() => hasOperatorAccess())
 const fileValue = ref<FieldFileValue>([])
 
-useStoreWatch(
-  canOperate.value
-    ? [
-        { store: expenseStore, getOpts: { orderBy: { fieldPath: 'paidAt', directionStr: 'desc' },  } },
-        { store: typeExpenseStore, getOpts: {  } },
-        { store: couponStore, getOpts: {  } },
-        { store: clientStore, getOpts: {  } },
-      ]
-    : [],
-)
+useStoreWatch([
+  { store: expenseStore, getOpts: { orderBy: { fieldPath: 'paidAt', directionStr: 'desc' },  } },
+  { store: typeExpenseStore, getOpts: {  } },
+  { store: couponStore, getOpts: {  } },
+  { store: clientStore, getOpts: {  } },
+])
 
 const schema = toTypedSchema(
   yup.object({
@@ -138,11 +132,6 @@ async function uploadAttachments(expenseId: string) {
 }
 
 async function onSubmit(values: Record<string, unknown>) {
-  if (!canOperate.value) {
-    toast.error('Permesso OPERATORE richiesto')
-    return
-  }
-
   try {
     const created = await expenseStore.add({
       name: normalizeString(values.name),
@@ -206,144 +195,138 @@ function formatMoney(value: number | undefined) {
     <HeaderApp title="Spese" :to="{ name: 'home' }" />
 
     <div class="px-2 pb-4">
-      <p v-if="!canOperate" class="text-muted small mt-3">
-        Permesso `OPERATORE` richiesto per gestire le spese.
-      </p>
-
-      <template v-else>
-        <Form
-          class="card border-0 shadow-sm p-3 mb-3"
-          :validation-schema="schema"
-          :initial-values="initialValues"
-          @submit="onSubmit"
-          v-slot="{ isSubmitting }"
-        >
-          <div class="row g-3">
-            <div class="col-12 col-md-4">
-              <label class="form-label">Nome spesa</label>
-              <Field name="name" class="form-control" />
-              <ErrorMessage name="name" class="text-danger small" />
-            </div>
-            <div class="col-12 col-md-4">
-              <label class="form-label">Tipo spesa</label>
-              <Field name="type_expense_id" as="select" class="form-select">
-                <option value="">Seleziona tipo</option>
-                <option v-for="typeExpense in typeExpenseStore.itemsActiveArray" :key="typeExpense.id" :value="typeExpense.id">
-                  {{ typeExpenseMap.get(typeExpense.id) }}
-                </option>
-              </Field>
-              <ErrorMessage name="type_expense_id" class="text-danger small" />
-            </div>
-            <div class="col-12 col-md-4">
-              <label class="form-label">Categoria costo</label>
-              <Field name="expense_kind" as="select" class="form-select">
-                <option value="purchase">Acquisto</option>
-                <option value="operational">Operativa</option>
-                <option value="marketing">Marketing</option>
-                <option value="other">Altro</option>
-              </Field>
-              <ErrorMessage name="expense_kind" class="text-danger small" />
-            </div>
-
-            <div class="col-12 col-md-3">
-              <label class="form-label">Importo</label>
-              <Field name="price" type="number" step="0.01" class="form-control" />
-              <ErrorMessage name="price" class="text-danger small" />
-            </div>
-            <div class="col-12 col-md-3">
-              <label class="form-label">Data pagamento</label>
-              <Field name="paidAt" type="date" class="form-control" />
-              <ErrorMessage name="paidAt" class="text-danger small" />
-            </div>
-            <div class="col-12 col-md-3">
-              <label class="form-label">Stato</label>
-              <Field name="status" as="select" class="form-select">
-                <option value="paid">Pagata</option>
-                <option value="pending">Da pagare</option>
-              </Field>
-              <ErrorMessage name="status" class="text-danger small" />
-            </div>
-            <div class="col-12 col-md-3">
-              <label class="form-label">Coupon collegato</label>
-              <Field name="coupon_id" as="select" class="form-select">
-                <option value="">Nessuno</option>
-                <option v-for="coupon in couponStore.itemsActiveArray" :key="coupon.id" :value="coupon.id">
-                  {{ coupon.code }} - {{ coupon.title }}
-                </option>
-              </Field>
-              <ErrorMessage name="coupon_id" class="text-danger small" />
-            </div>
-
-            <div class="col-12 col-md-6">
-              <label class="form-label">Cliente collegato (opzionale)</label>
-              <Field name="client_id" as="select" class="form-select">
-                <option value="">Nessuno</option>
-                <option v-for="client in clientStore.itemsActiveArray" :key="client.id" :value="client.id">
-                  {{ client.name }} {{ client.surname }}
-                </option>
-              </Field>
-              <ErrorMessage name="client_id" class="text-danger small" />
-            </div>
-            <div class="col-12 col-md-6">
-              <label class="form-label">Allegati</label>
-              <FieldFile
-                name="attachments"
-                v-model="fileValue"
-                multiple
-                :show-errors="false"
-                @clear="resetFileSelection"
-              >
-                <template #dropzone="{ open, clear, files }">
-                  <div class="dropzone">
-                    <div class="d-flex gap-2 flex-wrap">
-                      <Btn type="button" icon="upload_file" color="dark" @click="open">Aggiungi file</Btn>
-                      <Btn type="button" icon="delete" color="secondary" variant="outline" :disabled="!files.length" @click="clear">Svuota</Btn>
-                    </div>
-                    <small class="text-muted d-block mt-1">File selezionati: {{ files.length }}</small>
-                  </div>
-                </template>
-              </FieldFile>
-            </div>
-
-            <div class="col-12">
-              <label class="form-label">Note</label>
-              <Field name="notes" as="textarea" rows="2" class="form-control" />
-              <ErrorMessage name="notes" class="text-danger small" />
-            </div>
+      <Form
+        class="card border-0 shadow-sm p-3 mb-3"
+        :validation-schema="schema"
+        :initial-values="initialValues"
+        @submit="onSubmit"
+        v-slot="{ isSubmitting }"
+      >
+        <div class="row g-3">
+          <div class="col-12 col-md-4">
+            <label class="form-label">Nome spesa</label>
+            <Field name="name" class="form-control" />
+            <ErrorMessage name="name" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Tipo spesa</label>
+            <Field name="type_expense_id" as="select" class="form-select">
+              <option value="">Seleziona tipo</option>
+              <option v-for="typeExpense in typeExpenseStore.itemsActiveArray" :key="typeExpense.id" :value="typeExpense.id">
+                {{ typeExpenseMap.get(typeExpense.id) }}
+              </option>
+            </Field>
+            <ErrorMessage name="type_expense_id" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Categoria costo</label>
+            <Field name="expense_kind" as="select" class="form-select">
+              <option value="purchase">Acquisto</option>
+              <option value="operational">Operativa</option>
+              <option value="marketing">Marketing</option>
+              <option value="other">Altro</option>
+            </Field>
+            <ErrorMessage name="expense_kind" class="text-danger small" />
           </div>
 
-          <Btn class="mt-3" type="submit" color="dark" icon="save" :loading="isSubmitting">
-            Salva spesa
-          </Btn>
-        </Form>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Importo</label>
+            <Field name="price" type="number" step="0.01" class="form-control" />
+            <ErrorMessage name="price" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Data pagamento</label>
+            <Field name="paidAt" type="date" class="form-control" />
+            <ErrorMessage name="paidAt" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Stato</label>
+            <Field name="status" as="select" class="form-select">
+              <option value="paid">Pagata</option>
+              <option value="pending">Da pagare</option>
+            </Field>
+            <ErrorMessage name="status" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Coupon collegato</label>
+            <Field name="coupon_id" as="select" class="form-select">
+              <option value="">Nessuno</option>
+              <option v-for="coupon in couponStore.itemsActiveArray" :key="coupon.id" :value="coupon.id">
+                {{ coupon.code }} - {{ coupon.title }}
+              </option>
+            </Field>
+            <ErrorMessage name="coupon_id" class="text-danger small" />
+          </div>
 
-        <div class="vstack gap-2">
-          <article v-for="expense in sortedExpenses" :key="expense.id" class="card border-0 shadow-sm p-3">
-            <div class="d-flex justify-content-between align-items-start gap-2">
-              <div class="min-w-0">
-                <p class="fw-semibold mb-0">{{ expense.name }}</p>
-                <p class="small text-muted mb-0">
-                  {{ typeExpenseMap.get(expense.type_expense_id) || 'Tipo sconosciuto' }} | {{ expense.expense_kind || 'other' }}
-                </p>
-                <p class="small text-muted mb-0">
-                  {{ asDate(expense.paidAt)?.toLocaleDateString('it-IT') }} | {{ expense.status }}
-                </p>
-                <p v-if="expense.attachments?.length" class="small mb-0">
-                  Allegati: {{ expense.attachments.length }}
-                </p>
-              </div>
-              <div class="text-end">
-                <p class="fw-semibold mb-2">{{ formatMoney(expense.price) }}</p>
-                <Btn type="button" color="danger" variant="outline" icon="delete" @click="onDeleteExpense(expense.id)">
-                  Elimina
-                </Btn>
-              </div>
-            </div>
-          </article>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Cliente collegato (opzionale)</label>
+            <Field name="client_id" as="select" class="form-select">
+              <option value="">Nessuno</option>
+              <option v-for="client in clientStore.itemsActiveArray" :key="client.id" :value="client.id">
+                {{ client.name }} {{ client.surname }}
+              </option>
+            </Field>
+            <ErrorMessage name="client_id" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Allegati</label>
+            <FieldFile
+              name="attachments"
+              v-model="fileValue"
+              multiple
+              :show-errors="false"
+              @clear="resetFileSelection"
+            >
+              <template #dropzone="{ open, clear, files }">
+                <div class="dropzone">
+                  <div class="d-flex gap-2 flex-wrap">
+                    <Btn type="button" icon="upload_file" color="dark" @click="open">Aggiungi file</Btn>
+                    <Btn type="button" icon="delete" color="secondary" variant="outline" :disabled="!files.length" @click="clear">Svuota</Btn>
+                  </div>
+                  <small class="text-muted d-block mt-1">File selezionati: {{ files.length }}</small>
+                </div>
+              </template>
+            </FieldFile>
+          </div>
 
-          <p v-if="!sortedExpenses.length" class="text-muted small mt-2 mb-0">Nessuna spesa registrata.</p>
+          <div class="col-12">
+            <label class="form-label">Note</label>
+            <Field name="notes" as="textarea" rows="2" class="form-control" />
+            <ErrorMessage name="notes" class="text-danger small" />
+          </div>
         </div>
-      </template>
+
+        <Btn class="mt-3" type="submit" color="dark" icon="save" :loading="isSubmitting">
+          Salva spesa
+        </Btn>
+      </Form>
+
+      <div class="vstack gap-2">
+        <article v-for="expense in sortedExpenses" :key="expense.id" class="card border-0 shadow-sm p-3">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div class="min-w-0">
+              <p class="fw-semibold mb-0">{{ expense.name }}</p>
+              <p class="small text-muted mb-0">
+                {{ typeExpenseMap.get(expense.type_expense_id) || 'Tipo sconosciuto' }} | {{ expense.expense_kind || 'other' }}
+              </p>
+              <p class="small text-muted mb-0">
+                {{ asDate(expense.paidAt)?.toLocaleDateString('it-IT') }} | {{ expense.status }}
+              </p>
+              <p v-if="expense.attachments?.length" class="small mb-0">
+                Allegati: {{ expense.attachments.length }}
+              </p>
+            </div>
+            <div class="text-end">
+              <p class="fw-semibold mb-2">{{ formatMoney(expense.price) }}</p>
+              <Btn type="button" color="danger" variant="outline" icon="delete" @click="onDeleteExpense(expense.id)">
+                Elimina
+              </Btn>
+            </div>
+          </div>
+        </article>
+
+        <p v-if="!sortedExpenses.length" class="text-muted small mt-2 mb-0">Nessuna spesa registrata.</p>
+      </div>
     </div>
   </div>
 </template>

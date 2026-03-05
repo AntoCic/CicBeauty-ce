@@ -18,7 +18,7 @@ import { publicUserStore } from '../../stores/publicUser'
 import { treatmentStore } from '../../stores/treatmentStore'
 import { computeAppointmentDurationMinutes, fromDateTimeLocalValue, toDateTimeLocalValue } from '../../utils/calendar'
 import { asDate } from '../../utils/date'
-import { hasAiAndOperatorAccess, hasOperatorAccess } from '../../utils/permissions'
+import { hasAiAndOperatorAccess } from '../../utils/permissions'
 import ClientPersonCard from '../clients/components/ClientPersonCard.vue'
 import AppointmentDetailsCard from './components/AppointmentDetailsCard.vue'
 import AppointmentOperatorCard from './components/AppointmentOperatorCard.vue'
@@ -42,7 +42,6 @@ type AppointmentForm = {
 const route = useRoute()
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
-const canOperate = computed(() => hasOperatorAccess())
 const canUseAvailabilityAi = computed(() => hasAiAndOperatorAccess())
 
 const current = ref<Appointment | undefined>(undefined)
@@ -60,18 +59,14 @@ const treatmentSearch = ref('')
 const routeId = computed(() => String(route.params.id ?? '').trim())
 const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
 
-useStoreWatch(
-  canOperate.value
-    ? [
-        { store: appointmentStore, getOpts: {} },
-        { store: clientStore, getOpts: { orderBy: { fieldPath: 'surname', directionStr: 'asc' } } },
-        { store: treatmentStore, getOpts: { orderBy: { fieldPath: 'title', directionStr: 'asc' } }, checkLogin: false },
-        { store: publicUserStore, getOpts: { query: where('operatore', '==', true) } },
-        { store: appConfigStore, getOpts: {}, checkLogin: false },
-        { store: couponStore, getOpts: {} },
-      ]
-    : [],
-)
+useStoreWatch([
+  { store: appointmentStore, getOpts: {} },
+  { store: clientStore, getOpts: { orderBy: { fieldPath: 'surname', directionStr: 'asc' } } },
+  { store: treatmentStore, getOpts: { orderBy: { fieldPath: 'title', directionStr: 'asc' } }, checkLogin: false },
+  { store: publicUserStore, getOpts: { query: where('operatore', '==', true) } },
+  { store: appConfigStore, getOpts: {}, checkLogin: false },
+  { store: couponStore, getOpts: {} },
+])
 
 const formKey = computed(() => (isCreateMode.value ? 'appointment-new' : current.value?.id ?? 'appointment-edit'))
 const schema = toTypedSchema(
@@ -429,8 +424,6 @@ function onCancelEdit() {
 }
 
 async function loadItem() {
-  if (!canOperate.value) return
-
   aiSuggestions.value = []
   aiClientContext.value = undefined
 
@@ -464,11 +457,6 @@ async function loadItem() {
 }
 
 async function onSubmit(values: Record<string, unknown>) {
-  if (!canOperate.value) {
-    toast.error('Permesso OPERATORE richiesto')
-    return
-  }
-
   const startDate = fromDateTimeLocalValue(normalizeString(values.date_time))
   if (!startDate) {
     toast.error('Data/ora non valida')
@@ -611,8 +599,7 @@ watch(() => route.params.id, loadItem)
     <HeaderApp :title="isCreateMode ? 'Nuovo appuntamento' : 'Appuntamento'" :to="{ name: 'CalendarView' }" />
 
     <div class="edit-wrapper mx-auto py-3">
-      <p v-if="!canOperate" class="text-muted small mt-3">Permesso `OPERATORE` richiesto.</p>
-      <p v-else-if="isLoading" class="text-muted small mt-3">Caricamento...</p>
+      <p v-if="isLoading" class="text-muted small mt-3">Caricamento...</p>
 
       <Form
         v-else-if="isEditMode && (isCreateMode || current)"
