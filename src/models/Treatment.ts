@@ -3,6 +3,7 @@ import { FirestoreModel, type Timestampble } from 'cic-kit'
 
 export interface TreatmentData extends Partial<Timestampble> {
   id: string
+  old_id?: string
   title: string
   subtitle?: string
   icon?: string
@@ -28,6 +29,7 @@ export interface TreatmentData extends Partial<Timestampble> {
 export class Treatment extends FirestoreModel<TreatmentData> {
   static collectionName = 'treatments'
 
+  old_id?: string
   title: string
   subtitle?: string
   icon?: string
@@ -51,6 +53,7 @@ export class Treatment extends FirestoreModel<TreatmentData> {
 
   constructor(data: TreatmentData) {
     super(data)
+    this.old_id = data.old_id
     this.title = data.title
     this.subtitle = data.subtitle
     this.icon = data.icon
@@ -78,6 +81,7 @@ export class Treatment extends FirestoreModel<TreatmentData> {
   toData(): TreatmentData {
     return {
       id: this.id,
+      old_id: this.old_id,
       title: this.title,
       subtitle: this.subtitle,
       icon: this.icon,

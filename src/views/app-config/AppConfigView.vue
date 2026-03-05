@@ -25,6 +25,15 @@ const htmlSectionFields = [
   { key: "termsConditionsBodyHtml", label: "Termini e Condizioni - Corpo HTML" },
   { key: "aiTransparencyBodyHtml", label: "Trasparenza AI - Corpo HTML" },
 ] as const;
+const workingDayOptions = [
+  { value: 1, label: "Lunedi" },
+  { value: 2, label: "Martedi" },
+  { value: 3, label: "Mercoledi" },
+  { value: 4, label: "Giovedi" },
+  { value: 5, label: "Venerdi" },
+  { value: 6, label: "Sabato" },
+  { value: 0, label: "Domenica" },
+] as const;
 
 type AppConfigForm = AppConfigFields;
 type AppConfigFieldKey = keyof AppConfigFields;
@@ -48,6 +57,7 @@ const schema = toTypedSchema(
     legalEntity: yup.string().trim().required("Campo obbligatorio"),
     vatOrTaxCode: yup.string().trim().required("Campo obbligatorio"),
     officeAddress: yup.string().trim().required("Campo obbligatorio"),
+    publicPhone: yup.string().trim().required("Campo obbligatorio"),
     privacyEmail: yup.string().trim().email("Email non valida").required("Campo obbligatorio"),
     pec: yup.string().trim().default(""),
     aiModel: yup.string().trim().required("Campo obbligatorio"),
@@ -59,6 +69,20 @@ const schema = toTypedSchema(
     cookiePolicyBodyHtml: yup.string().required("Campo obbligatorio").default(EMPTY_HTML),
     termsConditionsBodyHtml: yup.string().required("Campo obbligatorio").default(EMPTY_HTML),
     aiTransparencyBodyHtml: yup.string().required("Campo obbligatorio").default(EMPTY_HTML),
+    businessTimezone: yup.string().trim().required("Campo obbligatorio"),
+    dayStart: yup.string().trim().required("Campo obbligatorio"),
+    breakStart: yup.string().trim().required("Campo obbligatorio"),
+    breakEnd: yup.string().trim().required("Campo obbligatorio"),
+    dayEnd: yup.string().trim().required("Campo obbligatorio"),
+    workingDays: yup.array(yup.number().min(0).max(6)).default(APP_CONFIG_DEFAULTS.workingDays),
+    appointmentSlotMinutes: yup.number().typeError("Numero obbligatorio").min(5).max(120).required("Campo obbligatorio"),
+    defaultAppointmentDurationMinutes: yup.number().typeError("Numero obbligatorio").min(5).max(600).required("Campo obbligatorio"),
+    personalAppointmentDurationMinutes: yup.number().typeError("Numero obbligatorio").min(5).max(600).required("Campo obbligatorio"),
+    calendarPrefetchMonths: yup.number().typeError("Numero obbligatorio").min(0).max(6).required("Campo obbligatorio"),
+    availabilitySearchDays: yup.number().typeError("Numero obbligatorio").min(1).max(365).required("Campo obbligatorio"),
+    availabilityMinNoticeMinutes: yup.number().typeError("Numero obbligatorio").min(0).max(720).required("Campo obbligatorio"),
+    googleCalendarSyncEnabled: yup.boolean().required("Campo obbligatorio"),
+    googleCalendarId: yup.string().trim().default(""),
   }),
 );
 
@@ -70,6 +94,7 @@ const initialValues = computed<AppConfigForm>(() => ({
   legalEntity: currentConfigData.value.legalEntity,
   vatOrTaxCode: currentConfigData.value.vatOrTaxCode,
   officeAddress: currentConfigData.value.officeAddress,
+  publicPhone: currentConfigData.value.publicPhone,
   privacyEmail: currentConfigData.value.privacyEmail,
   pec: currentConfigData.value.pec,
   aiModel: currentConfigData.value.aiModel,
@@ -81,6 +106,20 @@ const initialValues = computed<AppConfigForm>(() => ({
   cookiePolicyBodyHtml: currentConfigData.value.cookiePolicyBodyHtml || EMPTY_HTML,
   termsConditionsBodyHtml: currentConfigData.value.termsConditionsBodyHtml || EMPTY_HTML,
   aiTransparencyBodyHtml: currentConfigData.value.aiTransparencyBodyHtml || EMPTY_HTML,
+  businessTimezone: currentConfigData.value.businessTimezone,
+  dayStart: currentConfigData.value.dayStart,
+  breakStart: currentConfigData.value.breakStart,
+  breakEnd: currentConfigData.value.breakEnd,
+  dayEnd: currentConfigData.value.dayEnd,
+  workingDays: currentConfigData.value.workingDays ?? APP_CONFIG_DEFAULTS.workingDays,
+  appointmentSlotMinutes: currentConfigData.value.appointmentSlotMinutes,
+  defaultAppointmentDurationMinutes: currentConfigData.value.defaultAppointmentDurationMinutes,
+  personalAppointmentDurationMinutes: currentConfigData.value.personalAppointmentDurationMinutes,
+  calendarPrefetchMonths: currentConfigData.value.calendarPrefetchMonths,
+  availabilitySearchDays: currentConfigData.value.availabilitySearchDays,
+  availabilityMinNoticeMinutes: currentConfigData.value.availabilityMinNoticeMinutes,
+  googleCalendarSyncEnabled: currentConfigData.value.googleCalendarSyncEnabled,
+  googleCalendarId: currentConfigData.value.googleCalendarId,
 }));
 
 function normalizeHtml(value: unknown) {
@@ -102,6 +141,7 @@ async function onSubmit(values: Record<string, unknown>) {
     legalEntity: String(values.legalEntity ?? "").trim(),
     vatOrTaxCode: String(values.vatOrTaxCode ?? "").trim(),
     officeAddress: String(values.officeAddress ?? "").trim(),
+    publicPhone: String(values.publicPhone ?? "").trim(),
     privacyEmail: String(values.privacyEmail ?? "").trim(),
     pec: String(values.pec ?? "").trim(),
     aiModel: String(values.aiModel ?? "").trim(),
@@ -113,6 +153,22 @@ async function onSubmit(values: Record<string, unknown>) {
     cookiePolicyBodyHtml: normalizeHtml(values.cookiePolicyBodyHtml),
     termsConditionsBodyHtml: normalizeHtml(values.termsConditionsBodyHtml),
     aiTransparencyBodyHtml: normalizeHtml(values.aiTransparencyBodyHtml),
+    businessTimezone: String(values.businessTimezone ?? "").trim(),
+    dayStart: String(values.dayStart ?? "").trim(),
+    breakStart: String(values.breakStart ?? "").trim(),
+    breakEnd: String(values.breakEnd ?? "").trim(),
+    dayEnd: String(values.dayEnd ?? "").trim(),
+    workingDays: Array.isArray(values.workingDays)
+      ? values.workingDays.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value >= 0 && value <= 6)
+      : currentConfigData.value.workingDays,
+    appointmentSlotMinutes: Number(values.appointmentSlotMinutes ?? 15),
+    defaultAppointmentDurationMinutes: Number(values.defaultAppointmentDurationMinutes ?? 60),
+    personalAppointmentDurationMinutes: Number(values.personalAppointmentDurationMinutes ?? 30),
+    calendarPrefetchMonths: Number(values.calendarPrefetchMonths ?? 1),
+    availabilitySearchDays: Number(values.availabilitySearchDays ?? 45),
+    availabilityMinNoticeMinutes: Number(values.availabilityMinNoticeMinutes ?? 30),
+    googleCalendarSyncEnabled: Boolean(values.googleCalendarSyncEnabled),
+    googleCalendarId: String(values.googleCalendarId ?? "").trim(),
   };
 
   try {
@@ -314,6 +370,22 @@ function resetFieldToDefault(field: AppConfigFieldKey, setFieldValue: (field: st
           </div>
           <div class="col-12 col-md-6">
             <div class="field-title-row">
+              <label class="form-label mb-0">Telefono pubblico / WhatsApp</label>
+              <Btn
+                v-if="hasDefaultForField('publicPhone')"
+                type="button"
+                color="secondary"
+                class="btn-sm"
+                @click="resetFieldToDefault('publicPhone', setFieldValue)"
+              >
+                Default
+              </Btn>
+            </div>
+            <Field name="publicPhone" class="form-control" placeholder="+39..." />
+            <ErrorMessage name="publicPhone" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="field-title-row">
               <label class="form-label mb-0">PEC (opzionale)</label>
               <Btn
                 v-if="hasDefaultForField('pec')"
@@ -431,6 +503,99 @@ function resetFieldToDefault(field: AppConfigFieldKey, setFieldValue: (field: st
       </section>
 
       <section class="config-section">
+        <h2 class="h6 mb-3">Calendario, Disponibilita e Sync Google</h2>
+        <div class="row g-3">
+          <div class="col-12 col-md-3">
+            <label class="form-label">Timezone</label>
+            <Field name="businessTimezone" class="form-control" />
+            <ErrorMessage name="businessTimezone" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Apertura</label>
+            <Field name="dayStart" type="time" class="form-control" />
+            <ErrorMessage name="dayStart" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Inizio pausa</label>
+            <Field name="breakStart" type="time" class="form-control" />
+            <ErrorMessage name="breakStart" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Fine pausa</label>
+            <Field name="breakEnd" type="time" class="form-control" />
+            <ErrorMessage name="breakEnd" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Chiusura</label>
+            <Field name="dayEnd" type="time" class="form-control" />
+            <ErrorMessage name="dayEnd" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Step slot (minuti)</label>
+            <Field name="appointmentSlotMinutes" type="number" min="5" class="form-control" />
+            <ErrorMessage name="appointmentSlotMinutes" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Durata default app. (min)</label>
+            <Field name="defaultAppointmentDurationMinutes" type="number" min="5" class="form-control" />
+            <ErrorMessage name="defaultAppointmentDurationMinutes" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Durata app. personale (min)</label>
+            <Field name="personalAppointmentDurationMinutes" type="number" min="5" class="form-control" />
+            <ErrorMessage name="personalAppointmentDurationMinutes" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Prefetch mesi calendario</label>
+            <Field name="calendarPrefetchMonths" type="number" min="0" max="6" class="form-control" />
+            <ErrorMessage name="calendarPrefetchMonths" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Ricerca disponibilita (giorni)</label>
+            <Field name="availabilitySearchDays" type="number" min="1" class="form-control" />
+            <ErrorMessage name="availabilitySearchDays" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Preavviso minimo (min)</label>
+            <Field name="availabilityMinNoticeMinutes" type="number" min="0" class="form-control" />
+            <ErrorMessage name="availabilityMinNoticeMinutes" class="text-danger small" />
+          </div>
+
+          <div class="col-12">
+            <label class="form-label d-block">Giorni lavorativi</label>
+            <div class="d-flex flex-wrap gap-2">
+              <label v-for="item in workingDayOptions" :key="item.value" class="day-option">
+                <Field
+                  name="workingDays"
+                  type="checkbox"
+                  :value="item.value"
+                  class="form-check-input me-1"
+                />
+                <span>{{ item.label }}</span>
+              </label>
+            </div>
+            <ErrorMessage name="workingDays" class="text-danger small d-block" />
+          </div>
+
+          <div class="col-12 col-md-4">
+            <div class="form-check mt-4">
+              <Field id="googleCalendarSyncEnabled" name="googleCalendarSyncEnabled" type="checkbox" class="form-check-input" />
+              <label for="googleCalendarSyncEnabled" class="form-check-label">
+                Sync Google Calendar attivo
+              </label>
+            </div>
+            <ErrorMessage name="googleCalendarSyncEnabled" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-8">
+            <label class="form-label">Google Calendar ID</label>
+            <Field name="googleCalendarId" class="form-control" placeholder="example@group.calendar.google.com" />
+            <small class="text-muted">Usato dal backend per sincronizzare gli appuntamenti.</small>
+            <ErrorMessage name="googleCalendarId" class="text-danger small d-block" />
+          </div>
+        </div>
+      </section>
+
+      <section class="config-section">
         <h2 class="h6 mb-3">Contenuti HTML</h2>
         <p class="text-muted small mb-3">
           I campi sotto usano FieldTiptap e salvano HTML completo.
@@ -514,6 +679,16 @@ function resetFieldToDefault(field: AppConfigFieldKey, setFieldValue: (field: st
   border-radius: 0.5rem;
   min-height: 5rem;
   padding: 0.75rem;
+}
+
+.day-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid rgba(84, 44, 58, 0.18);
+  border-radius: 0.35rem;
+  padding: 0.3rem 0.45rem;
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .legal-warning {

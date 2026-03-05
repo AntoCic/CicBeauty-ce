@@ -12,16 +12,36 @@ import {
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Auth } from '../../main'
+import { agentPromptStore } from '../../stores/agentPromptStore'
+import { announcementStore } from '../../stores/announcementStore'
+import { appConfigStore } from '../../stores/appConfigStore'
+import { appointmentStore } from '../../stores/appointmentStore'
+import { clientStore } from '../../stores/clientStore'
+import { couponStore } from '../../stores/couponStore'
+import { expenseStore } from '../../stores/expenseStore'
 import { productCategoryStore } from '../../stores/productCategoryStore'
 import { productStore } from '../../stores/productStore'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
+import { typeExpenseStore } from '../../stores/typeExpenseStore'
 import { downloadJsonFromSource } from '../../utils/downloadJsonFromSource'
 
 useChangeHeader('Catalog Backup JSON', { name: 'home' })
 
-type CatalogCollectionSource = 'treatments' | 'products' | 'treatment-categories' | 'product-categories'
-type CatalogSource = CatalogCollectionSource | 'catalog-full'
+type CatalogCollectionSource =
+  | 'treatments'
+  | 'products'
+  | 'treatment-categories'
+  | 'product-categories'
+  | 'clients'
+  | 'appointments'
+  | 'expenses'
+  | 'type-expenses'
+  | 'coupons'
+  | 'announcements'
+  | 'app-config'
+  | 'agent-prompts'
+type CatalogSource = CatalogCollectionSource | 'catalog-full' | 'models-full'
 type CatalogFullPayload = Record<CatalogCollectionSource, Record<string, unknown>[]>
 type ImportStats = {
   added: number
@@ -96,6 +116,46 @@ useStoreWatch([
     getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
     checkLogin: false,
   },
+  {
+    store: clientStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+    checkLogin: false,
+  },
+  {
+    store: appointmentStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+    checkLogin: false,
+  },
+  {
+    store: expenseStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+    checkLogin: false,
+  },
+  {
+    store: typeExpenseStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+    checkLogin: false,
+  },
+  {
+    store: couponStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+    checkLogin: false,
+  },
+  {
+    store: announcementStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+    checkLogin: false,
+  },
+  {
+    store: appConfigStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+    checkLogin: false,
+  },
+  {
+    store: agentPromptStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+    checkLogin: false,
+  },
 ])
 
 function toRecord(value: unknown): Record<string, unknown> | null {
@@ -104,13 +164,38 @@ function toRecord(value: unknown): Record<string, unknown> | null {
 }
 
 function sanitizePayloadForUpsert(row: Record<string, unknown>) {
-  const payload = { ...row }
+  return { ...row }
+}
+
+function normalizeDateField(value: unknown) {
+  if (value instanceof Date) return value
+  const raw = String(value ?? '').trim()
+  if (!raw) return value
+  const next = new Date(raw)
+  if (Number.isNaN(next.getTime())) return value
+  return next
+}
+
+type UpsertOptions = {
+  dateFields?: string[]
+  ensureUpdateBy?: boolean
+}
+
+function preparePayloadForUpsert(row: Record<string, unknown>, options: UpsertOptions = {}) {
+  const payload = sanitizePayloadForUpsert(row)
   delete payload.id
   delete payload.createdAt
   delete payload.updatedAt
   delete payload.deleteAt
 
-  if (Object.prototype.hasOwnProperty.call(payload, 'updateBy')) {
+  if (Array.isArray(options.dateFields)) {
+    for (const field of options.dateFields) {
+      if (!Object.prototype.hasOwnProperty.call(payload, field)) continue
+      payload[field] = normalizeDateField(payload[field])
+    }
+  }
+
+  if (options.ensureUpdateBy || Object.prototype.hasOwnProperty.call(payload, 'updateBy')) {
     const nextUpdateBy = String(payload.updateBy ?? '').trim()
     payload.updateBy = nextUpdateBy || defaultUpdateBy.value
   }
@@ -121,6 +206,7 @@ function sanitizePayloadForUpsert(row: Record<string, unknown>) {
 async function upsertRows<D extends { id: string }, M extends FirestoreModel<D>>(
   store: FirestoreStoreReactive<M, D>,
   rows: unknown[],
+  options: UpsertOptions = {},
 ): Promise<ImportStats> {
   let added = 0
   let updated = 0
@@ -139,7 +225,7 @@ async function upsertRows<D extends { id: string }, M extends FirestoreModel<D>>
       continue
     }
 
-    const payload = sanitizePayloadForUpsert(normalized)
+    const payload = preparePayloadForUpsert(normalized, options)
 
     try {
       const existing = store.findItemsById(id)
@@ -167,7 +253,7 @@ const collectionConfigs: CatalogCollectionConfig[] = [
     description: 'Tutti i dettagli dei trattamenti',
     count: () => treatmentStore.itemsActiveArray.length,
     getRows: () => treatmentStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
-    importRows: (rows) => upsertRows(treatmentStore, rows),
+    importRows: (rows) => upsertRows(treatmentStore, rows, { ensureUpdateBy: true }),
   },
   {
     source: 'products',
@@ -176,7 +262,7 @@ const collectionConfigs: CatalogCollectionConfig[] = [
     description: 'Tutti i dettagli dei prodotti',
     count: () => productStore.itemsActiveArray.length,
     getRows: () => productStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
-    importRows: (rows) => upsertRows(productStore, rows),
+    importRows: (rows) => upsertRows(productStore, rows, { ensureUpdateBy: true }),
   },
   {
     source: 'treatment-categories',
@@ -185,7 +271,7 @@ const collectionConfigs: CatalogCollectionConfig[] = [
     description: 'Categorie dei trattamenti',
     count: () => treatmentCategoryStore.itemsActiveArray.length,
     getRows: () => treatmentCategoryStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
-    importRows: (rows) => upsertRows(treatmentCategoryStore, rows),
+    importRows: (rows) => upsertRows(treatmentCategoryStore, rows, { ensureUpdateBy: true }),
   },
   {
     source: 'product-categories',
@@ -194,12 +280,88 @@ const collectionConfigs: CatalogCollectionConfig[] = [
     description: 'Categorie dei prodotti',
     count: () => productCategoryStore.itemsActiveArray.length,
     getRows: () => productCategoryStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
-    importRows: (rows) => upsertRows(productCategoryStore, rows),
+    importRows: (rows) => upsertRows(productCategoryStore, rows, { ensureUpdateBy: true }),
+  },
+  {
+    source: 'clients',
+    label: 'Clienti',
+    icon: 'groups',
+    description: 'Rubrica clienti completa',
+    count: () => clientStore.itemsActiveArray.length,
+    getRows: () => clientStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    importRows: (rows) => upsertRows(clientStore, rows, { ensureUpdateBy: true }),
+  },
+  {
+    source: 'appointments',
+    label: 'Appuntamenti',
+    icon: 'calendar_month',
+    description: 'Calendario appuntamenti',
+    count: () => appointmentStore.itemsActiveArray.length,
+    getRows: () => appointmentStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    importRows: (rows) =>
+      upsertRows(appointmentStore, rows, {
+        dateFields: ['date_time', 'googleCalendarSyncedAt'],
+        ensureUpdateBy: true,
+      }),
+  },
+  {
+    source: 'expenses',
+    label: 'Spese',
+    icon: 'account_balance_wallet',
+    description: 'Storico delle spese',
+    count: () => expenseStore.itemsActiveArray.length,
+    getRows: () => expenseStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    importRows: (rows) => upsertRows(expenseStore, rows, { dateFields: ['paidAt', 'dueAt'], ensureUpdateBy: true }),
+  },
+  {
+    source: 'type-expenses',
+    label: 'Tipi di spesa',
+    icon: 'payments',
+    description: 'Anagrafica tipi di spesa',
+    count: () => typeExpenseStore.itemsActiveArray.length,
+    getRows: () => typeExpenseStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    importRows: (rows) => upsertRows(typeExpenseStore, rows, { ensureUpdateBy: true }),
+  },
+  {
+    source: 'coupons',
+    label: 'Coupon',
+    icon: 'local_offer',
+    description: 'Coupon e regole di validita',
+    count: () => couponStore.itemsActiveArray.length,
+    getRows: () => couponStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    importRows: (rows) => upsertRows(couponStore, rows, { dateFields: ['valid_from', 'valid_to'], ensureUpdateBy: true }),
+  },
+  {
+    source: 'announcements',
+    label: 'Avvisi',
+    icon: 'campaign',
+    description: 'Messaggi e annunci',
+    count: () => announcementStore.itemsActiveArray.length,
+    getRows: () => announcementStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    importRows: (rows) => upsertRows(announcementStore, rows, { ensureUpdateBy: true }),
+  },
+  {
+    source: 'app-config',
+    label: 'App Config',
+    icon: 'settings',
+    description: 'Configurazione globale applicazione',
+    count: () => appConfigStore.itemsActiveArray.length,
+    getRows: () => appConfigStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    importRows: (rows) => upsertRows(appConfigStore, rows),
+  },
+  {
+    source: 'agent-prompts',
+    label: 'Prompt Agenti AI',
+    icon: 'psychology',
+    description: 'Configurazione prompt AI',
+    count: () => agentPromptStore.itemsActiveArray.length,
+    getRows: () => agentPromptStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    importRows: (rows) => upsertRows(agentPromptStore, rows, { ensureUpdateBy: true }),
   },
 ]
 
 function isCatalogSource(value: string): value is CatalogSource {
-  return value === 'catalog-full' || collectionConfigs.some((config) => config.source === value)
+  return value === 'catalog-full' || value === 'models-full' || collectionConfigs.some((config) => config.source === value)
 }
 
 function findCollectionConfig(source: CatalogCollectionSource) {
@@ -255,6 +417,14 @@ function buildFullPayload(): CatalogFullPayload {
     'product-categories': productCategoryStore.itemsActiveArray.map(
       (item) => item.toData() as unknown as Record<string, unknown>,
     ),
+    clients: clientStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    appointments: appointmentStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    expenses: expenseStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    'type-expenses': typeExpenseStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    coupons: couponStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    announcements: announcementStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    'app-config': appConfigStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
+    'agent-prompts': agentPromptStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
   }
 }
 
@@ -264,7 +434,7 @@ function downloadSingleCollection(config: CatalogCollectionConfig) {
 }
 
 function downloadFullCatalog() {
-  downloadJsonFromSource('catalog-full', buildFullPayload, { filePrefix: 'catalog-backup' })
+  downloadJsonFromSource('models-full', buildFullPayload, { filePrefix: 'catalog-backup' })
   toast.success('Download backup completo completato')
 }
 
@@ -306,7 +476,7 @@ async function onImportFileChange(event: Event) {
     }
 
     let stats: ImportStats
-    if (parsed.source === 'catalog-full') {
+    if (parsed.source === 'catalog-full' || parsed.source === 'models-full') {
       stats = await importFullCatalog(parsed.data)
     } else {
       const config = findCollectionConfig(parsed.source)
@@ -336,7 +506,7 @@ async function onImportFileChange(event: Event) {
       <section class="card border-0 shadow-sm p-3 my-3">
         <h2 class="h6 mb-2">Download JSON</h2>
         <p class="text-muted small mb-3">
-          Ogni pulsante scarica un JSON completo della sorgente selezionata.
+          Ogni pulsante scarica un JSON completo del model selezionato.
         </p>
 
         <div class="vstack gap-2">
@@ -359,7 +529,7 @@ async function onImportFileChange(event: Event) {
 
         <div class="full-row">
           <Btn type="button" color="dark" icon="download" @click="downloadFullCatalog">
-            Scarica backup completo
+            Scarica backup completo (tutti i model)
           </Btn>
         </div>
       </section>
@@ -370,7 +540,8 @@ async function onImportFileChange(event: Event) {
           Import disponibile solo in localhost. Host attuale: <strong>{{ currentHost || '-' }}</strong>
         </p>
         <p class="text-muted small mb-3">
-          Supporta sia file singoli (`products`, `treatments`, categorie) sia `catalog-full`.
+          Supporta sia file singoli (source del model) sia backup completi (`models-full`, compatibile anche con
+          `catalog-full`).
         </p>
 
         <Btn

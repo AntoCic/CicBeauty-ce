@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import { cicKitStore, loading, toast, useChangeHeader, useStoreWatch } from 'cic-kit'
+import { cicKitStore, loading, toast, useStoreWatch } from 'cic-kit'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { treatmentStore } from '../../stores/treatmentStore'
+import CatalogCard from '../../components/CatalogCard.vue'
+import AppHeaderCatalogNav from '../../components/headers/AppHeaderCatalogNav.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
+import PublicSideNavigator from '../../components/public/PublicSideNavigator.vue'
+import type { PublicSideLink } from '../../components/public/types'
+import { normalizeIdList } from '../../catalog/utils'
+import { usePublicSeo } from '../../composables/usePublicSeo'
 import type { Treatment } from '../../models/Treatment'
 import { Auth } from '../../main'
-import HeaderApp from '../../components/HeaderApp.vue'
-import CatalogCard from '../../components/CatalogCard.vue'
-import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { productStore } from '../../stores/productStore'
+import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
+import { treatmentStore } from '../../stores/treatmentStore'
 
-useChangeHeader('Dettaglio trattamento', { name: 'TreatmentCategoriesView' })
 useStoreWatch([
   {
     store: treatmentStore,
@@ -43,13 +47,6 @@ const activeCategoryId = computed(() => {
   return item.value?.categoryIds[0] ?? ''
 })
 
-const headerTo = computed(() => {
-  if (activeCategoryId.value) {
-    return { name: 'TreatmentsView', params: { categoryId: activeCategoryId.value } }
-  }
-  return { name: 'TreatmentCategoriesView' }
-})
-
 const categoryMap = computed(() => {
   const nextMap: Record<string, string> = {}
   for (const category of treatmentCategoryStore.itemsActiveArray) {
@@ -64,9 +61,54 @@ const itemCategoryLabels = computed(() =>
     .filter((label): label is string => Boolean(label)),
 )
 
-function normalizeRelationIds(ids: string[] | undefined) {
-  return [...new Set((ids ?? []).map((id) => String(id ?? '').trim()).filter(Boolean))]
-}
+const categoryLabelForBreadcrumb = computed(() => {
+  if (!activeCategoryId.value) return 'Catalogo'
+  return categoryMap.value[activeCategoryId.value] ?? 'Categoria'
+})
+
+const breadcrumbItems = computed(() => [
+  { label: 'Home', to: { name: 'home' } },
+  { label: 'Trattamenti', to: { name: 'TreatmentCategoriesView' } },
+  activeCategoryId.value
+    ? {
+      label: categoryLabelForBreadcrumb.value,
+      to: { name: 'TreatmentsView', params: { categoryId: activeCategoryId.value } },
+    }
+    : { label: 'Catalogo', to: { name: 'TreatmentsView' } },
+  { label: item.value?.title ?? 'Dettaglio' },
+])
+
+const sideLinks = computed<PublicSideLink[]>(() => {
+  const links: PublicSideLink[] = [
+    { label: 'Categorie trattamenti', to: { name: 'TreatmentCategoriesView' }, icon: 'category' },
+    { label: 'Catalogo trattamenti', to: { name: 'TreatmentsView' }, icon: 'spa' },
+  ]
+
+  if (activeCategoryId.value) {
+    links.unshift({
+      label: 'Torna alla categoria',
+      to: { name: 'TreatmentsView', params: { categoryId: activeCategoryId.value } },
+      icon: 'arrow_back',
+    })
+  }
+
+  links.push({ label: 'Catalogo prodotti', to: { name: 'ProductsView' }, icon: 'event_available' })
+  return links
+})
+
+const pageTitle = computed(() =>
+  item.value?.title
+    ? `${item.value.title} | Trattamento CNC Beauty`
+    : 'Dettaglio Trattamento | CNC Beauty',
+)
+
+const pageDescription = computed(() =>
+  item.value?.subtitle
+    ? `${item.value.subtitle} - dettaglio trattamento CNC Beauty con durata e prodotti consigliati.`
+    : 'Dettaglio trattamento CNC Beauty con informazioni, durata e prodotti consigliati.',
+)
+
+usePublicSeo(pageTitle, pageDescription)
 
 const recommendedProducts = computed(() => {
   const current = item.value
@@ -76,11 +118,10 @@ const recommendedProducts = computed(() => {
 
   const linkedByMirrorRelation = productStore.itemsActiveArray
     .filter((candidate) => candidate.storeVisible)
-    .filter((candidate) => normalizeRelationIds(candidate.trattamentiConsogliatiIds).includes(treatmentId))
+    .filter((candidate) => normalizeIdList(candidate.trattamentiConsogliatiIds).includes(treatmentId))
   if (linkedByMirrorRelation.length) return linkedByMirrorRelation
 
-  // Legacy fallback: old data may still be saved on treatment side.
-  const legacyProductIds = normalizeRelationIds(current.prodottiConsigliatiIds ?? [])
+  const legacyProductIds = normalizeIdList(current.prodottiConsigliatiIds)
   if (!legacyProductIds.length) return []
 
   const productById = new Map(
@@ -149,127 +190,157 @@ async function onDeleteItem() {
 </script>
 
 <template>
-  <div class="detail-page container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp title="Dettaglio trattamento" :to="headerTo" :btn-icon="canManage ? 'edit' : undefined" @btn-click="goPageEdit"
-      :btn2Icon="canManage ? 'delete' : undefined" @btn2-click="onDeleteItem" btn2Color="danger" />
+  <div class="public-page" :style="bgStyle">
+    <HeaderApp :to="{ name: 'home' }">
+      <AppHeaderCatalogNav />
+    </HeaderApp>
 
-    <section class="detail-shell">
-      <div v-if="isLoading" class="detail-state">Caricamento...</div>
+    <main class="public-page__shell">
+      <div class="public-layout">
+        <PublicSideNavigator
+          title="Dettaglio trattamento"
+          subtitle="Navigazione laterale rapida per tornare a categoria e catalogo."
+          :breadcrumbs="breadcrumbItems"
+          :links="sideLinks"
+        />
 
-      <article v-else-if="item" class="detail-card mt-3 mb-5">
-        <div class="row g-4 g-xl-5 align-items-start">
-          <div class="col-12 d-flex flex-column">
-            <p class="detail-kicker">
-              <svg class="g-icon g-icon--kicker" viewBox="0 -960 960 960" aria-hidden="true">
-                <path
-                  d="M480-80q-82 0-155-31t-127-85q-54-54-85-127T82-478q0-79 29-149t81-124l53 53q-42 43-64.5 99T158-478q0 134 94 228t228 94q134 0 228-94t94-228q0-134-94-228t-228-94q-23 0-45 2.5T392-790l88 88H280v-200l53 53q35-15 72-23t75-8q82 0 155 31t127 85q54 54 85 127t31 155q0 82-31 155T762-196q-54 54-127 85T480-80Zm-40-200q-17 0-28.5-11.5T400-320q0-17 11.5-28.5T440-360h80q17 0 28.5 11.5T560-320q0 17-11.5 28.5T520-280h-80Z" />
-              </svg>
-              Trattamento
-            </p>
-
-            <div class="detail-heading">
-              <h2 class="detail-title">{{ item.title }}</h2>
-              <p class="detail-price">
-                {{ formatPrice(item.price) }}
-              </p>
-            </div>
-
-            <p v-if="item.subtitle" class="detail-subtitle">{{ item.subtitle }}</p>
-
-            <div class="detail-badges">
-              <span v-for="label in itemCategoryLabels" :key="label" class="detail-badge">
-                <svg class="g-icon" viewBox="0 -960 960 960" aria-hidden="true">
-                  <path
-                    d="M280-120q-33 0-56.5-23.5T200-200v-560q0-33 23.5-56.5T280-840h400q33 0 56.5 23.5T760-760v560q0 33-23.5 56.5T680-120H280Zm200-360 200-120-200-120-200 120 200 120Zm0 280 200-120v-200L480-320 280-520v200l200 120Z" />
-                </svg>
-                {{ label }}
-              </span>
-              <span class="detail-badge">
-                <svg class="g-icon" viewBox="0 -960 960 960" aria-hidden="true">
-                  <path
-                    d="M480-80q-83 0-156-31.5T197-197Q112-282 80-364.5T48-520q0-83 31.5-156T197-803q85-85 167.5-116T480-950q83 0 156 31.5T763-803q85 85 116.5 167.5T911-520q0 83-31.5 156T763-197q-85 85-167.5 116.5T480-80Zm1-439 167 99 30-50-137-81v-209h-60v241Z" />
-                </svg>
-                Durata: {{ formatDuration(item.duration) }}
-              </span>
-
-              <span v-if="item.storeDisabeld" class="detail-badge detail-badge--warn">
-                <svg class="g-icon" viewBox="0 -960 960 960" aria-hidden="true">
-                  <path
-                    d="M480-280q17 0 28.5-11.5T520-320q0-17-11.5-28.5T480-360q-17 0-28.5 11.5T440-320q0 17 11.5 28.5T480-280Zm-40-160h80v-240h-80v240Zm40 360q-139 0-236.5-97.5T146-414q0-139 97.5-236.5T480-748q139 0 236.5 97.5T814-414q0 139-97.5 236.5T480-80Z" />
-                </svg>
-                Non disponibile: {{ item.storeDisabeld }}
-              </span>
-            </div>
-
-            <p v-if="item.description" class="detail-description">{{ item.description }}</p>
-
-            <div class="detail-extra">
-              <p v-if="item.tipiDiPelle" class="detail-extra-item">
-                <strong class="detail-extra-label">
-                  <svg class="g-icon" viewBox="0 -960 960 960" aria-hidden="true">
-                    <path
-                      d="M480-80q-83 0-156-31.5T197-197Q112-282 80-364.5T48-520q0-83 31.5-156T197-803q85-85 167.5-116T480-950q83 0 156 31.5T763-803q85 85 116.5 167.5T911-520q0 83-31.5 156T763-197q-85 85-167.5 116.5T480-80Zm0-80q117 0 198.5-81.5T760-440q0-117-81.5-198.5T480-720q-117 0-198.5 81.5T200-440q0 117 81.5 198.5T480-160Zm-80-200h160q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360Zm-40-120q17 0 28.5-11.5T400-520q0-17-11.5-28.5T360-560q-17 0-28.5 11.5T320-520q0 17 11.5 28.5T360-480Zm240 0q17 0 28.5-11.5T640-520q0-17-11.5-28.5T600-560q-17 0-28.5 11.5T560-520q0 17 11.5 28.5T600-480Z" />
-                  </svg>
-                  Tipi di pelle:
-                </strong>
-                {{ item.tipiDiPelle }}
-              </p>
-
-              <p v-if="item.ingredienti" class="detail-extra-item">
-                <strong class="detail-extra-label">
-                  <svg class="g-icon" viewBox="0 -960 960 960" aria-hidden="true">
-                    <path
-                      d="M480-120q-100-92-166-186.5T248-500q0-89 59.5-148.5T456-708q25 0 48.5 7.5T548-678q22-22 47-35t53-13q89 0 148.5 59.5T856-518q0 99-66 193.5T624-138q-27 23-62.5 20.5T480-120Zm0-82q73-71 124.5-149.5T656-500q0-56-36-92t-92-36q-23 0-44.5 9T446-592h-80q-16-18-37.5-27T284-628q-56 0-92 36t-36 92q0 70 51.5 148.5T480-202Zm0-213Z" />
-                  </svg>
-                  Ingredienti:
-                </strong>
-                {{ item.ingredienti }}
-              </p>
-            </div>
+        <section class="detail-panel">
+          <div v-if="canManage && item" v-motion-fade-up class="detail-actions">
+            <button v-motion-tap-scale type="button" class="detail-action-btn" @click="goPageEdit">
+              Modifica
+            </button>
+            <button v-motion-tap-scale type="button" class="detail-action-btn detail-action-btn--danger" @click="onDeleteItem">
+              Elimina
+            </button>
           </div>
-        </div>
-      </article>
 
-      <section v-if="item && recommendedProducts.length" class="recommended-section">
-        <h3 class="recommended-title mb-3">Prodotti consigliati</h3>
-        <div class="row g-3 g-lg-4">
-          <div v-for="product in recommendedProducts" :key="product.id" class="col-6 col-md-4 col-xl-3">
-            <CatalogCard
-              :title="product.title"
-              :subtitle="product.subtitle"
-              :price="product.price"
-              :img-urls="product.imgUrls ?? []"
-              :store-disabeld="product.storeDisabeld"
-              :to="{
-                name: 'ProductView',
-                params: { id: product.id },
-                query: { categoryId: product.categoryIds[0] || undefined },
-              }"
-            />
-          </div>
-        </div>
-      </section>
+          <div v-if="isLoading" class="detail-state">Caricamento...</div>
 
-      <p v-if="!isLoading && !item" class="detail-state">Trattamento non trovato.</p>
-    </section>
+          <article v-else-if="item" v-motion-fade-up class="detail-card">
+            <div class="row g-4 g-xl-5 align-items-start">
+              <div class="col-12 d-flex flex-column">
+                <p class="detail-kicker">Trattamento</p>
+
+                <div class="detail-heading">
+                  <h2 class="detail-title">{{ item.title }}</h2>
+                  <p class="detail-price">
+                    {{ formatPrice(item.price) }}
+                  </p>
+                </div>
+
+                <p v-if="item.subtitle" class="detail-subtitle">{{ item.subtitle }}</p>
+
+                <div class="detail-badges">
+                  <span v-for="label in itemCategoryLabels" :key="label" class="detail-badge">
+                    {{ label }}
+                  </span>
+                  <span class="detail-badge">
+                    Durata: {{ formatDuration(item.duration) }}
+                  </span>
+                  <span v-if="item.storeDisabeld" class="detail-badge detail-badge--warn">
+                    Non disponibile: {{ item.storeDisabeld }}
+                  </span>
+                </div>
+
+                <p v-if="item.description" class="detail-description">{{ item.description }}</p>
+
+                <div class="detail-extra">
+                  <p v-if="item.tipiDiPelle" class="detail-extra-item">
+                    <strong class="detail-extra-label">Tipi di pelle:</strong>
+                    {{ item.tipiDiPelle }}
+                  </p>
+
+                  <p v-if="item.ingredienti" class="detail-extra-item">
+                    <strong class="detail-extra-label">Ingredienti:</strong>
+                    {{ item.ingredienti }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <section v-if="item && recommendedProducts.length" v-motion-fade-up :delay="80" class="recommended-section">
+            <h3 class="recommended-title">Prodotti consigliati</h3>
+            <div class="row g-3 g-lg-4">
+              <div v-for="(product, index) in recommendedProducts" :key="product.id" class="col-6 col-md-4 col-xl-3">
+                <div v-motion-stagger-children :delay="index * 28">
+                  <CatalogCard
+                    :title="product.title"
+                    :subtitle="product.subtitle"
+                    :price="product.price"
+                    :img-urls="product.imgUrls ?? []"
+                    :store-disabeld="product.storeDisabeld"
+                    :to="{
+                      name: 'ProductView',
+                      params: { id: product.id },
+                      query: { categoryId: product.categoryIds[0] || undefined },
+                    }"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <p v-if="!isLoading && !item" class="detail-state">Trattamento non trovato.</p>
+        </section>
+      </div>
+    </main>
   </div>
 </template>
 
 <style scoped>
-.detail-page {
-  color: #2f2f2f;
+.public-page {
+  min-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 8% -8%, rgba(232, 179, 190, 0.2), transparent 48%),
+    radial-gradient(circle at 96% 2%, rgba(226, 205, 177, 0.2), transparent 42%);
 }
 
-.detail-shell {
-  width: min(1080px, 100%);
+.public-page__shell {
+  width: min(1260px, calc(100% - 1rem));
   margin: 0 auto;
-  padding: 0 12px 1.6rem;
+  padding: 0.35rem 0 1.4rem;
 }
 
-.detail-toolbar {
+.public-layout {
+  display: grid;
+  grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
+  gap: 0.72rem;
+}
+
+.detail-panel {
+  padding: clamp(1rem, 2.1vw, 1.55rem);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 2px;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.72), rgba(246, 239, 243, 0.58));
+  box-shadow: 0 14px 28px rgba(35, 20, 25, 0.11);
+}
+
+.detail-actions {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 0.75rem;
+  gap: 0.45rem;
+  margin-top: 0;
+  margin-bottom: 0.8rem;
+}
+
+.detail-action-btn {
+  min-height: 34px;
+  padding: 0 0.74rem;
+  border: 1px solid rgba(84, 44, 58, 0.24);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #4b2935;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.detail-action-btn--danger {
+  border-color: rgba(138, 26, 26, 0.3);
+  color: #7d1d1d;
 }
 
 .detail-state {
@@ -281,6 +352,7 @@ async function onDeleteItem() {
 .detail-card {
   position: relative;
   overflow: hidden;
+  margin-top: 0.2rem;
   padding: clamp(1rem, 2vw, 1.4rem);
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 2px;
@@ -288,14 +360,6 @@ async function onDeleteItem() {
   backdrop-filter: blur(10px) saturate(140%);
   -webkit-backdrop-filter: blur(10px) saturate(140%);
   box-shadow: 0 12px 24px rgba(45, 23, 31, 0.13);
-}
-
-.detail-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(125deg, rgba(255, 255, 255, 0.3), transparent 50%);
 }
 
 .detail-kicker {
@@ -383,9 +447,6 @@ async function onDeleteItem() {
 }
 
 .detail-price {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
   margin-top: 0.1rem;
   margin-bottom: 0;
   color: #2f2f2f;
@@ -396,10 +457,11 @@ async function onDeleteItem() {
 }
 
 .recommended-section {
-  margin-top: 1.25rem;
+  margin-top: 1.2rem;
 }
 
 .recommended-title {
+  margin: 0 0 0.75rem;
   color: #4b2935;
   font-size: 1.05rem;
   font-weight: 700;
@@ -407,33 +469,14 @@ async function onDeleteItem() {
   text-transform: uppercase;
 }
 
-.g-icon {
-  width: 1.06rem;
-  height: 1.06rem;
-  fill: currentColor;
-  flex: 0 0 auto;
-}
-
-.g-icon--kicker {
-  width: 0.95rem;
-  height: 0.95rem;
-}
-
-:deep(.detail-toolbar .btn) {
-  border-radius: 2px;
-}
-
-:deep(.detail-toolbar .btn:focus-visible) {
-  box-shadow: none;
-}
-
 @media (max-width: 575.98px) {
-  .detail-shell {
-    padding: 0 10px 1.25rem;
+  .public-page__shell {
+    width: calc(100% - 0.6rem);
+    padding-bottom: 1rem;
   }
 
-  .detail-toolbar {
-    margin-bottom: 0.5rem;
+  .detail-card {
+    padding: 0.82rem;
   }
 
   .detail-subtitle {
@@ -445,13 +488,11 @@ async function onDeleteItem() {
     align-items: flex-start;
     gap: 0.25rem;
   }
+}
 
-  .detail-price {
-    font-size: 1.1rem;
-  }
-
-  .detail-description {
-    font-size: 0.86rem;
+@media (max-width: 991.98px) {
+  .public-layout {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -4,6 +4,7 @@ export interface ProductCategoryData extends Partial<Timestampble> {
   id: string
   title: string
   subtitle?: string
+  emoji?: string
   imgUrls?: string[]
   updateBy: string
 }
@@ -13,6 +14,7 @@ export class ProductCategory extends FirestoreModel<ProductCategoryData> {
 
   title: string
   subtitle?: string
+  emoji?: string
   imgUrls?: string[]
   updateBy: string
 
@@ -20,6 +22,7 @@ export class ProductCategory extends FirestoreModel<ProductCategoryData> {
     super(data)
     this.title = data.title
     this.subtitle = data.subtitle
+    this.emoji = String(data.emoji ?? '').trim() || undefined
     this.imgUrls = Array.isArray(data.imgUrls) ? data.imgUrls : []
     this.updateBy = data.updateBy
   }
@@ -29,6 +32,7 @@ export class ProductCategory extends FirestoreModel<ProductCategoryData> {
       id: this.id,
       title: this.title,
       subtitle: this.subtitle,
+      emoji: this.emoji,
       imgUrls: this.imgUrls,
       updateBy: this.updateBy,
       ...this.timestampbleProps()

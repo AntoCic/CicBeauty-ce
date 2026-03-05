@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { cicKitStore, defaultUserPermission, useChangeHeader } from 'cic-kit'
-import { computed, watch } from 'vue'
+import { Btn, cicKitStore, defaultUserPermission, toast, useChangeHeader } from 'cic-kit'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import AiPromptLauncherCard from '../../components/ai/AiPromptLauncherCard.vue'
 import BtnAi from '../../components/BtnAi.vue'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
+import { callTestFillMissingCategoryEmojis, type TestFillMissingCategoryEmojisResponse } from '../../call/callTestFillMissingCategoryEmojis'
+import { parseAiError } from '../../call/_utilityApi'
 import { Auth } from '../../main'
 
 useChangeHeader('Test Playground', { name: 'home' })
@@ -11,6 +14,9 @@ useChangeHeader('Test Playground', { name: 'home' })
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const demoSizes = ['xs', 'sm', 'md', 'lg', 'xl'] as const
+const isFillingCategoryEmojis = ref(false)
+const fillCategoryEmojiResult = ref<TestFillMissingCategoryEmojisResponse | undefined>(undefined)
+const fillCategoryEmojiError = ref('')
 
 const hasBetaFeatures = computed(() => Auth?.user?.hasPermission(defaultUserPermission.BETA_FEATURES) ?? false)
 
@@ -22,6 +28,24 @@ watch(
   },
   { immediate: true },
 )
+
+async function fillMissingCategoryEmojis() {
+  if (isFillingCategoryEmojis.value) return
+
+  isFillingCategoryEmojis.value = true
+  fillCategoryEmojiError.value = ''
+  try {
+    const result = await callTestFillMissingCategoryEmojis({ limit: 120 })
+    fillCategoryEmojiResult.value = result
+    toast.success(`:white_check_mark: Emoji aggiornate: ${result.updated}/${result.attempted}`)
+  } catch (error) {
+    const message = parseAiError(error)
+    fillCategoryEmojiError.value = message
+    toast.error(`:warning: ${message}`)
+  } finally {
+    isFillingCategoryEmojis.value = false
+  }
+}
 </script>
 
 <template>
@@ -85,12 +109,68 @@ watch(
           <BtnAi size="md" variant="ghost" aria-label="AI variant ghost md" />
         </div>
       </section>
+
+      <section class="card border-0 shadow-sm p-3 p-md-4 mt-3">
+        <h2 class="h6 text-uppercase mb-1">Test Emoji Categorie</h2>
+        <p class="small text-muted mb-3">
+          Chiamata API di test: prende tutte le categorie e aggiunge emoji solo a quelle che non la hanno.
+        </p>
+
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <Btn
+            type="button"
+            color="dark"
+            icon="auto_awesome"
+            :loading="isFillingCategoryEmojis"
+            :disabled="isFillingCategoryEmojis"
+            @click="fillMissingCategoryEmojis"
+          >
+            Genera emoji mancanti
+          </Btn>
+          <small v-if="fillCategoryEmojiResult" class="text-muted">
+            Modello: {{ fillCategoryEmojiResult.model }} | Aggiornate: {{ fillCategoryEmojiResult.updated }}/{{ fillCategoryEmojiResult.attempted }}
+          </small>
+        </div>
+
+        <p v-if="fillCategoryEmojiError" class="text-danger small mt-2 mb-0">
+          {{ fillCategoryEmojiError }}
+        </p>
+
+        <div v-if="fillCategoryEmojiResult" class="small mt-3">
+          <p class="mb-2 text-muted">
+            Scansionate: {{ fillCategoryEmojiResult.scanned }} | Mancanti prima: {{ fillCategoryEmojiResult.missingBefore }}
+          </p>
+          <div class="emoji-results-list">
+            <div v-for="item in fillCategoryEmojiResult.items" :key="`${item.collection}-${item.id}`" class="emoji-result-row">
+              [{{ item.collection }}] {{ item.title }} -> {{ item.emoji || '-' }} ({{ item.status }})
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <AiPromptLauncherCard class="mt-3" />
     </div>
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .test-wrapper {
   max-width: 720px;
 }
+
+.emoji-results-list {
+  max-height: 260px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.emoji-result-row {
+  border: 1px solid rgba(84, 44, 58, 0.12);
+  border-radius: 0.35rem;
+  padding: 0.2rem 0.4rem;
+  background: rgba(255, 255, 255, 0.75);
+}
 </style>
+

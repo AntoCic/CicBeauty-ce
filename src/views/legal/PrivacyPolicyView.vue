@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { cicKitStore, useChangeHeader } from 'cic-kit'
 import { computed } from 'vue'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import LegalLinks from '../../components/LegalLinks.vue'
 import { APP_CONFIG_DEFAULTS, hasLegalPlaceholdersInConfig } from '../../models/AppConfig'
 import { appConfigStore } from '../../stores/appConfigStore'
@@ -101,3 +101,4 @@ const hasLegalPlaceholders = computed(() => hasLegalPlaceholdersInConfig(legalCo
   font-size: 0.8rem;
 }
 </style>
+

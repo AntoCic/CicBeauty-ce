@@ -1,2 +1,31 @@
-@use "bootstrap/scss/bootstrap";
 @use "cic-kit/style";
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap');
+
+main.app-main--public {
+  display: block !important;
+  height: auto !important;
+  min-height: 100dvh !important;
+  overflow-y: visible !important;
+  overflow-x: clip !important;
+}
+
+main.app-main--public > * {
+  width: 100%;
+  min-width: 0;
+}
+
+main.app-main--public .public-page,
+main.app-main--public .home-page {
+  min-height: 100dvh;
+  overflow-y: visible !important;
+  overflow-x: clip;
+}
+
+main.app-main--public .public-layout {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+main.app-main--public .side-nav {
+  display: none !important;
+}

@@ -21,12 +21,14 @@ import { Auth } from '../../main'
 import { productStore } from '../../stores/productStore'
 import { typeExpenseStore } from '../../stores/typeExpenseStore'
 import { productCategoryStore } from '../../stores/productCategoryStore'
+import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import CatalogCard from '../../components/CatalogCard.vue'
 import BtnAi from '../../components/BtnAi.vue'
 import { callMetaAIAgent } from '../../call/callMetaAIAgent'
 import { parseAiError } from '../../call/_utilityApi'
+import { normalizeIdList } from '../../catalog/utils'
 import { UserPermission } from '../../enums/UserPermission'
 
 type ProductForm = {
@@ -43,9 +45,13 @@ type SetFieldValueFn = (field: string, value: unknown, shouldValidate?: boolean)
 
 useChangeHeader('Modifica prodotto', { name: 'ProductCategoriesView' })
 useStoreWatch([
-  { store: typeExpenseStore, getOpts: { forceLocalSet: true } },
+  { store: typeExpenseStore, getOpts: {  } },
   {
     store: productCategoryStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+  },
+  {
+    store: treatmentCategoryStore,
     getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
   },
   {
@@ -89,6 +95,47 @@ const categoryOptions = computed(() =>
 const treatmentOptions = computed(() =>
   [...treatmentStore.itemsActiveArray].sort((a, b) => a.title.localeCompare(b.title, 'it')),
 )
+const treatmentCategoryTitleById = computed(() =>
+  new Map(treatmentCategoryStore.itemsActiveArray.map((item) => [item.id, String(item.title ?? '').trim()])),
+)
+const groupedTreatmentOptions = computed(() => {
+  const groups = new Map<
+    string,
+    {
+      id: string
+      title: string
+      items: (typeof treatmentOptions.value)[number][]
+    }
+  >()
+
+  for (const option of treatmentOptions.value) {
+    const categoryIds = normalizeIdList(option.categoryIds)
+    let groupId = 'no-category'
+    let groupTitle = 'Senza categoria'
+
+    for (const categoryId of categoryIds) {
+      const categoryTitle = String(treatmentCategoryTitleById.value.get(categoryId) ?? '').trim()
+      if (!categoryTitle) continue
+      groupId = categoryId
+      groupTitle = categoryTitle
+      break
+    }
+
+    const currentGroup = groups.get(groupId)
+    if (currentGroup) {
+      currentGroup.items.push(option)
+      continue
+    }
+
+    groups.set(groupId, {
+      id: groupId,
+      title: groupTitle,
+      items: [option],
+    })
+  }
+
+  return [...groups.values()].sort((a, b) => a.title.localeCompare(b.title, 'it'))
+})
 const selectedCategoryItems = computed(() =>
   selectedCategoryIds.value
     .map((id) => productCategoryStore.findItemsById(id))
@@ -135,6 +182,12 @@ function typeExpenseLabel(typeExpense: { emoji?: string; name: string }) {
   return [emoji, name].filter(Boolean).join(' ')
 }
 
+function categoryLabel(category: { title: string; emoji?: string }) {
+  const emoji = String(category.emoji ?? '').trim()
+  const title = String(category.title ?? '').trim()
+  return [emoji, title].filter(Boolean).join(' ')
+}
+
 function normalizeString(value: unknown, fallback = '') {
   const normalized = String(value ?? '').trim()
   return normalized || fallback
@@ -156,11 +209,7 @@ function normalizeBoolean(value: unknown, fallback = false) {
 }
 
 function normalizeCategoryIds(ids: string[]) {
-  return [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))]
-}
-
-function normalizeRelationIds(ids: string[]) {
-  return [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))]
+  return normalizeIdList(ids)
 }
 
 function sanitizeFileName(name: string) {
@@ -307,7 +356,7 @@ async function loadItem() {
     }
     existingImgUrls.value = [...(current.value?.imgUrls ?? [])]
     selectedCategoryIds.value = normalizeCategoryIds(current.value?.categoryIds ?? [])
-    selectedTreatmentIds.value = normalizeRelationIds(current.value?.trattamentiConsogliatiIds ?? [])
+    selectedTreatmentIds.value = normalizeIdList(current.value?.trattamentiConsogliatiIds)
     resetFileSelection()
   } catch (error) {
     console.error(error)
@@ -334,7 +383,7 @@ async function onSubmit(values: Record<string, unknown>) {
     toast.error('Seleziona almeno una categoria prodotto')
     return
   }
-  const normalizedTreatmentIds = normalizeRelationIds(selectedTreatmentIds.value)
+  const normalizedTreatmentIds = normalizeIdList(selectedTreatmentIds.value)
 
   const selectedFiles = toFileArray(fileValue.value)
   if (selectedFiles.length && !productStore.storageFolder) {
@@ -522,9 +571,14 @@ watch(() => route.params.id, loadItem)
     <HeaderApp
       :title="isCreateMode ? 'Nuovo prodotto' : 'Modifica prodotto'"
       :to="headerTo"
-      :btn-icon="!isCreateMode ? 'visibility' : undefined"
-      @btn-click="goPageDettaglio"
-    />
+    >
+      <Btn
+        v-if="!isCreateMode"
+        icon="visibility"
+        variant="ghost"
+        @click="goPageDettaglio"
+      />
+    </HeaderApp>
 
     <div class="edit-wrapper mx-auto py-3 py-md-4">
       <div v-if="isLoading" class="text-muted small">Caricamento...</div>
@@ -602,7 +656,7 @@ watch(() => route.params.id, loadItem)
                   :class="{ 'relation-chip--active': isCategorySelected(option.id) }"
                   @click="toggleCategory(option.id)"
                 >
-                  {{ option.title }}
+                  {{ categoryLabel(option) }}
                 </button>
               </div>
               <div v-else class="form-text">Nessuna categoria disponibile.</div>
@@ -612,7 +666,7 @@ watch(() => route.params.id, loadItem)
 
               <div v-if="selectedCategoryItems.length" class="selected-relations mt-2">
                 <span v-for="item in selectedCategoryItems" :key="item.id" class="selected-relation">
-                  {{ item.title }}
+                  {{ categoryLabel(item) }}
                   <button type="button" aria-label="Rimuovi categoria" @click="removeCategorySelection(item.id)">
                     x
                   </button>
@@ -622,17 +676,22 @@ watch(() => route.params.id, loadItem)
 
             <div class="col-12">
               <label class="form-label mb-1">Trattamenti consigliati</label>
-              <div v-if="treatmentOptions.length" class="relation-grid">
-                <button
-                  v-for="option in treatmentOptions"
-                  :key="option.id"
-                  type="button"
-                  class="relation-chip relation-chip--secondary"
-                  :class="{ 'relation-chip--active': isTreatmentSelected(option.id) }"
-                  @click="toggleTreatment(option.id)"
-                >
-                  {{ option.title }}
-                </button>
+              <div v-if="groupedTreatmentOptions.length">
+                <div v-for="(group, index) in groupedTreatmentOptions" :key="group.id" :class="{ 'mt-3': index > 0 }">
+                  <p class="small text-muted fw-semibold mb-2">{{ group.title }}</p>
+                  <div class="relation-grid">
+                    <button
+                      v-for="option in group.items"
+                      :key="option.id"
+                      type="button"
+                      class="relation-chip relation-chip--secondary"
+                      :class="{ 'relation-chip--active': isTreatmentSelected(option.id) }"
+                      @click="toggleTreatment(option.id)"
+                    >
+                      {{ option.title }}
+                    </button>
+                  </div>
+                </div>
               </div>
               <div v-else class="form-text">Nessun trattamento disponibile.</div>
               <small class="form-text text-muted d-block mt-1">
@@ -883,3 +942,4 @@ watch(() => route.params.id, loadItem)
   line-height: 1;
 }
 </style>
+

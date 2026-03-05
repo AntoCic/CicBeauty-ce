@@ -10,16 +10,20 @@ import { Auth } from '../../main'
 import { treatmentStore } from '../../stores/treatmentStore'
 import { typeExpenseStore } from '../../stores/typeExpenseStore'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
+import { productCategoryStore } from '../../stores/productCategoryStore'
 import { productStore } from '../../stores/productStore'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import CatalogCard from '../../components/CatalogCard.vue'
 import BtnAi from '../../components/BtnAi.vue'
 import { callMarketingAgent } from '../../call/callMarketingAgent'
 import { callMetaAIAgent } from '../../call/callMetaAIAgent'
 import { parseAiError } from '../../call/_utilityApi'
+import { normalizeIdList } from '../../catalog/utils'
 import { UserPermission } from '../../enums/UserPermission'
+import { hasBetaFeaturesAccess } from '../../utils/permissions'
 
 type TreatmentForm = {
+  old_id: string
   title: string
   subtitle: string
   type_expense_id: string
@@ -34,9 +38,13 @@ type SetFieldValueFn = (field: string, value: unknown, shouldValidate?: boolean)
 
 useChangeHeader('Modifica trattamento', { name: 'TreatmentCategoriesView' })
 useStoreWatch([
-  { store: typeExpenseStore, getOpts: { forceLocalSet: true } },
+  { store: typeExpenseStore, getOpts: {  } },
   {
     store: treatmentCategoryStore,
+    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
+  },
+  {
+    store: productCategoryStore,
     getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
   },
   {
@@ -81,6 +89,47 @@ const categoryOptions = computed(() =>
 const productOptions = computed(() =>
   [...productStore.itemsActiveArray].sort((a, b) => a.title.localeCompare(b.title, 'it')),
 )
+const productCategoryTitleById = computed(() =>
+  new Map(productCategoryStore.itemsActiveArray.map((item) => [item.id, String(item.title ?? '').trim()])),
+)
+const groupedProductOptions = computed(() => {
+  const groups = new Map<
+    string,
+    {
+      id: string
+      title: string
+      items: (typeof productOptions.value)[number][]
+    }
+  >()
+
+  for (const option of productOptions.value) {
+    const categoryIds = normalizeIdList(option.categoryIds)
+    let groupId = 'no-category'
+    let groupTitle = 'Senza categoria'
+
+    for (const categoryId of categoryIds) {
+      const categoryTitle = String(productCategoryTitleById.value.get(categoryId) ?? '').trim()
+      if (!categoryTitle) continue
+      groupId = categoryId
+      groupTitle = categoryTitle
+      break
+    }
+
+    const currentGroup = groups.get(groupId)
+    if (currentGroup) {
+      currentGroup.items.push(option)
+      continue
+    }
+
+    groups.set(groupId, {
+      id: groupId,
+      title: groupTitle,
+      items: [option],
+    })
+  }
+
+  return [...groups.values()].sort((a, b) => a.title.localeCompare(b.title, 'it'))
+})
 const selectedCategoryItems = computed(() =>
   selectedCategoryIds.value
     .map((id) => treatmentCategoryStore.findItemsById(id))
@@ -93,9 +142,11 @@ const selectedProductItems = computed(() =>
 )
 const defaultUpdateBy = computed(() => String(Auth.uid ?? '').trim())
 const hasAiPermission = computed(() => Auth?.user?.hasPermission(UserPermission.AI) ?? false)
+const hasBetaFeatures = computed(() => hasBetaFeaturesAccess())
 
 const schema = toTypedSchema(
   yup.object({
+    old_id: yup.string().default(''),
     title: yup.string().required('Campo obbligatorio'),
     subtitle: yup.string().default(''),
     type_expense_id: yup.string().required('Campo obbligatorio'),
@@ -111,6 +162,7 @@ const schema = toTypedSchema(
 const formKey = computed(() => (isCreateMode.value ? 'treatment-new' : current.value?.id ?? 'treatment-edit'))
 
 const initialValues = computed<TreatmentForm>(() => ({
+  old_id: current.value?.old_id ?? '',
   title: current.value?.title ?? '',
   subtitle: current.value?.subtitle ?? '',
   type_expense_id: current.value?.type_expense_id ?? '',
@@ -126,6 +178,12 @@ function typeExpenseLabel(typeExpense: { emoji?: string; name: string }) {
   const emoji = String(typeExpense.emoji ?? '').trim()
   const name = String(typeExpense.name ?? '').trim()
   return [emoji, name].filter(Boolean).join(' ')
+}
+
+function categoryLabel(category: { title: string; emoji?: string }) {
+  const emoji = String(category.emoji ?? '').trim()
+  const title = String(category.title ?? '').trim()
+  return [emoji, title].filter(Boolean).join(' ')
 }
 
 function normalizeString(value: unknown, fallback = '') {
@@ -149,15 +207,12 @@ function normalizeBoolean(value: unknown, fallback = false) {
 }
 
 function normalizeCategoryIds(ids: string[]) {
-  return [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))]
-}
-
-function normalizeRelationIds(ids: string[]) {
-  return [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))]
+  return normalizeIdList(ids)
 }
 
 function buildCreatePayload(form: TreatmentForm, categoryIds: string[]): Omit<TreatmentData, 'id'> {
   return {
+    old_id: hasBetaFeatures.value ? form.old_id : '',
     title: form.title,
     subtitle: form.subtitle,
     icon: '',
@@ -229,7 +284,7 @@ function findLinkedProductIds(treatmentId: string) {
   const normalizedTreatmentId = String(treatmentId ?? '').trim()
   if (!normalizedTreatmentId) return []
   return productStore.itemsActiveArray
-    .filter((product) => normalizeRelationIds(product.trattamentiConsogliatiIds ?? []).includes(normalizedTreatmentId))
+    .filter((product) => normalizeIdList(product.trattamentiConsogliatiIds).includes(normalizedTreatmentId))
     .map((product) => product.id)
 }
 
@@ -237,9 +292,9 @@ async function syncTreatmentProductLinks(treatmentId: string, nextProductIds: st
   const normalizedTreatmentId = String(treatmentId ?? '').trim()
   if (!normalizedTreatmentId) return
 
-  const nextSet = new Set(normalizeRelationIds(nextProductIds))
+  const nextSet = new Set(normalizeIdList(nextProductIds))
   const currentlyLinkedProducts = productStore.itemsActiveArray.filter((product) =>
-    normalizeRelationIds(product.trattamentiConsogliatiIds ?? []).includes(normalizedTreatmentId),
+    normalizeIdList(product.trattamentiConsogliatiIds).includes(normalizedTreatmentId),
   )
   const currentlyLinkedIds = new Set(currentlyLinkedProducts.map((product) => product.id))
 
@@ -247,7 +302,7 @@ async function syncTreatmentProductLinks(treatmentId: string, nextProductIds: st
 
   for (const product of currentlyLinkedProducts) {
     if (nextSet.has(product.id)) continue
-    const nextTreatmentIds = normalizeRelationIds(product.trattamentiConsogliatiIds ?? []).filter(
+    const nextTreatmentIds = normalizeIdList(product.trattamentiConsogliatiIds).filter(
       (id) => id !== normalizedTreatmentId,
     )
     updates.push(
@@ -262,7 +317,7 @@ async function syncTreatmentProductLinks(treatmentId: string, nextProductIds: st
     if (currentlyLinkedIds.has(productId)) continue
     const product = productStore.findItemsById(productId)
     if (!product) continue
-    const nextTreatmentIds = normalizeRelationIds([
+    const nextTreatmentIds = normalizeIdList([
       ...(product.trattamentiConsogliatiIds ?? []),
       normalizedTreatmentId,
     ])
@@ -298,7 +353,7 @@ async function loadItem() {
     const linkedProductIds = findLinkedProductIds(current.value?.id ?? '')
     selectedProductIds.value = linkedProductIds.length
       ? linkedProductIds
-      : normalizeRelationIds(current.value?.prodottiConsigliatiIds ?? [])
+      : normalizeIdList(current.value?.prodottiConsigliatiIds)
     hasEditedProductLinks.value = false
   } catch (error) {
     console.error(error)
@@ -310,6 +365,7 @@ async function loadItem() {
 
 async function onSubmit(values: Record<string, unknown>) {
   const form: TreatmentForm = {
+    old_id: normalizeString(values.old_id, ''),
     title: normalizeString(values.title),
     subtitle: normalizeString(values.subtitle, ''),
     type_expense_id: normalizeString(values.type_expense_id),
@@ -326,9 +382,10 @@ async function onSubmit(values: Record<string, unknown>) {
     toast.error('Seleziona almeno una categoria trattamento')
     return
   }
-  const normalizedProductIds = normalizeRelationIds(selectedProductIds.value)
+  const normalizedProductIds = normalizeIdList(selectedProductIds.value)
 
   const updatePayload = {
+    old_id: hasBetaFeatures.value ? normalizeString(form.old_id, '') : '',
     title: form.title,
     subtitle: form.subtitle,
     type_expense_id: form.type_expense_id,
@@ -399,7 +456,7 @@ watch(
     const linkedProductIds = findLinkedProductIds(current.value.id)
     selectedProductIds.value = linkedProductIds.length
       ? linkedProductIds
-      : normalizeRelationIds(current.value.prodottiConsigliatiIds ?? [])
+      : normalizeIdList(current.value.prodottiConsigliatiIds)
   },
 )
 
@@ -534,8 +591,14 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
 
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp :title="isCreateMode ? 'Nuovo trattamento' : 'Modifica trattamento'" :to="headerTo"
-      :btn-icon="!isCreateMode ? 'visibility' : undefined" @btn-click="goPageDettaglio" />
+    <HeaderApp :title="isCreateMode ? 'Nuovo trattamento' : 'Modifica trattamento'" :to="headerTo">
+      <Btn
+        v-if="!isCreateMode"
+        icon="visibility"
+        variant="ghost"
+        @click="goPageDettaglio"
+      />
+    </HeaderApp>
 
     <div class="edit-wrapper mx-auto py-3 py-md-4">
       <div v-if="isLoading" class="text-muted small">Caricamento...</div>
@@ -556,6 +619,12 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
 
         <div class="card border-0 shadow-sm p-3 p-md-4">
           <div class="row g-3">
+            <div v-if="hasBetaFeatures" class="col-12">
+              <label class="form-label">old_id (migrazione)</label>
+              <Field name="old_id" class="form-control" />
+              <ErrorMessage name="old_id" class="text-danger small" />
+            </div>
+
             <div class="col-12">
               <label class="form-label">Titolo</label>
               <Field name="title" class="form-control" />
@@ -598,7 +667,7 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
                 <button v-for="option in categoryOptions" :key="option.id" type="button" class="relation-chip"
                   :class="{ 'relation-chip--active': isCategorySelected(option.id) }"
                   @click="toggleCategory(option.id)">
-                  {{ option.title }}
+                  {{ categoryLabel(option) }}
                 </button>
               </div>
               <div v-else class="form-text">Nessuna categoria disponibile.</div>
@@ -608,7 +677,7 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
 
               <div v-if="selectedCategoryItems.length" class="selected-relations mt-2">
                 <span v-for="item in selectedCategoryItems" :key="item.id" class="selected-relation">
-                  {{ item.title }}
+                  {{ categoryLabel(item) }}
                   <button type="button" aria-label="Rimuovi categoria" @click="removeCategorySelection(item.id)">
                     x
                   </button>
@@ -620,15 +689,20 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
               <label class="form-label mb-1">Prodotti consigliati</label>
               <Accordion id="treatment-products-accordion" title="Seleziona prodotti consigliati"
                 class="recommended-products-accordion">
-                <div v-if="productOptions.length" class="relation-grid">
-                  <button v-for="option in productOptions" :key="option.id" type="button"
-                    class="relation-chip relation-chip--secondary relation-chip--multiline"
-                    :class="{ 'relation-chip--active': isProductSelected(option.id) }" @click="toggleProduct(option.id)">
-                    <span class="relation-chip__title">{{ option.title }}</span>
-                    <span v-if="String(option.subtitle ?? '').trim()" class="relation-chip__subtitle">
-                      {{ option.subtitle }}
-                    </span>
-                  </button>
+                <div v-if="groupedProductOptions.length">
+                  <div v-for="(group, index) in groupedProductOptions" :key="group.id" :class="{ 'mt-3': index > 0 }">
+                    <p class="small text-muted fw-semibold mb-2">{{ group.title }}</p>
+                    <div class="relation-grid">
+                      <button v-for="option in group.items" :key="option.id" type="button"
+                        class="relation-chip relation-chip--secondary relation-chip--multiline"
+                        :class="{ 'relation-chip--active': isProductSelected(option.id) }" @click="toggleProduct(option.id)">
+                        <span class="relation-chip__title">{{ option.title }}</span>
+                        <span v-if="String(option.subtitle ?? '').trim()" class="relation-chip__subtitle">
+                          {{ option.subtitle }}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div v-else class="form-text">Nessun prodotto disponibile.</div>
               </Accordion>
@@ -842,3 +916,4 @@ function generateDescription(values: Record<string, unknown>, setFieldValue: Set
   line-height: 1;
 }
 </style>
+

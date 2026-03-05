@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { cicKitStore, useStoreWatch } from 'cic-kit'
+import { Btn, cicKitStore, useStoreWatch } from 'cic-kit'
 import { computed, ref } from 'vue'
-import CatalogCard from '../../components/CatalogCard.vue'
-import { productStore } from '../../stores/productStore'
-import { Auth } from '../../main'
-import HeaderApp from '../../components/HeaderApp.vue'
 import { useRoute, useRouter } from 'vue-router'
+import CatalogCard from '../../components/CatalogCard.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
+import AppHeaderCatalogNav from '../../components/headers/AppHeaderCatalogNav.vue'
+import SectionHeader from '../../components/public/SectionHeader.vue'
+import { filterBySearch } from '../../catalog/utils'
+import { Auth } from '../../main'
 import { productCategoryStore } from '../../stores/productCategoryStore'
+import { productStore } from '../../stores/productStore'
+import '../../styles/catalog-view.scss'
 
 useStoreWatch([
   {
@@ -24,27 +28,18 @@ useStoreWatch([
 const route = useRoute()
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
-const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin)
+const isLoggedIn = computed(() => Boolean(Auth.isLoggedIn))
 const search = ref('')
 
 const categoryId = computed(() => String(route.params.categoryId ?? '').trim())
 const selectedCategory = computed(() => productCategoryStore.findItemsById(categoryId.value))
-const title = computed(() => selectedCategory.value?.title ?? 'Prodotti')
 
 const filteredItems = computed(() => {
-  const term = search.value.trim().toLowerCase()
   const source = categoryId.value
     ? productStore.itemsActiveArray.filter((item) => item.categoryIds.includes(categoryId.value))
     : productStore.itemsActiveArray
 
-  if (!term) return source
-  return source.filter((item) =>
-    [item.title, item.subtitle].some((value) =>
-      String(value ?? '')
-        .toLowerCase()
-        .includes(term),
-    ),
-  )
+  return filterBySearch(source, search.value, (item) => [item.title, item.subtitle])
 })
 
 function goPageAdd() {
@@ -57,20 +52,39 @@ function goToManageCategories() {
 </script>
 
 <template>
-  <div class="container-fluid pb-t pt-3 pt-md-4 overflow-auto h-100" :style="bgStyle">
-    <HeaderApp
-      :title="title"
-      :to="{ name: 'ProductCategoriesView' }"
-      v-model="search"
-      search-placeholder="Cerca prodotti..."
-      :btn-icon="canManage ? 'edit_note' : undefined"
-      :btn2-icon="canManage ? 'add' : undefined"
-      @btn-click="goToManageCategories"
-      @btn2-click="goPageAdd"
-    />
+  <div class="container-fluid pb-t pt-3 pt-md-4 overflow-auto vh-100" :style="bgStyle">
+    <HeaderApp :to="{ name: 'ProductCategoriesView' }">
+      <AppHeaderCatalogNav />
+      <div v-if="isLoggedIn" class="d-inline-flex align-items-center gap-1">
+        <Btn icon="edit_note" variant="ghost" @click="goToManageCategories" />
+        <Btn icon="add" variant="ghost" @click="goPageAdd" />
+      </div>
+    </HeaderApp>
 
     <section class="catalog-view">
-      <p v-if="selectedCategory?.subtitle" class="small text-muted mb-2">{{ selectedCategory.subtitle }}</p>
+      <div class="row g-3 g-md-4 mt-1 mb-3 mb-lg-4">
+        <div class="col-12 col-md-6 col-lg-8">
+          <SectionHeader
+            eyebrow="Categorie"
+            title="Prodotti"
+            :description="categoryId
+              ? 'Catalogo filtrato per categoria: apri una scheda per vedere dettagli, ingredienti e consigli d\'uso.'
+              : 'Catalogo completo prodotti CNC Beauty: usa la ricerca per trovare subito la soluzione piu adatta.'"
+          />
+          <p v-if="selectedCategory?.subtitle" class="catalog-meta mb-0 mt-2">
+            {{ selectedCategory.subtitle }}
+          </p>
+        </div>
+        <div class="col-12 col-md-6 col-lg-4">
+          <input
+            v-model="search"
+            type="search"
+            class="form-control catalog-search"
+            placeholder="Cerca prodotti..."
+            aria-label="Cerca prodotti"
+          />
+        </div>
+      </div>
 
       <div class="row g-3 g-lg-4 mt-1">
         <div v-for="item in filteredItems" :key="item.id" class="col-6 col-md-4 col-xl-3">
@@ -91,15 +105,3 @@ function goToManageCategories() {
     </section>
   </div>
 </template>
-
-<style scoped>
-.catalog-view {
-  padding: 0 12px 1.5rem;
-}
-
-@media (max-width: 575.98px) {
-  .catalog-view {
-    padding: 0 10px 1.25rem;
-  }
-}
-</style>

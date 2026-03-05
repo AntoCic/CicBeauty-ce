@@ -1,0 +1,45 @@
+.catalog-view {
+  padding: 0 12px 1.5rem;
+}
+
+.catalog-view .section-header {
+  margin-bottom: 0;
+}
+
+.catalog-meta {
+  color: rgba(75, 41, 53, 0.62);
+  font-family: 'Space Grotesk', Arial, sans-serif;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+
+.catalog-search {
+  min-height: 44px;
+  border: 1px solid rgba(84, 44, 58, 0.3);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 0 0.9rem;
+  font-family: 'Space Grotesk', Arial, sans-serif;
+  font-size: 0.98rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: #4b2935;
+  outline: none;
+}
+
+.catalog-search::placeholder {
+  color: rgba(75, 41, 53, 0.58);
+  letter-spacing: 0.02em;
+}
+
+.catalog-search:focus {
+  border-color: rgba(84, 44, 58, 0.55);
+  box-shadow: 0 0 0 2px rgba(232, 179, 190, 0.25);
+}
+
+@media (max-width: 575.98px) {
+  .catalog-view {
+    padding: 0 10px 1.25rem;
+  }
+}

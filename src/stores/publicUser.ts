@@ -1,9 +1,10 @@
 import { reactive } from 'vue'
-import { _PublicUser, FirestoreStore, type _PublicUserData } from 'cic-kit'
+import { FirestoreStore } from 'cic-kit'
+import { PublicUser, type PublicUserData } from '../models/PublicUser'
 
-class PublicUserStore extends FirestoreStore<_PublicUser, _PublicUserData> {
+class PublicUserStore extends FirestoreStore<PublicUser, PublicUserData> {
   constructor() {
-    super(_PublicUser)
+    super(PublicUser)
   }
 }
 

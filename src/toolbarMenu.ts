@@ -1,12 +1,49 @@
-import type { OffcanvasTab } from "cic-kit";
+import { defaultUserPermission, type OffcanvasTab } from "cic-kit";
+import { Auth } from "./main";
+import { UserPermission } from "./enums/UserPermission";
+import type { AppPermissionInput } from "./utils/permissions";
 
 type OffcanvasTabConfig = OffcanvasTab & {
-  requiresBetaFeatures?: boolean
-  requiresSuperAdmin?: boolean
-  requiresAdmin?: boolean
+  permission?: AppPermissionInput
 }
 
 const toolbarOffcanvasTabConfigs: OffcanvasTabConfig[] = [
+  {
+    name: 'Calendario',
+    icon: 'calendar_month',
+    to: { name: 'CalendarView' },
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
+  },
+  {
+    name: 'Clienti',
+    icon: 'groups',
+    to: { name: 'ClientsView' },
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
+  },
+  {
+    name: 'Spese',
+    icon: 'account_balance_wallet',
+    to: { name: 'ExpensesView' },
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
+  },
+  {
+    name: 'Coupon',
+    icon: 'local_offer',
+    to: { name: 'CouponsView' },
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
+  },
+  {
+    name: 'Statistiche',
+    icon: 'bar_chart',
+    to: { name: 'StatsView' },
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
+  },
+  {
+    name: 'Relazioni',
+    icon: 'schema',
+    to: { name: 'RelationsView' },
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
+  },
   {
     name: 'Prodotti',
     icon: 'shopping_bag',
@@ -36,55 +73,54 @@ const toolbarOffcanvasTabConfigs: OffcanvasTabConfig[] = [
     name: 'App Config',
     icon: 'settings',
     to: { name: 'AppConfigView' },
-    requiresSuperAdmin: true,
+    permission: defaultUserPermission.SUPERADMIN,
   },
   {
     name: 'Backup Catalogo JSON',
     icon: 'download',
     to: { name: 'CatalogBackupView' },
-    requiresSuperAdmin: true,
+    permission: defaultUserPermission.SUPERADMIN,
   },
   {
     name: 'Prompt Agenti AI',
     icon: 'psychology',
     to: { name: 'AgentPromptsView' },
-    requiresAdmin: true,
+    permission: defaultUserPermission.ADMIN,
   },
   {
     name: 'Avvisi',
     icon: 'notifications',
     to: { name: 'AnnouncementsView' },
-    requiresBetaFeatures: true,
+    permission: defaultUserPermission.BETA_FEATURES,
   },
   {
     name: 'PDF Demo',
     icon: 'picture_as_pdf',
     to: { name: 'PdfPlacementDemoView' },
-    requiresBetaFeatures: true,
+    permission: defaultUserPermission.BETA_FEATURES,
   },
   {
     name: 'Project Msg Demo',
     icon: 'send',
     to: { name: 'ProjectMessageDemoView' },
-    requiresBetaFeatures: true,
+    permission: defaultUserPermission.BETA_FEATURES,
   },
   {
     name: 'Test Playground',
     icon: 'science',
     to: { name: 'TestPlaygroundView' },
-    requiresBetaFeatures: true,
+    permission: defaultUserPermission.BETA_FEATURES,
+  },
+  {
+    name: 'Import Migrazione',
+    icon: 'upload_file',
+    to: { name: 'MigrationImportView' },
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
   },
 ];
 
-export function getToolbarOffcanvasTabs(
-  hasBetaFeatures: boolean,
-  hasSuperAdmin: boolean,
-  hasAdmin: boolean,
-): OffcanvasTab[] {
-  return toolbarOffcanvasTabConfigs.filter((tab) => {
-    const betaFeatureAllowed = !tab.requiresBetaFeatures || hasBetaFeatures
-    const superAdminAllowed = !tab.requiresSuperAdmin || hasSuperAdmin
-    const adminAllowed = !tab.requiresAdmin || hasAdmin
-    return betaFeatureAllowed && superAdminAllowed && adminAllowed
-  })
+export function getToolbarOffcanvasTabs(): OffcanvasTab[] {
+  return toolbarOffcanvasTabConfigs
+    .filter((tab) => !tab.permission || (Auth?.user?.hasPermission(tab.permission) ?? false))
+    .map(({ permission, ...tab }) => tab)
 }

@@ -21,6 +21,9 @@ service firebase.storage {
     function isAdmin() {
       return hasUserPermission('SUPERADMIN') || hasUserPermission('ADMIN');
     }
+    function isOperator() {
+      return isAdmin() || hasUserPermission('OPERATORE');
+    }
 
     function isValidUpload(MB, contentType) {
       return request.resource != null
@@ -41,6 +44,12 @@ service firebase.storage {
       allow read: if true;
       allow write: if isAdmin() && isValidUpload(20, 'image/.*');
       allow delete: if isAdmin();
+    }
+
+    match /public/expenses/{expenseId}/{path=**} {
+      allow read: if isOperator();
+      allow write: if isOperator() && isValidUpload(25, null);
+      allow delete: if isOperator();
     }
 
     match /public/{path=**} {

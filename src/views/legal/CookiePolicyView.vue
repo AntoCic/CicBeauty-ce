@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { cicKitStore, useChangeHeader } from 'cic-kit'
 import { computed, ref } from 'vue'
-import HeaderApp from '../../components/HeaderApp.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
 import LegalLinks from '../../components/LegalLinks.vue'
 import { firebaseConfig } from '../../firebase-config'
 import { readCookieConsentChoice, saveCookieConsentChoice } from '../../legal/cookieConsent'
@@ -141,3 +141,4 @@ function rejectAnalytics() {
   color: #fff;
 }
 </style>
+

@@ -2,11 +2,15 @@
 import { Btn, cicKitStore, useStoreWatch } from 'cic-kit'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import HeaderApp from '../../components/HeaderApp.vue'
 import CategoryCatalogCard from '../../components/CategoryCatalogCard.vue'
+import HeaderApp from '../../components/headers/HeaderApp.vue'
+import AppHeaderCatalogNav from '../../components/headers/AppHeaderCatalogNav.vue'
+import SectionHeader from '../../components/public/SectionHeader.vue'
+import { buildCategoryItemCount, filterBySearch } from '../../catalog/utils'
 import { Auth } from '../../main'
-import { treatmentStore } from '../../stores/treatmentStore'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
+import { treatmentStore } from '../../stores/treatmentStore'
+import '../../styles/catalog-view.scss'
 
 useStoreWatch([
   {
@@ -27,17 +31,10 @@ const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin)
 const search = ref('')
 
 const countsByCategoryId = computed(() => {
-  const counts: Record<string, number> = {}
-  for (const treatment of treatmentStore.itemsActiveArray) {
-    for (const categoryId of treatment.categoryIds) {
-      counts[categoryId] = (counts[categoryId] ?? 0) + 1
-    }
-  }
-  return counts
+  return buildCategoryItemCount(treatmentStore.itemsActiveArray, (treatment) => treatment.categoryIds)
 })
 
 const categoryCards = computed(() => {
-  const term = search.value.trim().toLowerCase()
   const sorted = [...treatmentCategoryStore.itemsActiveArray]
     .sort((a, b) => a.title.localeCompare(b.title, 'it'))
     .map((item) => ({
@@ -61,14 +58,7 @@ const categoryCards = computed(() => {
     },
   ]
 
-  if (!term) return cards
-  return cards.filter((item) =>
-    [item.title, item.subtitle].some((value) =>
-      String(value ?? '')
-        .toLowerCase()
-        .includes(term),
-    ),
-  )
+  return filterBySearch(cards, search.value, (item) => [item.title, item.subtitle])
 })
 
 function goToManageCategories() {
@@ -81,19 +71,35 @@ function goToNewTreatment() {
 </script>
 
 <template>
-  <div class="container-fluid pb-t pt-3 pt-md-4 overflow-auto h-100" :style="bgStyle">
-    <HeaderApp
-      title="Categorie trattamenti"
-      :to="{ name: 'home' }"
-      v-model="search"
-      search-placeholder="Cerca categoria..."
-      :btn-icon="canManage ? 'edit_note' : undefined"
-      :btn2-icon="canManage ? 'add' : undefined"
-      @btn-click="goToManageCategories"
-      @btn2-click="goToNewTreatment"
-    />
+  <div class="container-fluid pb-t pt-3 pt-md-4 overflow-auto vh-100" :style="bgStyle">
+    <HeaderApp :to="{ name: 'home' }">
+      <AppHeaderCatalogNav />
+      <div v-if="canManage" class="d-inline-flex align-items-center gap-1">
+        <Btn icon="edit_note" variant="ghost" @click="goToManageCategories" />
+        <Btn icon="add" variant="ghost" @click="goToNewTreatment" />
+      </div>
+    </HeaderApp>
 
     <section class="catalog-view">
+      <div class="row g-3 g-md-4 mt-1 mb-3 mb-lg-4">
+        <div class="col-12 col-md-6 col-lg-8">
+          <SectionHeader
+            eyebrow="Categorie"
+            title="Trattamenti"
+            description="Scegli una categoria trattamenti CNC Beauty e apri il catalogo per confrontare durata, obiettivo e risultato atteso."
+          />
+        </div>
+        <div class="col-12 col-md-6 col-lg-4">
+          <input
+            v-model="search"
+            type="search"
+            class="form-control catalog-search"
+            placeholder="Cerca categoria..."
+            aria-label="Cerca categoria trattamenti"
+          />
+        </div>
+      </div>
+
       <div class="row g-3 g-lg-4 mt-1">
         <div v-for="item in categoryCards" :key="item.id" class="col-12 col-md-6">
           <CategoryCatalogCard
@@ -117,15 +123,3 @@ function goToNewTreatment() {
     </section>
   </div>
 </template>
-
-<style scoped>
-.catalog-view {
-  padding: 0 12px 1.5rem;
-}
-
-@media (max-width: 575.98px) {
-  .catalog-view {
-    padding: 0 10px 1.25rem;
-  }
-}
-</style>
