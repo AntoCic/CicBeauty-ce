@@ -1,3 +1,9 @@
+## v0.0.31 - 2026-03-05
+
+Test playground: generatori random clienti/coupon/appuntamenti
+
+---
+
 ## v0.0.29 - 2026-03-05
 
 fix loop update
