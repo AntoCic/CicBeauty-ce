@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { isCatalogRouteActive } from '../../catalog/routeGroups'
 
 const route = useRoute()
 const routeName = computed(() => String(route.name ?? ''))
@@ -11,29 +12,11 @@ const navItems = [
   { key: 'treatments', label: 'Trattamenti', to: { name: 'TreatmentCategoriesView' } },
 ] as const
 
-const productRouteNames = new Set([
-  'ProductCategoriesView',
-  'ProductsView',
-  'ProductView',
-  'ProductsManageView',
-  'ProductCategoriesManageView',
-  'ProductEditView',
-])
-
-const treatmentRouteNames = new Set([
-  'TreatmentCategoriesView',
-  'TreatmentsView',
-  'TreatmentView',
-  'TreatmentsManageView',
-  'TreatmentCategoriesManageView',
-  'TreatmentEditView',
-])
-
 function isNavActive(key: (typeof navItems)[number]['key']) {
-  const current = routeName.value
-  if (key === 'home') return current === 'home'
-  if (key === 'products') return productRouteNames.has(current)
-  if (key === 'treatments') return treatmentRouteNames.has(current)
+  if (key === 'home') return routeName.value === 'home'
+  if (key === 'products' || key === 'treatments') {
+    return isCatalogRouteActive(routeName.value, key)
+  }
   return false
 }
 </script>

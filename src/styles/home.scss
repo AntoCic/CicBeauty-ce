@@ -253,6 +253,11 @@
   height: 100%;
 }
 
+.home-hero__image.home-parallax-image,
+.home-hero__image.home-parallax-image.is-visible {
+  clip-path: inset(0 0 0 0 round clamp(1.2rem, 2.2vw, 1.9rem));
+}
+
 .home-parallax-image {
   height: 100%;
   border-radius: clamp(1.2rem, 2.2vw, 1.9rem);
@@ -599,18 +604,23 @@
 
 .home-horizontal__viewport.is-fallback {
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: hidden;
   scroll-snap-type: x mandatory;
+  scroll-padding-inline: clamp(0.15rem, 1.4vw, 0.55rem);
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
   padding-bottom: 0.4rem;
 }
 
 .home-horizontal__viewport.is-fallback .home-horizontal__track {
   width: max-content;
+  min-width: max-content;
 }
 
 .home-horizontal__viewport.is-fallback .home-case-slide {
   scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .home-horizontal__sticky:not(.is-pinned) {

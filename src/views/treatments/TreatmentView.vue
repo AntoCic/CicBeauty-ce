@@ -7,6 +7,7 @@ import AppHeaderCatalogNav from '../../components/headers/AppHeaderCatalogNav.vu
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import PublicSideNavigator from '../../components/public/PublicSideNavigator.vue'
 import type { PublicSideLink } from '../../components/public/types'
+import { normalizeIdList } from '../../catalog/utils'
 import { usePublicSeo } from '../../composables/usePublicSeo'
 import type { Treatment } from '../../models/Treatment'
 import { Auth } from '../../main'
@@ -109,10 +110,6 @@ const pageDescription = computed(() =>
 
 usePublicSeo(pageTitle, pageDescription)
 
-function normalizeRelationIds(ids: string[] | undefined) {
-  return [...new Set((ids ?? []).map((id) => String(id ?? '').trim()).filter(Boolean))]
-}
-
 const recommendedProducts = computed(() => {
   const current = item.value
   if (!current) return []
@@ -121,10 +118,10 @@ const recommendedProducts = computed(() => {
 
   const linkedByMirrorRelation = productStore.itemsActiveArray
     .filter((candidate) => candidate.storeVisible)
-    .filter((candidate) => normalizeRelationIds(candidate.trattamentiConsogliatiIds).includes(treatmentId))
+    .filter((candidate) => normalizeIdList(candidate.trattamentiConsogliatiIds).includes(treatmentId))
   if (linkedByMirrorRelation.length) return linkedByMirrorRelation
 
-  const legacyProductIds = normalizeRelationIds(current.prodottiConsigliatiIds ?? [])
+  const legacyProductIds = normalizeIdList(current.prodottiConsigliatiIds)
   if (!legacyProductIds.length) return []
 
   const productById = new Map(

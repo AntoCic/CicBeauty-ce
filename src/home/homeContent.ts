@@ -267,6 +267,8 @@ export function buildHomeContent(config: AppConfigData): HomeContent {
     },
   ]
 
+  const contactVisualImage = '/img/home/ingresso-archi.jpg'
+
   const links: HomeFinalCtaLink[] = []
   const mapsUrl = toMapsUrl(address)
   if (mapsUrl) {
@@ -302,7 +304,7 @@ export function buildHomeContent(config: AppConfigData): HomeContent {
       ],
       subtitle:
         'Accedi subito ai trattamenti e ai prodotti: un percorso semplice, con protocolli personalizzati e macchinari professionali.',
-      image: '/img/home/microneedling_2.jpg',
+      image: contactVisualImage,
       imageAlt: `Trattamento di estetica avanzata nel centro ${brandName}`,
       primaryCtaLabel: 'Vai ai trattamenti',
       secondaryCtaLabel: 'Vai ai prodotti',
@@ -384,7 +386,7 @@ export function buildHomeContent(config: AppConfigData): HomeContent {
         address || 'Sede in aggiornamento.',
         `Scopri subito trattamenti e prodotti ${brandName} e richiedi informazioni personalizzate.`,
       ].join(' '),
-      image: '/img/home/ingresso-centro.jpg',
+      image: contactVisualImage,
       primaryCtaLabel: 'Apri trattamenti',
       secondaryCtaLabel: 'Apri prodotti',
       phoneLabel: phone,

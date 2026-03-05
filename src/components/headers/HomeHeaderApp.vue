@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import type { HomeContent } from '../../home/homeContent'
+import { isCatalogRouteActive } from '../../catalog/routeGroups'
 
 defineProps<{
   content: HomeContent['header']
@@ -10,29 +11,8 @@ defineProps<{
 const route = useRoute()
 const routeName = computed(() => String(route.name ?? ''))
 
-const productRouteNames = new Set([
-  'ProductCategoriesView',
-  'ProductsView',
-  'ProductView',
-  'ProductsManageView',
-  'ProductCategoriesManageView',
-  'ProductEditView',
-])
-
-const treatmentRouteNames = new Set([
-  'TreatmentCategoriesView',
-  'TreatmentsView',
-  'TreatmentView',
-  'TreatmentsManageView',
-  'TreatmentCategoriesManageView',
-  'TreatmentEditView',
-])
-
 function isCatalogActive(key: 'products' | 'treatments') {
-  const current = routeName.value
-  if (key === 'products') return productRouteNames.has(current)
-  if (key === 'treatments') return treatmentRouteNames.has(current)
-  return false
+  return isCatalogRouteActive(routeName.value, key)
 }
 </script>
 

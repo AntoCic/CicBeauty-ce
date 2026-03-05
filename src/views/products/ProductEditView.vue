@@ -28,6 +28,7 @@ import CatalogCard from '../../components/CatalogCard.vue'
 import BtnAi from '../../components/BtnAi.vue'
 import { callMetaAIAgent } from '../../call/callMetaAIAgent'
 import { parseAiError } from '../../call/_utilityApi'
+import { normalizeIdList } from '../../catalog/utils'
 import { UserPermission } from '../../enums/UserPermission'
 
 type ProductForm = {
@@ -108,7 +109,7 @@ const groupedTreatmentOptions = computed(() => {
   >()
 
   for (const option of treatmentOptions.value) {
-    const categoryIds = normalizeRelationIds(option.categoryIds ?? [])
+    const categoryIds = normalizeIdList(option.categoryIds)
     let groupId = 'no-category'
     let groupTitle = 'Senza categoria'
 
@@ -208,11 +209,7 @@ function normalizeBoolean(value: unknown, fallback = false) {
 }
 
 function normalizeCategoryIds(ids: string[]) {
-  return [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))]
-}
-
-function normalizeRelationIds(ids: string[]) {
-  return [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))]
+  return normalizeIdList(ids)
 }
 
 function sanitizeFileName(name: string) {
@@ -359,7 +356,7 @@ async function loadItem() {
     }
     existingImgUrls.value = [...(current.value?.imgUrls ?? [])]
     selectedCategoryIds.value = normalizeCategoryIds(current.value?.categoryIds ?? [])
-    selectedTreatmentIds.value = normalizeRelationIds(current.value?.trattamentiConsogliatiIds ?? [])
+    selectedTreatmentIds.value = normalizeIdList(current.value?.trattamentiConsogliatiIds)
     resetFileSelection()
   } catch (error) {
     console.error(error)
@@ -386,7 +383,7 @@ async function onSubmit(values: Record<string, unknown>) {
     toast.error('Seleziona almeno una categoria prodotto')
     return
   }
-  const normalizedTreatmentIds = normalizeRelationIds(selectedTreatmentIds.value)
+  const normalizedTreatmentIds = normalizeIdList(selectedTreatmentIds.value)
 
   const selectedFiles = toFileArray(fileValue.value)
   if (selectedFiles.length && !productStore.storageFolder) {

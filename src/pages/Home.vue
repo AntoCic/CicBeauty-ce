@@ -25,11 +25,11 @@ usePublicSeo(
 const year = new Date().getFullYear()
 
 const { y: scrollY } = useScroll(window, { behavior: 'auto' })
-const { height: viewportHeight } = useWindowSize()
+const { height: viewportHeight, width: viewportWidth } = useWindowSize()
 const { isReducedMotion } = usePrefersReducedMotion()
 
 const logoCycleProgress = computed(() => {
-  const cyclePx = Math.max(2200, viewportHeight.value * 2.8)
+  const cyclePx = Math.max(3000, viewportHeight.value * 3.8)
   const rawProgress = scrollY.value / cyclePx
   return rawProgress - Math.floor(rawProgress)
 })
@@ -48,11 +48,13 @@ const logoBgStyle = computed(() => {
   const phase = logoOnRight.value
     ? logoCycleProgress.value / 0.5
     : (logoCycleProgress.value - 0.5) / 0.5
-  const fade = logoOnRight.value ? 1 - phase : phase
-  const driftX = logoOnRight.value ? phase * 26 : -26 + phase * 26
-  const floatY = Math.sin(logoCycleProgress.value * Math.PI * 2) * 10
-  const scale = 0.98 + fade * 0.04
-  const opacity = 0.022 + 0.01 * fade
+  const inOut = Math.sin(phase * Math.PI)
+  const sideSign = logoOnRight.value ? 1 : -1
+  const driftX = sideSign * (1 - inOut) * 30
+  const floatY = Math.sin(logoCycleProgress.value * Math.PI * 4) * 9
+  const scale = 0.97 + inOut * 0.05
+  const maxOpacity = viewportWidth.value <= 880 ? 0.052 : 0.034
+  const opacity = maxOpacity * Math.pow(inOut, 1.1)
 
   return {
     opacity: opacity.toFixed(3),
@@ -170,10 +172,7 @@ const logoBgStyle = computed(() => {
   mix-blend-mode: multiply;
   filter: grayscale(1) brightness(0.33) contrast(1.08) saturate(0.8);
   transform-origin: center;
-  will-change: transform, opacity, left, right;
-  transition:
-    left 300ms cubic-bezier(0.16, 1, 0.3, 1),
-    right 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
 }
 
 .logo-bg-home.is-right {

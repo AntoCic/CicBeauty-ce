@@ -6,9 +6,11 @@ import CategoryCatalogCard from '../../components/CategoryCatalogCard.vue'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import AppHeaderCatalogNav from '../../components/headers/AppHeaderCatalogNav.vue'
 import SectionHeader from '../../components/public/SectionHeader.vue'
+import { buildCategoryItemCount, filterBySearch } from '../../catalog/utils'
 import { Auth } from '../../main'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
+import '../../styles/catalog-view.scss'
 
 useStoreWatch([
   {
@@ -29,17 +31,10 @@ const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin)
 const search = ref('')
 
 const countsByCategoryId = computed(() => {
-  const counts: Record<string, number> = {}
-  for (const treatment of treatmentStore.itemsActiveArray) {
-    for (const categoryId of treatment.categoryIds) {
-      counts[categoryId] = (counts[categoryId] ?? 0) + 1
-    }
-  }
-  return counts
+  return buildCategoryItemCount(treatmentStore.itemsActiveArray, (treatment) => treatment.categoryIds)
 })
 
 const categoryCards = computed(() => {
-  const term = search.value.trim().toLowerCase()
   const sorted = [...treatmentCategoryStore.itemsActiveArray]
     .sort((a, b) => a.title.localeCompare(b.title, 'it'))
     .map((item) => ({
@@ -63,14 +58,7 @@ const categoryCards = computed(() => {
     },
   ]
 
-  if (!term) return cards
-  return cards.filter((item) =>
-    [item.title, item.subtitle].some((value) =>
-      String(value ?? '')
-        .toLowerCase()
-        .includes(term),
-    ),
-  )
+  return filterBySearch(cards, search.value, (item) => [item.title, item.subtitle])
 })
 
 function goToManageCategories() {
@@ -135,43 +123,3 @@ function goToNewTreatment() {
     </section>
   </div>
 </template>
-
-<style scoped>
-.catalog-view {
-  padding: 0 12px 1.5rem;
-}
-
-.catalog-view :deep(.section-header) {
-  margin-bottom: 0;
-}
-
-.catalog-search {
-  min-height: 44px;
-  border: 1px solid rgba(84, 44, 58, 0.3);
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.78);
-  padding: 0 0.9rem;
-  font-family: 'Space Grotesk', Arial, sans-serif;
-  font-size: 0.98rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  color: #4b2935;
-  outline: none;
-}
-
-.catalog-search::placeholder {
-  color: rgba(75, 41, 53, 0.58);
-  letter-spacing: 0.02em;
-}
-
-.catalog-search:focus {
-  border-color: rgba(84, 44, 58, 0.55);
-  box-shadow: 0 0 0 2px rgba(232, 179, 190, 0.25);
-}
-
-@media (max-width: 575.98px) {
-  .catalog-view {
-    padding: 0 10px 1.25rem;
-  }
-}
-</style>

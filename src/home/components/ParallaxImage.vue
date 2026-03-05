@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useElementBounding, useWindowSize } from '@vueuse/core'
+import { useElementBounding, useMediaQuery, useWindowSize } from '@vueuse/core'
 import { usePrefersReducedMotion } from '../composables/usePrefersReducedMotion'
 import { useScrollReveal } from '../composables/useScrollReveal'
 
@@ -27,7 +27,8 @@ function clamp(value: number, min: number, max: number) {
 
 const rootRef = ref<HTMLElement | null>(null)
 const { isReducedMotion } = usePrefersReducedMotion()
-const { height: windowHeight } = useWindowSize()
+const { height: windowHeight, width: windowWidth } = useWindowSize()
+const prefersCoarsePointer = useMediaQuery('(pointer: coarse)')
 const bounds = useElementBounding(rootRef)
 const { revealClass, isVisible } = useScrollReveal({
   target: rootRef,
@@ -35,15 +36,23 @@ const { revealClass, isVisible } = useScrollReveal({
   once: true,
 })
 
+const isMobileLike = computed(() => windowWidth.value <= 1024 || prefersCoarsePointer.value)
+const parallaxEnabled = computed(() => !isReducedMotion.value && !isMobileLike.value)
+
 const parallaxY = computed(() => {
-  if (isReducedMotion.value) return 0
+  if (!parallaxEnabled.value) return 0
   const centerDelta = bounds.top.value + bounds.height.value * 0.5 - windowHeight.value * 0.5
-  return clamp(-centerDelta * props.speed, -34, 34)
+  return Math.round(clamp(-centerDelta * props.speed, -34, 34))
 })
 
-const mediaStyle = computed(() => ({
-  transform: `translate3d(0, ${parallaxY.value}px, 0) scale(${isVisible.value || isReducedMotion.value ? 1 : 1.05})`,
-}))
+const mediaStyle = computed(() => {
+  const shouldScaleIn = isVisible.value || !parallaxEnabled.value
+  return {
+    transform: parallaxEnabled.value
+      ? `translate3d(0, ${parallaxY.value}px, 0) scale(${shouldScaleIn ? 1 : 1.05})`
+      : 'translate3d(0, 0, 0) scale(1)',
+  }
+})
 
 const classes = computed(() => ['home-parallax-image', props.className, revealClass.value])
 </script>

@@ -18,6 +18,7 @@ import BtnAi from '../../components/BtnAi.vue'
 import { callMarketingAgent } from '../../call/callMarketingAgent'
 import { callMetaAIAgent } from '../../call/callMetaAIAgent'
 import { parseAiError } from '../../call/_utilityApi'
+import { normalizeIdList } from '../../catalog/utils'
 import { UserPermission } from '../../enums/UserPermission'
 import { hasBetaFeaturesAccess } from '../../utils/permissions'
 
@@ -102,7 +103,7 @@ const groupedProductOptions = computed(() => {
   >()
 
   for (const option of productOptions.value) {
-    const categoryIds = normalizeRelationIds(option.categoryIds ?? [])
+    const categoryIds = normalizeIdList(option.categoryIds)
     let groupId = 'no-category'
     let groupTitle = 'Senza categoria'
 
@@ -206,11 +207,7 @@ function normalizeBoolean(value: unknown, fallback = false) {
 }
 
 function normalizeCategoryIds(ids: string[]) {
-  return [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))]
-}
-
-function normalizeRelationIds(ids: string[]) {
-  return [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))]
+  return normalizeIdList(ids)
 }
 
 function buildCreatePayload(form: TreatmentForm, categoryIds: string[]): Omit<TreatmentData, 'id'> {
@@ -287,7 +284,7 @@ function findLinkedProductIds(treatmentId: string) {
   const normalizedTreatmentId = String(treatmentId ?? '').trim()
   if (!normalizedTreatmentId) return []
   return productStore.itemsActiveArray
-    .filter((product) => normalizeRelationIds(product.trattamentiConsogliatiIds ?? []).includes(normalizedTreatmentId))
+    .filter((product) => normalizeIdList(product.trattamentiConsogliatiIds).includes(normalizedTreatmentId))
     .map((product) => product.id)
 }
 
@@ -295,9 +292,9 @@ async function syncTreatmentProductLinks(treatmentId: string, nextProductIds: st
   const normalizedTreatmentId = String(treatmentId ?? '').trim()
   if (!normalizedTreatmentId) return
 
-  const nextSet = new Set(normalizeRelationIds(nextProductIds))
+  const nextSet = new Set(normalizeIdList(nextProductIds))
   const currentlyLinkedProducts = productStore.itemsActiveArray.filter((product) =>
-    normalizeRelationIds(product.trattamentiConsogliatiIds ?? []).includes(normalizedTreatmentId),
+    normalizeIdList(product.trattamentiConsogliatiIds).includes(normalizedTreatmentId),
   )
   const currentlyLinkedIds = new Set(currentlyLinkedProducts.map((product) => product.id))
 
@@ -305,7 +302,7 @@ async function syncTreatmentProductLinks(treatmentId: string, nextProductIds: st
 
   for (const product of currentlyLinkedProducts) {
     if (nextSet.has(product.id)) continue
-    const nextTreatmentIds = normalizeRelationIds(product.trattamentiConsogliatiIds ?? []).filter(
+    const nextTreatmentIds = normalizeIdList(product.trattamentiConsogliatiIds).filter(
       (id) => id !== normalizedTreatmentId,
     )
     updates.push(
@@ -320,7 +317,7 @@ async function syncTreatmentProductLinks(treatmentId: string, nextProductIds: st
     if (currentlyLinkedIds.has(productId)) continue
     const product = productStore.findItemsById(productId)
     if (!product) continue
-    const nextTreatmentIds = normalizeRelationIds([
+    const nextTreatmentIds = normalizeIdList([
       ...(product.trattamentiConsogliatiIds ?? []),
       normalizedTreatmentId,
     ])
@@ -356,7 +353,7 @@ async function loadItem() {
     const linkedProductIds = findLinkedProductIds(current.value?.id ?? '')
     selectedProductIds.value = linkedProductIds.length
       ? linkedProductIds
-      : normalizeRelationIds(current.value?.prodottiConsigliatiIds ?? [])
+      : normalizeIdList(current.value?.prodottiConsigliatiIds)
     hasEditedProductLinks.value = false
   } catch (error) {
     console.error(error)
@@ -385,7 +382,7 @@ async function onSubmit(values: Record<string, unknown>) {
     toast.error('Seleziona almeno una categoria trattamento')
     return
   }
-  const normalizedProductIds = normalizeRelationIds(selectedProductIds.value)
+  const normalizedProductIds = normalizeIdList(selectedProductIds.value)
 
   const updatePayload = {
     old_id: hasBetaFeatures.value ? normalizeString(form.old_id, '') : '',
@@ -459,7 +456,7 @@ watch(
     const linkedProductIds = findLinkedProductIds(current.value.id)
     selectedProductIds.value = linkedProductIds.length
       ? linkedProductIds
-      : normalizeRelationIds(current.value.prodottiConsigliatiIds ?? [])
+      : normalizeIdList(current.value.prodottiConsigliatiIds)
   },
 )
 

@@ -7,6 +7,7 @@ import AppHeaderCatalogNav from '../../components/headers/AppHeaderCatalogNav.vu
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import PublicSideNavigator from '../../components/public/PublicSideNavigator.vue'
 import type { PublicSideLink } from '../../components/public/types'
+import { normalizeIdList } from '../../catalog/utils'
 import { usePublicSeo } from '../../composables/usePublicSeo'
 import type { Product } from '../../models/Product'
 import { Auth } from '../../main'
@@ -113,14 +114,10 @@ const pageDescription = computed(() =>
 
 usePublicSeo(pageTitle, pageDescription)
 
-function normalizeRelationIds(ids: string[] | undefined) {
-  return [...new Set((ids ?? []).map((id) => String(id ?? '').trim()).filter(Boolean))]
-}
-
 const recommendedTreatments = computed(() => {
   const current = item.value
   if (!current) return []
-  const linkedIds = normalizeRelationIds(current.trattamentiConsogliatiIds)
+  const linkedIds = normalizeIdList(current.trattamentiConsogliatiIds)
   if (!linkedIds.length) return []
 
   const treatmentById = new Map(
