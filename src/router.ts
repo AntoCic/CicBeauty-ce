@@ -20,7 +20,6 @@ const TypeExpensesView = () => import('./views/type-expenses/TypeExpensesView.vu
 const AnnouncementsView = () => import('./views/announcements/AnnouncementsView.vue');
 const AiBeautyChatView = () => import('./views/ai/AiBeautyChatView.vue');
 const PdfPlacementDemoView = () => import('./views/tools/PdfPlacementDemoView.vue');
-const ProjectMessageDemoView = () => import('./views/tools/ProjectMessageDemoView.vue');
 const PrivacyPolicyView = () => import('./views/legal/PrivacyPolicyView.vue');
 const CookiePolicyView = () => import('./views/legal/CookiePolicyView.vue');
 const TermsConditionsView = () => import('./views/legal/TermsConditionsView.vue');
@@ -144,7 +143,6 @@ export const routes: RouteRecordRaw[] = [
   { path: '/legal/terms', name: 'TermsConditionsView', component: TermsConditionsView },
   { path: '/legal/ai-transparency', name: 'AiTransparencyView', component: AiTransparencyView },
   { path: '/tools/pdf-placement-demo', name: 'PdfPlacementDemoView', component: PdfPlacementDemoView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
-  { path: '/tools/project-message-demo', name: 'ProjectMessageDemoView', component: ProjectMessageDemoView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
   { path: '/tools/test-playground', name: 'TestPlaygroundView', component: TestPlaygroundView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
   { path: '/products/categories/manage', name: 'ProductCategoriesManageView', component: ProductCategoriesManageView, meta: { loginStatus: true } },
   { path: '/treatments/categories/manage', name: 'TreatmentCategoriesManageView', component: TreatmentCategoriesManageView, meta: { loginStatus: true } },

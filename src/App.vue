@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { cicKitStore, defaultUserPermission, LoaderCmp, loading, ToastCmp, ToolbarApp, toolbarOffcanvasStore, ModalDev, RegisterSW, HeaderApp, toolbarStore, useStoreWatch } from 'cic-kit';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type CSSProperties } from 'vue';
+import { cicKitStore, defaultUserPermission, LoaderCmp, loading, ToastCmp, ModalDev, RegisterSW, HeaderApp, useStoreWatch } from 'cic-kit';
+import { computed, nextTick, onMounted, ref, watch, type CSSProperties } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
 import { Auth } from './main';
-import { getToolbarOffcanvasTabs } from './toolbarMenu';
 import { registerSW } from "virtual:pwa-register";
 import { publicUserStore } from './stores/publicUser';
 import { UserPermission } from './enums/UserPermission';
 import CookieConsentBanner from './components/CookieConsentBanner.vue';
 import { appConfigStore } from './stores/appConfigStore';
+import AppQuickToolbar from './components/navigation/AppQuickToolbar.vue';
 
 const route = useRoute();
 let initAppLoadingClosed = false;
@@ -17,6 +17,7 @@ const pageTransitionName = ref('page-fade');
 let previousPublicDepth: number | null = null;
 const isPublicRoute = computed(() => Boolean(route.meta.publicRoute));
 const showAppHeader = computed(() => !isPublicRoute.value);
+const showQuickToolbar = computed(() => Boolean(Auth.isLoggedIn));
 const publicMainInlineStyle = computed<CSSProperties | undefined>(() => {
   if (!isPublicRoute.value) {
     return undefined
@@ -30,28 +31,7 @@ const publicMainInlineStyle = computed<CSSProperties | undefined>(() => {
     overflowX: 'clip',
   }
 })
-
-function applyToolbarMenu() {
-  toolbarOffcanvasStore.title = "Menu";
-  toolbarOffcanvasStore.setTabs(getToolbarOffcanvasTabs());
-}
 useStoreWatch([{ store: appConfigStore, checkLogin: false }, { store: publicUserStore }]);
-
-watch(
-  () => Auth.isLoggedIn,
-  () => {
-    toolbarStore.show = Auth.isLoggedIn;
-    applyToolbarMenu();
-  },
-);
-
-watch(
-  () => route.name,
-  () => {
-    applyToolbarMenu();
-  },
-  { immediate: true, flush: "post" }
-);
 
 watch(
   () => route.fullPath,
@@ -89,17 +69,19 @@ async function onRouteComponentMounted() {
 onMounted(() => {
   document.getElementsByClassName('starter-loader')?.[0]?.remove();
 })
-onBeforeUnmount(() => {
-  toolbarOffcanvasStore.title = "Menu";
-  toolbarOffcanvasStore.setTabs(undefined);
-});
 </script>
 
 <template>
   <LoaderCmp v-if="loading.state" />
   <HeaderApp v-if="showAppHeader" />
 
-  <main :class="{ 'app-main--public': isPublicRoute }" :style="publicMainInlineStyle">
+  <main
+    :class="{
+      'app-main--public': isPublicRoute,
+      'app-main--with-quick-toolbar': showQuickToolbar,
+    }"
+    :style="publicMainInlineStyle"
+  >
     <RouterView v-slot="{ Component, route: activeRoute }">
       <Transition :name="pageTransitionName" mode="out-in">
         <component :is="Component" :key="activeRoute.fullPath" @vue:mounted="onRouteComponentMounted" />
@@ -107,7 +89,7 @@ onBeforeUnmount(() => {
     </RouterView>
   </main>
 
-  <ToolbarApp glass primary-dark="#e8b3be" primary-light="#542c3a" />
+  <AppQuickToolbar v-if="showQuickToolbar" />
   <ModalDev v-if="Auth?.user?.hasPermission(defaultUserPermission.MODAL_DEV_ON) && cicKitStore.debugMod"
     :public-users="publicUserStore.items" :user_permissions="userPermission" />
   <ToastCmp />
@@ -174,6 +156,10 @@ onBeforeUnmount(() => {
   .page-slide-back-leave-to {
     transform: none;
   }
+}
+
+main.app-main--with-quick-toolbar {
+  padding-bottom: calc(92px + env(safe-area-inset-bottom));
 }
 
 </style>

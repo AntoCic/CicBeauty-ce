@@ -10,6 +10,7 @@ export type HomeAppShortcut = {
   icon: string
   iconClass: string
   permission?: AppPermissionInput
+  group?: 'settings'
 }
 
 export const GUEST_HOME_APPS: HomeAppShortcut[] = [
@@ -30,6 +31,14 @@ export const GUEST_HOME_APPS: HomeAppShortcut[] = [
 ]
 
 export const AUTH_HOME_APPS: HomeAppShortcut[] = [
+  {
+    id: 'user-profile',
+    title: 'Profilo',
+    to: '/user',
+    icon: 'manage_accounts',
+    iconClass: 'app-icon-soft',
+    group: 'settings',
+  },
   {
     id: 'calendar',
     title: 'Calendario',
@@ -77,6 +86,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     icon: 'schema',
     iconClass: 'app-icon-night',
     permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
+    group: 'settings',
   },
   {
     id: 'products-manage',
@@ -98,6 +108,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'ProductCategoriesManageView' },
     icon: 'edit_note',
     iconClass: 'app-icon-soft',
+    group: 'settings',
   },
   {
     id: 'treatment-categories-manage',
@@ -105,6 +116,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'TreatmentCategoriesManageView' },
     icon: 'edit_note',
     iconClass: 'app-icon-soft',
+    group: 'settings',
   },
   {
     id: 'type-expenses',
@@ -112,6 +124,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'TypeExpensesView' },
     icon: 'payments',
     iconClass: 'app-icon-amber',
+    group: 'settings',
   },
   {
     id: 'ai-beauty-chat',
@@ -136,6 +149,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     icon: 'settings',
     iconClass: 'app-icon-night',
     permission: defaultUserPermission.SUPERADMIN,
+    group: 'settings',
   },
   {
     id: 'catalog-backup',
@@ -144,6 +158,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     icon: 'download',
     iconClass: 'app-icon-night',
     permission: defaultUserPermission.SUPERADMIN,
+    group: 'settings',
   },
   {
     id: 'agent-prompts',
@@ -152,6 +167,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     icon: 'psychology',
     iconClass: 'app-icon-sky',
     permission: defaultUserPermission.ADMIN,
+    group: 'settings',
   },
   {
     id: 'test-playground',
@@ -159,6 +175,15 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'TestPlaygroundView' },
     icon: 'science',
     iconClass: 'app-icon-night',
+    permission: defaultUserPermission.BETA_FEATURES,
+    group: 'settings',
+  },
+  {
+    id: 'pdf-placement-demo',
+    title: 'PDF Demo',
+    to: { name: 'PdfPlacementDemoView' },
+    icon: 'picture_as_pdf',
+    iconClass: 'app-icon-soft',
     permission: defaultUserPermission.BETA_FEATURES,
   },
   {
@@ -168,5 +193,6 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     icon: 'upload_file',
     iconClass: 'app-icon-amber',
     permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
+    group: 'settings',
   },
 ]

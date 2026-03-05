@@ -6,7 +6,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "cic-kit/style.css";
 import "./main.scss";
 import { MotionPlugin } from "@vueuse/motion";
-import { setupFirebase, initAuth, _CurrentUser, initCicKitStore, cicKitStore, headerStore, toolbarStore, loading } from "cic-kit";
+import { setupFirebase, initAuth, _CurrentUser, initCicKitStore, cicKitStore, headerStore, loading } from "cic-kit";
 import { firebaseConfig, VAPID_PUBLIC_KEY } from "./firebase-config";
 import pkg from '../package.json';
 import { applyConsentToAnalytics, bootstrapConsentBeforeFirebase } from "./legal/cookieConsent";
@@ -34,8 +34,6 @@ headerStore.defaultLogoUrl = 'img/logo/logo.svg';
 headerStore.logoUrl = 'img/logo/logo.svg';
 headerStore.userBtnDefault = false;
 headerStore.show = false;
-
-toolbarStore.show = false
 
 const reduceMotionEnabled = typeof window !== 'undefined'
   ? window.matchMedia('(prefers-reduced-motion: reduce)').matches

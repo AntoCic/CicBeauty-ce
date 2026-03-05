@@ -25,7 +25,38 @@ function onQrKeydown(event: KeyboardEvent) {
   openQrModal()
 }
 
+const SETTINGS_APP_ORDER = [
+  'user-profile',
+  'relations',
+  'product-categories-manage',
+  'treatment-categories-manage',
+  'type-expenses',
+  'app-config',
+  'catalog-backup',
+  'agent-prompts',
+  'test-playground',
+  'migration-import',
+]
+
+const isSettingsFolderOpen = ref(false)
 const visibleApps = computed(() => AUTH_HOME_APPS.filter(canOpenApp))
+const visibleMainApps = computed(() => visibleApps.value.filter((app) => app.group !== 'settings'))
+const visibleSettingsApps = computed(() => {
+  const source = visibleApps.value.filter((app) => app.group === 'settings')
+  const byId = new Map(source.map((app) => [app.id, app]))
+  const ordered = SETTINGS_APP_ORDER.map((id) => byId.get(id)).filter(Boolean) as HomeAppShortcut[]
+  const extras = source.filter((app) => !SETTINGS_APP_ORDER.includes(app.id))
+  return [...ordered, ...extras]
+})
+const hasSettingsApps = computed(() => visibleSettingsApps.value.length > 0)
+
+function toggleSettingsFolder() {
+  isSettingsFolderOpen.value = !isSettingsFolderOpen.value
+}
+
+function closeSettingsFolder() {
+  isSettingsFolderOpen.value = false
+}
 </script>
 
 <template>
@@ -33,7 +64,7 @@ const visibleApps = computed(() => AUTH_HOME_APPS.filter(canOpenApp))
     <section class="home-main">
       <div class="apps-grid">
         <RouterLink
-          v-for="app in visibleApps"
+          v-for="app in visibleMainApps"
           :key="app.id"
           :to="app.to"
           class="app-shortcut text-decoration-none"
@@ -45,7 +76,55 @@ const visibleApps = computed(() => AUTH_HOME_APPS.filter(canOpenApp))
             <span class="app-title">{{ app.title }}</span>
           </div>
         </RouterLink>
+
+        <button
+          v-if="hasSettingsApps"
+          type="button"
+          class="app-shortcut app-shortcut-btn"
+          :aria-expanded="isSettingsFolderOpen"
+          aria-controls="settings-folder-panel"
+          @click="toggleSettingsFolder"
+        >
+          <div class="app-tile">
+            <div class="app-icon app-icon-night">
+              <span class="material-symbols-outlined app-icon-symbol">{{ isSettingsFolderOpen ? 'folder_open' : 'folder' }}</span>
+            </div>
+            <span class="app-title">Conf. App</span>
+          </div>
+        </button>
       </div>
+
+      <Transition name="settings-folder">
+        <section
+          v-if="hasSettingsApps && isSettingsFolderOpen"
+          id="settings-folder-panel"
+          class="settings-folder"
+          role="region"
+          aria-label="Cartella impostazioni"
+        >
+          <div class="settings-folder__header">
+            <h2 class="settings-folder__title">Impostazioni</h2>
+            <button type="button" class="btn-close settings-folder__close" aria-label="Chiudi cartella impostazioni" @click="closeSettingsFolder"></button>
+          </div>
+
+          <div class="settings-grid">
+            <RouterLink
+              v-for="app in visibleSettingsApps"
+              :key="app.id"
+              :to="app.to"
+              class="app-shortcut text-decoration-none"
+              @click="closeSettingsFolder"
+            >
+              <div class="app-tile">
+                <div class="app-icon" :class="app.iconClass">
+                  <span class="material-symbols-outlined app-icon-symbol">{{ app.icon }}</span>
+                </div>
+                <span class="app-title">{{ app.title }}</span>
+              </div>
+            </RouterLink>
+          </div>
+        </section>
+      </Transition>
 
       <img
         class="home-qr"
@@ -101,6 +180,12 @@ const visibleApps = computed(() => AUTH_HOME_APPS.filter(canOpenApp))
   color: inherit;
 }
 
+.app-shortcut-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
 .app-shortcut:focus-visible {
   outline: 2px solid #1f5eff;
   outline-offset: 4px;
@@ -136,6 +221,54 @@ const visibleApps = computed(() => AUTH_HOME_APPS.filter(canOpenApp))
   font-weight: 600;
   text-align: center;
   line-height: 1.2;
+}
+
+.settings-folder {
+  margin-top: 18px;
+  border: 1px solid rgba(84, 44, 58, 0.22);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(232, 179, 190, 0.24) 0%, transparent 55%),
+    linear-gradient(170deg, rgba(255, 255, 255, 0.94), rgba(247, 241, 242, 0.96));
+  box-shadow: 0 10px 24px rgba(31, 21, 28, 0.12);
+  padding: 12px 12px 10px;
+}
+
+.settings-folder__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.settings-folder__title {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #4b2935;
+}
+
+.settings-folder__close {
+  transform: scale(0.9);
+}
+
+.settings-grid {
+  display: grid;
+  gap: 1rem 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+}
+
+.settings-folder-enter-active,
+.settings-folder-leave-active {
+  transition: opacity 210ms ease, transform 210ms ease;
+}
+
+.settings-folder-enter-from,
+.settings-folder-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .home-qr {
@@ -232,6 +365,16 @@ const visibleApps = computed(() => AUTH_HOME_APPS.filter(canOpenApp))
   .apps-grid {
     gap: 0.95rem 0.55rem;
     grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+  }
+
+  .settings-folder {
+    margin-top: 14px;
+    padding: 10px 10px 8px;
+  }
+
+  .settings-grid {
+    gap: 0.9rem 0.55rem;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
   }
 }
 </style>
