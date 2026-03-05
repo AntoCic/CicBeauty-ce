@@ -24,7 +24,6 @@ useStoreWatch([
   { store: appointmentStore, getOpts: {  } },
   { store: clientStore, getOpts: {  } },
   { store: treatmentStore, getOpts: {  }, checkLogin: false },
-  { store: appConfigStore, getOpts: {  }, checkLogin: false },
 ])
 
 const selectedDate = computed(() => {

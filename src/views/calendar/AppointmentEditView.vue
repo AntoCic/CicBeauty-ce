@@ -3,7 +3,7 @@ import { Accordion, Btn, FieldTiptap, cicKitStore, toast, useStoreWatch } from '
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
-import { Timestamp, where } from 'firebase/firestore'
+import { Timestamp } from 'firebase/firestore'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { callAvailabilityAgent } from '../../call/callAvailabilityAgent'
@@ -63,8 +63,6 @@ useStoreWatch([
   { store: appointmentStore, getOpts: {} },
   { store: clientStore, getOpts: { orderBy: { fieldPath: 'surname', directionStr: 'asc' } } },
   { store: treatmentStore, getOpts: { orderBy: { fieldPath: 'title', directionStr: 'asc' } }, checkLogin: false },
-  { store: publicUserStore, getOpts: { query: where('operatore', '==', true) } },
-  { store: appConfigStore, getOpts: {}, checkLogin: false },
   { store: couponStore, getOpts: {} },
 ])
 

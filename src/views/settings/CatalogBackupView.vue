@@ -147,11 +147,6 @@ useStoreWatch([
     checkLogin: false,
   },
   {
-    store: appConfigStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-  {
     store: agentPromptStore,
     getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
     checkLogin: false,

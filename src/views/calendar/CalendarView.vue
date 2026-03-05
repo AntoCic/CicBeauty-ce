@@ -77,13 +77,6 @@ useStoreWatch([
     getOpts: { orderBy: { fieldPath: 'title', directionStr: 'asc' } },
     checkLogin: false,
   },
-  {
-    store: appConfigStore,
-    checkLogin: false,
-  },
-  {
-    store: publicUserStore,
-  },
 ])
 
 const operators = computed(() => {
