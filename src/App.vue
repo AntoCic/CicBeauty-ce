@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { cicKitStore, defaultUserPermission, LoaderCmp, loading, ToastCmp, ModalDev, RegisterSW, HeaderApp, useStoreWatch } from 'cic-kit';
+import { cicKitStore, defaultUserPermission, LoaderCmp, loading, ToastCmp, ModalDev, RegisterSW, AutoPushPermissionModal, HeaderApp, useStoreWatch } from 'cic-kit';
 import { computed, nextTick, onMounted, ref, watch, type CSSProperties } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
 import { Auth } from './main';
@@ -95,6 +95,7 @@ onMounted(() => {
   <ToastCmp />
   <CookieConsentBanner />
   <RegisterSW :registerSW="registerSW" />
+  <AutoPushPermissionModal :only-after-login="true" />
 </template>
 
 <style>

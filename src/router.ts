@@ -10,6 +10,7 @@ const ProductCategoriesManageView = () => import('./views/products/ProductCatego
 const ProductEditView = () => import('./views/products/ProductEditView.vue');
 const ProductView = () => import('./views/products/ProductView.vue');
 const HomeView = () => import('./views/home/HomeView.vue');
+const UserView = () => import('./views/user/UserView.vue');
 const TreatmentsView = () => import('./views/treatments/TreatmentsView.vue');
 const TreatmentsManageView = () => import('./views/treatments/TreatmentsManageView.vue');
 const TreatmentCategoriesView = () => import('./views/treatments/TreatmentCategoriesView.vue');
@@ -52,6 +53,16 @@ export const routes: RouteRecordRaw[] = [
       publicDepth: 0,
       title: 'CNC Beauty | Trattamenti, prodotti e benessere',
       description: 'Centro estetico CNC Beauty: trattamenti professionali, prodotti selezionati e consulenza personalizzata.',
+    },
+  },
+  {
+    path: '/user',
+    name: 'user',
+    component: UserView,
+    meta: {
+      loginStatus: true,
+      title: 'Profilo utente | CNC Beauty',
+      description: 'Gestisci profilo, permessi e notifiche push del tuo account CNC Beauty.',
     },
   },
   {
