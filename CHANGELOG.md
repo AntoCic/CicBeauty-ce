@@ -1,3 +1,9 @@
+## v0.0.29 - 2026-03-05
+
+fix loop update
+
+---
+
 ## v0.0.27 - 2026-03-05
 
 fix img glitch
