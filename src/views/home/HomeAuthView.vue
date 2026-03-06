@@ -27,14 +27,14 @@ function onQrKeydown(event: KeyboardEvent) {
 
 const SETTINGS_APP_ORDER = [
   'user-profile',
-  'relations',
+  'app-config',
+  'agent-prompts',
   'product-categories-manage',
   'treatment-categories-manage',
   'type-expenses',
-  'app-config',
-  'catalog-backup',
-  'agent-prompts',
+  'relations',
   'test-playground',
+  'catalog-backup',
   'migration-import',
 ]
 

@@ -37,10 +37,32 @@ const appointmentSlots: Array<[number, number]> = [
   [17, 30],
   [18, 15],
 ]
+const monthOptions = [
+  { key: '01', label: 'Gen' },
+  { key: '02', label: 'Feb' },
+  { key: '03', label: 'Mar' },
+  { key: '04', label: 'Apr' },
+  { key: '05', label: 'Mag' },
+  { key: '06', label: 'Giu' },
+  { key: '07', label: 'Lug' },
+  { key: '08', label: 'Ago' },
+  { key: '09', label: 'Set' },
+  { key: '10', label: 'Ott' },
+  { key: '11', label: 'Nov' },
+  { key: '12', label: 'Dic' },
+] as const
 
 type ClientVariant = 'base' | 'premium' | 'no-phone' | 'male'
 type CouponVariant = 'fixed' | 'percent' | 'dedicated' | 'flash'
 type AppointmentVariant = 'personal' | 'center-basic' | 'center-complete-no-coupon' | 'center-coupon'
+type AppointmentOverrides = {
+  applyDiscount?: boolean
+  applyExtra?: boolean
+  applyCoupon?: boolean
+}
+type MixedBatchOptions = AppointmentOverrides & {
+  includeCouponVariant?: boolean
+}
 
 useStoreWatch([
   { store: clientStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } } },
@@ -72,6 +94,17 @@ const treatmentIds = computed(() =>
     .filter(Boolean),
 )
 const hasRunningAction = computed(() => Boolean(runningAction.value))
+const appointmentsTodayCount = ref(12)
+const appointmentsMonthValue = ref(toMonthInputValue())
+const appointmentsMonthCount = ref(40)
+const appointmentsMonthAdvancedValue = ref(toMonthInputValue())
+const appointmentsMonthAdvancedCount = ref(40)
+const appointmentsMonthAdvancedDiscount = ref(false)
+const appointmentsMonthAdvancedExtra = ref(false)
+const appointmentsMonthAdvancedCoupon = ref(false)
+const appointmentsByMonthsYear = ref(new Date().getFullYear())
+const appointmentsByMonthsCount = ref(20)
+const appointmentsByMonthsSelection = ref(defaultMonthSelection())
 
 watch(
   hasBetaFeatures,
@@ -113,6 +146,14 @@ function pad2(value: number) {
   return String(value).padStart(2, '0')
 }
 
+function toMonthInputValue(date = new Date()) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`
+}
+
+function defaultMonthSelection() {
+  return Object.fromEntries(monthOptions.map((item) => [item.key, false])) as Record<string, boolean>
+}
+
 function randomToken(size = 4) {
   return Math.random().toString(36).slice(2, 2 + size).toUpperCase()
 }
@@ -146,6 +187,48 @@ function randomTodaySlot() {
 
 function formatHour(date: Date) {
   return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+}
+
+function normalizePositiveInt(value: unknown, fallback: number, min = 1, max = 5000) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  const rounded = Math.round(parsed)
+  return Math.max(min, Math.min(max, rounded))
+}
+
+function monthRangeFromInput(value: string) {
+  const normalized = normalizeString(value)
+  const match = /^(\d{4})-(\d{2})$/.exec(normalized)
+  if (!match) {
+    const start = new Date(new Date().getFullYear(), new Date().getMonth(), 1, 0, 0, 0, 0)
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999)
+    return { start, end, label: start.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }) }
+  }
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+    const start = new Date(new Date().getFullYear(), new Date().getMonth(), 1, 0, 0, 0, 0)
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999)
+    return { start, end, label: start.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }) }
+  }
+
+  const start = new Date(year, month - 1, 1, 0, 0, 0, 0)
+  const end = new Date(year, month, 0, 23, 59, 59, 999)
+  return { start, end, label: start.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }) }
+}
+
+function randomDateInRange(start: Date, end: Date) {
+  const startMs = start.getTime()
+  const endMs = end.getTime()
+  const safeEnd = endMs > startMs ? endMs : startMs + 60000
+  const randomMs = startMs + Math.random() * (safeEnd - startMs)
+  const date = new Date(randomMs)
+  const [hour, minute] = randomFrom(appointmentSlots) ?? [10, 0]
+  date.setHours(hour, minute, 0, 0)
+  if (date.getTime() < startMs) return new Date(startMs)
+  if (date.getTime() > safeEnd) return new Date(safeEnd)
+  return date
 }
 
 function pushLog(message: string) {
@@ -305,7 +388,7 @@ async function createRandomCoupon(variant: CouponVariant) {
   })
 }
 
-async function createRandomAppointment(variant: AppointmentVariant, startAt?: Date) {
+async function createRandomAppointment(variant: AppointmentVariant, startAt?: Date, overrides: AppointmentOverrides = {}) {
   const startDate = startAt ?? randomTodaySlot()
   const selectedOperators = variant === 'center-complete-no-coupon' ? pickOperators(1, 2) : pickOperators(1, 1)
 
@@ -331,7 +414,10 @@ async function createRandomAppointment(variant: AppointmentVariant, startAt?: Da
   const clientId = await ensureClientId()
   const isComplete = variant === 'center-complete-no-coupon'
   const treatmentSelection = isComplete ? pickTreatments(2, 3) : pickTreatments(1, 2)
-  const couponId = variant === 'center-coupon' ? await ensureActiveCouponId() : undefined
+  const applyDiscount = overrides.applyDiscount ?? isComplete
+  const applyExtra = overrides.applyExtra ?? true
+  const applyCoupon = overrides.applyCoupon ?? (variant === 'center-coupon')
+  const couponId = applyCoupon ? await ensureActiveCouponId() : undefined
 
   return appointmentStore.add({
     date_time: Timestamp.fromDate(startDate),
@@ -341,19 +427,37 @@ async function createRandomAppointment(variant: AppointmentVariant, startAt?: Da
     product_ids: [],
     operator_ids: selectedOperators,
     isPersonal: false,
-    discount: isComplete ? (randomFrom([5, 10, 15, 20]) ?? 10) : 0,
-    extra: randomFrom([0, 0, 5, 10]) ?? 0,
+    discount: applyDiscount ? (randomFrom([5, 10, 15, 20]) ?? 10) : 0,
+    extra: applyExtra ? (randomFrom([0, 0, 5, 10]) ?? 0) : 0,
     fix_duration: randomFrom([0, 5, 10, 15]) ?? 0,
     coupon_id: couponId,
     notes:
-      variant === 'center-coupon'
+      applyCoupon
         ? 'Appuntamento test con coupon'
-        : isComplete
+        : applyDiscount && isComplete
           ? 'Appuntamento completo test (2+ trattamenti, sconto, no coupon)'
           : 'Appuntamento centro estetico test',
     reminded: false,
     updateBy: defaultUpdateBy(),
   })
+}
+
+async function createMixedAppointments(countValue: unknown, dateFactory: () => Date, options: MixedBatchOptions = {}) {
+  const count = normalizePositiveInt(countValue, 1, 1, 5000)
+  const baseVariants: AppointmentVariant[] = options.includeCouponVariant === false
+    ? ['personal', 'center-basic', 'center-complete-no-coupon']
+    : ['personal', 'center-basic', 'center-complete-no-coupon', 'center-coupon']
+
+  for (let index = 0; index < count; index += 1) {
+    const variant = randomFrom(baseVariants) ?? 'center-basic'
+    await createRandomAppointment(variant, dateFactory(), {
+      applyDiscount: options.applyDiscount,
+      applyExtra: options.applyExtra,
+      applyCoupon: options.applyCoupon,
+    })
+  }
+
+  return count
 }
 
 async function onCreateClientBase() {
@@ -401,6 +505,17 @@ async function onCreateClientBatch() {
   })
 }
 
+async function onCreateClientBatch100() {
+  await runAction('client-batch-100', 'Creazione 100 clienti misti', async () => {
+    const variants: ClientVariant[] = ['base', 'premium', 'no-phone', 'male']
+    for (let index = 0; index < 100; index += 1) {
+      await createRandomClient(randomFrom(variants) ?? 'base')
+    }
+    toast.success('Creati 100 clienti misti')
+    pushLog('Batch clienti creato (100)')
+  })
+}
+
 async function onCreateCouponFixed() {
   await runAction('coupon-fixed', 'Creazione coupon fisso', async () => {
     const created = await createRandomCoupon('fixed')
@@ -433,6 +548,17 @@ async function onCreateCouponBatch() {
     }
     toast.success('Creati 3 coupon misti')
     pushLog('Batch coupon creato (3)')
+  })
+}
+
+async function onCreateCouponBatch10() {
+  await runAction('coupon-batch-10', 'Creazione 10 coupon misti', async () => {
+    const variants: CouponVariant[] = ['fixed', 'percent', 'dedicated', 'flash']
+    for (let index = 0; index < 10; index += 1) {
+      await createRandomCoupon(randomFrom(variants) ?? 'fixed')
+    }
+    toast.success('Creati 10 coupon misti')
+    pushLog('Batch coupon creato (10)')
   })
 }
 
@@ -487,6 +613,97 @@ async function onCreateAppointmentBatchToday() {
 
     toast.success('Creati 4 appuntamenti random nella giornata attuale')
     pushLog('Batch appuntamenti giornata creato (4)')
+  })
+}
+
+async function onCreateAppointmentRange1000SixMonths() {
+  await runAction('appointment-1000-range', 'Creazione 1000 appuntamenti (3 mesi prima + 3 mesi dopo)', async () => {
+    const now = new Date()
+    const rangeStart = new Date(now)
+    rangeStart.setMonth(rangeStart.getMonth() - 3)
+    rangeStart.setHours(0, 0, 0, 0)
+
+    const rangeEnd = new Date(now)
+    rangeEnd.setMonth(rangeEnd.getMonth() + 3)
+    rangeEnd.setHours(23, 59, 59, 999)
+
+    const created = await createMixedAppointments(1000, () => randomDateInRange(rangeStart, rangeEnd), {
+      includeCouponVariant: true,
+    })
+
+    toast.success(`Creati ${created} appuntamenti nel range 6 mesi`)
+    pushLog(`Batch appuntamenti range 6 mesi creato (${created})`)
+  })
+}
+
+async function onGenerateAppointmentsTodayFromForm() {
+  await runAction('appointment-form-today', 'Form appuntamenti oggi', async () => {
+    const count = normalizePositiveInt(appointmentsTodayCount.value, 12, 1, 1000)
+    appointmentsTodayCount.value = count
+    const start = todayAt(0, 0)
+    const end = todayAt(23, 59)
+    const created = await createMixedAppointments(count, () => randomDateInRange(start, end), {
+      includeCouponVariant: true,
+    })
+    toast.success(`Creati ${created} appuntamenti misti per oggi`)
+    pushLog(`Form oggi: creati ${created} appuntamenti`)
+  })
+}
+
+async function onGenerateAppointmentsMonthFromForm() {
+  await runAction('appointment-form-month', 'Form appuntamenti per mese', async () => {
+    const count = normalizePositiveInt(appointmentsMonthCount.value, 40, 1, 2000)
+    appointmentsMonthCount.value = count
+    const { start, end, label } = monthRangeFromInput(appointmentsMonthValue.value)
+    const created = await createMixedAppointments(count, () => randomDateInRange(start, end), {
+      includeCouponVariant: true,
+    })
+    toast.success(`Creati ${created} appuntamenti misti su ${label}`)
+    pushLog(`Form mese (${label}): creati ${created} appuntamenti`)
+  })
+}
+
+async function onGenerateAppointmentsMonthAdvancedFromForm() {
+  await runAction('appointment-form-month-advanced', 'Form appuntamenti mese avanzato', async () => {
+    const count = normalizePositiveInt(appointmentsMonthAdvancedCount.value, 40, 1, 2000)
+    appointmentsMonthAdvancedCount.value = count
+    const { start, end, label } = monthRangeFromInput(appointmentsMonthAdvancedValue.value)
+    const includeCoupon = Boolean(appointmentsMonthAdvancedCoupon.value)
+    const created = await createMixedAppointments(count, () => randomDateInRange(start, end), {
+      includeCouponVariant: includeCoupon,
+      applyDiscount: Boolean(appointmentsMonthAdvancedDiscount.value),
+      applyExtra: Boolean(appointmentsMonthAdvancedExtra.value),
+      applyCoupon: includeCoupon,
+    })
+    toast.success(`Creati ${created} appuntamenti su ${label} (form avanzato)`)
+    pushLog(`Form mese avanzato (${label}): creati ${created} appuntamenti`)
+  })
+}
+
+async function onGenerateAppointmentsByCheckedMonthsFromForm() {
+  await runAction('appointment-form-months-checkbox', 'Form appuntamenti per mesi selezionati', async () => {
+    const selectedMonths = monthOptions.filter((month) => appointmentsByMonthsSelection.value[month.key])
+    if (!selectedMonths.length) {
+      toast.warning('Seleziona almeno un mese')
+      return
+    }
+
+    const year = normalizePositiveInt(appointmentsByMonthsYear.value, new Date().getFullYear(), 2000, 2100)
+    const countPerMonth = normalizePositiveInt(appointmentsByMonthsCount.value, 20, 1, 1000)
+    appointmentsByMonthsYear.value = year
+    appointmentsByMonthsCount.value = countPerMonth
+
+    let totalCreated = 0
+    for (const month of selectedMonths) {
+      const { start, end } = monthRangeFromInput(`${year}-${month.key}`)
+      const created = await createMixedAppointments(countPerMonth, () => randomDateInRange(start, end), {
+        includeCouponVariant: true,
+      })
+      totalCreated += created
+    }
+
+    toast.success(`Creati ${totalCreated} appuntamenti su ${selectedMonths.length} mesi`)
+    pushLog(`Form mesi check: creati ${totalCreated} appuntamenti`)
   })
 }
 
@@ -585,6 +802,16 @@ async function fillMissingCategoryEmojis() {
           >
             5 clienti misti
           </Btn>
+          <Btn
+            type="button"
+            color="dark"
+            icon="rocket_launch"
+            :loading="isActionBusy('client-batch-100')"
+            :disabled="isActionDisabled('client-batch-100')"
+            @click="onCreateClientBatch100"
+          >
+            100 clienti misti
+          </Btn>
         </div>
       </section>
 
@@ -633,6 +860,16 @@ async function fillMissingCategoryEmojis() {
             @click="onCreateCouponBatch"
           >
             3 coupon misti
+          </Btn>
+          <Btn
+            type="button"
+            color="dark"
+            icon="inventory_2"
+            :loading="isActionBusy('coupon-batch-10')"
+            :disabled="isActionDisabled('coupon-batch-10')"
+            @click="onCreateCouponBatch10"
+          >
+            10 coupon misti
           </Btn>
         </div>
       </section>
@@ -693,6 +930,133 @@ async function fillMissingCategoryEmojis() {
           >
             Pacchetto giornata (4 appuntamenti)
           </Btn>
+          <Btn
+            type="button"
+            color="dark"
+            icon="date_range"
+            :loading="isActionBusy('appointment-1000-range')"
+            :disabled="isActionDisabled('appointment-1000-range')"
+            @click="onCreateAppointmentRange1000SixMonths"
+          >
+            1000 appuntamenti (3 mesi prima + 3 mesi dopo)
+          </Btn>
+        </div>
+      </section>
+
+      <section class="card border-0 shadow-sm p-3 p-md-4 mt-3">
+        <h2 class="h6 text-uppercase mb-1">Form Appuntamenti</h2>
+        <p class="small text-muted mb-3">
+          Mini form per generare appuntamenti misti con quantità, mese e opzioni (sconto/extra/coupon).
+        </p>
+
+        <div class="appointment-forms-grid">
+          <form class="mini-form" @submit.prevent="onGenerateAppointmentsTodayFromForm">
+            <h3 class="h6 mb-2">Oggi + quantita</h3>
+            <div class="mini-form__fields">
+              <div>
+                <label class="form-label small mb-1">Quanti appuntamenti</label>
+                <input v-model.number="appointmentsTodayCount" type="number" min="1" max="1000" class="form-control form-control-sm" />
+              </div>
+              <Btn
+                type="submit"
+                color="dark"
+                icon="play_arrow"
+                :loading="isActionBusy('appointment-form-today')"
+                :disabled="isActionDisabled('appointment-form-today')"
+              >
+                Genera oggi
+              </Btn>
+            </div>
+          </form>
+
+          <form class="mini-form" @submit.prevent="onGenerateAppointmentsMonthFromForm">
+            <h3 class="h6 mb-2">Mese + quantita</h3>
+            <div class="mini-form__fields">
+              <div>
+                <label class="form-label small mb-1">Mese</label>
+                <input v-model="appointmentsMonthValue" type="month" class="form-control form-control-sm" />
+              </div>
+              <div>
+                <label class="form-label small mb-1">Quanti appuntamenti</label>
+                <input v-model.number="appointmentsMonthCount" type="number" min="1" max="2000" class="form-control form-control-sm" />
+              </div>
+              <Btn
+                type="submit"
+                color="dark"
+                icon="calendar_month"
+                :loading="isActionBusy('appointment-form-month')"
+                :disabled="isActionDisabled('appointment-form-month')"
+              >
+                Genera mese
+              </Btn>
+            </div>
+          </form>
+
+          <form class="mini-form" @submit.prevent="onGenerateAppointmentsMonthAdvancedFromForm">
+            <h3 class="h6 mb-2">Mese + quantita + check</h3>
+            <div class="mini-form__fields">
+              <div>
+                <label class="form-label small mb-1">Mese</label>
+                <input v-model="appointmentsMonthAdvancedValue" type="month" class="form-control form-control-sm" />
+              </div>
+              <div>
+                <label class="form-label small mb-1">Quanti appuntamenti</label>
+                <input v-model.number="appointmentsMonthAdvancedCount" type="number" min="1" max="2000" class="form-control form-control-sm" />
+              </div>
+              <div class="mini-form__checks">
+                <label class="mini-check">
+                  <input v-model="appointmentsMonthAdvancedDiscount" type="checkbox" />
+                  <span>Sconto</span>
+                </label>
+                <label class="mini-check">
+                  <input v-model="appointmentsMonthAdvancedExtra" type="checkbox" />
+                  <span>Extra</span>
+                </label>
+                <label class="mini-check">
+                  <input v-model="appointmentsMonthAdvancedCoupon" type="checkbox" />
+                  <span>Coupon</span>
+                </label>
+              </div>
+              <Btn
+                type="submit"
+                color="dark"
+                icon="tune"
+                :loading="isActionBusy('appointment-form-month-advanced')"
+                :disabled="isActionDisabled('appointment-form-month-advanced')"
+              >
+                Genera avanzato
+              </Btn>
+            </div>
+          </form>
+
+          <form class="mini-form mini-form--full" @submit.prevent="onGenerateAppointmentsByCheckedMonthsFromForm">
+            <h3 class="h6 mb-2">Check mesi + quantita</h3>
+            <div class="mini-form__fields mini-form__fields--months">
+              <div>
+                <label class="form-label small mb-1">Anno</label>
+                <input v-model.number="appointmentsByMonthsYear" type="number" min="2000" max="2100" class="form-control form-control-sm" />
+              </div>
+              <div>
+                <label class="form-label small mb-1">Quanti appuntamenti per mese selezionato</label>
+                <input v-model.number="appointmentsByMonthsCount" type="number" min="1" max="1000" class="form-control form-control-sm" />
+              </div>
+              <div class="months-grid">
+                <label v-for="month in monthOptions" :key="month.key" class="month-check">
+                  <input v-model="appointmentsByMonthsSelection[month.key]" type="checkbox" />
+                  <span>{{ month.label }}</span>
+                </label>
+              </div>
+              <Btn
+                type="submit"
+                color="dark"
+                icon="calendar_view_month"
+                :loading="isActionBusy('appointment-form-months-checkbox')"
+                :disabled="isActionDisabled('appointment-form-months-checkbox')"
+              >
+                Genera mesi selezionati
+              </Btn>
+            </div>
+          </form>
         </div>
       </section>
 
@@ -760,6 +1124,64 @@ async function fillMissingCategoryEmojis() {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0.6rem;
+}
+
+.appointment-forms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.8rem;
+}
+
+.mini-form {
+  border: 1px solid rgba(84, 44, 58, 0.14);
+  border-radius: 0.6rem;
+  padding: 0.6rem;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.mini-form--full {
+  grid-column: 1 / -1;
+}
+
+.mini-form__fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+.mini-form__fields--months {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.mini-form__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding-top: 0.1rem;
+}
+
+.mini-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+}
+
+.months-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  gap: 0.35rem;
+}
+
+.month-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(84, 44, 58, 0.16);
+  border-radius: 0.45rem;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.8rem;
 }
 
 .playground-log {
