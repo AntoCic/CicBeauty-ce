@@ -23,22 +23,10 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
-      registerType: 'prompt',
-      manifestFilename: 'site.webmanifest',
-      devOptions: { enabled: true, type: 'module' },
       injectRegister: false,
-      includeAssets: [
-        'img/logo/pwa.png',
-        'img/logo/favicon.png',
-        'img/logo/logo.png',
-        'fonts/GoogleIcon/kJEhBvYX7BgnkSrUwT8OhrdQw4oELdPIeeII9v6oFsI.woff2',
-        'fonts/Cal_Sans/CalSans-Regular.ttf',
-        'fonts/Monoton/Monoton-Regular.ttf',
-      ],
+      manifestFilename: 'site.webmanifest',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,woff2,woff,ttf,png,svg}'],
-        maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
-        globIgnores: [],
+        injectionPoint: undefined,
       },
       manifest: {
         name: 'Cnc Beauty',
@@ -51,7 +39,6 @@ export default defineConfig({
         icons: [
           { src: '/img/logo/pwa.png', sizes: '192x192', type: 'image/png' },
         ],
-
       }
     })
   ],
