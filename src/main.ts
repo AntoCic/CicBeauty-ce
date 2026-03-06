@@ -19,14 +19,16 @@ setupFirebase(firebaseConfig, VAPID_PUBLIC_KEY);
 applyConsentToAnalytics(firebaseConfig.measurementId);
 export const Auth = initAuth(CurrentUser);
 initCicKitStore({
-    packageJson: pkg, defaultViews: {
-        ...cicKitStore.defaultViews,
-        colorDark: '#542c3a',
-        colorAccent: '#e8b3be',
-        colorSoft: '#F7F1F2'
-    },
-    loginCode: '5555',
-    debugFirestore:true
+  packageJson: pkg, defaultViews: {
+    ...cicKitStore.defaultViews,
+    colorDark: '#542c3a',
+    colorAccent: '#e8b3be',
+    colorSoft: '#F7F1F2'
+  },
+  loginCode: '5555',
+  debugFirestore: true,
+  autoUpdate: false,
+  serviceWorkerToast: false,
 });
 headerStore.defaultTitle = 'Cnc Beauty';
 headerStore.title = 'Cnc Beauty';

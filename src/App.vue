@@ -57,6 +57,26 @@ watch(
   { immediate: true },
 );
 
+
+watch(
+  () => Auth?.isLoggedIn,
+  () => {
+    if (Auth?.isLoggedIn) {
+      cicKitStore.autoUpdate = true;
+      cicKitStore.serviceWorkerToast = true;
+      cicKitStore.appConfig.start();
+    } else {
+      if (cicKitStore.autoUpdate) {
+        cicKitStore.autoUpdate = false;
+      }
+      if (cicKitStore.serviceWorkerToast) {
+        cicKitStore.serviceWorkerToast = false;
+      }
+    }
+  },
+  { immediate: true },
+)
+
 async function onRouteComponentMounted() {
   if (initAppLoadingClosed) {
     return;
@@ -75,13 +95,10 @@ onMounted(() => {
   <LoaderCmp v-if="loading.state" />
   <HeaderApp v-if="showAppHeader" />
 
-  <main
-    :class="{
-      'app-main--public': isPublicRoute,
-      'app-main--with-quick-toolbar': showQuickToolbar,
-    }"
-    :style="publicMainInlineStyle"
-  >
+  <main :class="{
+    'app-main--public': isPublicRoute,
+    'app-main--with-quick-toolbar': showQuickToolbar,
+  }" :style="publicMainInlineStyle">
     <RouterView v-slot="{ Component, route: activeRoute }">
       <Transition :name="pageTransitionName" mode="out-in">
         <component :is="Component" :key="activeRoute.fullPath" @vue:mounted="onRouteComponentMounted" />
@@ -140,6 +157,7 @@ onMounted(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .page-fade-enter-active,
   .page-fade-leave-active,
   .page-slide-forward-enter-active,
@@ -162,5 +180,4 @@ onMounted(() => {
 main.app-main--with-quick-toolbar {
   padding-bottom: calc(92px + env(safe-area-inset-bottom));
 }
-
 </style>
