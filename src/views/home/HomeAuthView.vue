@@ -62,7 +62,7 @@ function closeSettingsFolder() {
 <template>
   <div class="home-page pb-t" :style="bgStyle">
     <section class="home-main">
-      <h1>test3</h1>
+      <h1>4</h1>
       <div class="apps-grid">
         <RouterLink
           v-for="app in visibleMainApps"

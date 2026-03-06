@@ -50,7 +50,7 @@ const actionMotion = computed(() => {
 <template>
   <section id="hero" class="home-hero home-panel">
     <div class="home-hero__copy">
-      <p class="home-kicker">{{ content.kicker }}</p>
+      <p class="home-kicker">5---{{ content.kicker }}</p>
 
       <RevealText
         as="h1"
