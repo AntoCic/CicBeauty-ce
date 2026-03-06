@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Btn, FieldTiptap, cicKitStore, normalizeGender, toast, useStoreWatch, type Gender } from 'cic-kit'
+import { Btn, FieldTiptap, cicKitStore, normalizeGender, toast, type Gender } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAppointmentWatchManager } from '../../composables/useAppointmentWatchManager'
 import type { Client } from '../../models/Client'
 import { Auth } from '../../main'
 import { appointmentStore } from '../../stores/appointmentStore'
@@ -49,10 +50,13 @@ const isEditMode = ref(false)
 
 const routeId = computed(() => String(route.params.id ?? '').trim())
 const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
+const CLIENT_EDIT_WATCH_SUSPEND_REASON = 'client-edit-view'
+const { suspendAppointmentWatch, releaseAppointmentWatch } = useAppointmentWatchManager()
 
-useStoreWatch([
-  { store: appointmentStore, getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' },  } },
-])
+suspendAppointmentWatch(CLIENT_EDIT_WATCH_SUSPEND_REASON)
+onBeforeUnmount(() => {
+  releaseAppointmentWatch(CLIENT_EDIT_WATCH_SUSPEND_REASON)
+})
 
 const schema = toTypedSchema(
   yup.object({

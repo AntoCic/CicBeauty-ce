@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, useStoreWatch } from 'cic-kit'
-import { computed, ref } from 'vue'
+import { Btn, cicKitStore } from 'cic-kit'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
+import { useAppointmentWatchManager } from '../../composables/useAppointmentWatchManager'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
 import ClientPersonCard from './components/ClientPersonCard.vue'
@@ -12,13 +13,13 @@ import { asDate } from '../../utils/date'
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const search = ref('')
+const CLIENTS_WATCH_SUSPEND_REASON = 'clients-view'
+const { suspendAppointmentWatch, releaseAppointmentWatch } = useAppointmentWatchManager()
 
-useStoreWatch([
-  {
-    store: appointmentStore,
-    getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' },  },
-  },
-])
+suspendAppointmentWatch(CLIENTS_WATCH_SUSPEND_REASON)
+onBeforeUnmount(() => {
+  releaseAppointmentWatch(CLIENTS_WATCH_SUSPEND_REASON)
+})
 
 const appointmentSummaryByClient = computed(() => {
   const grouped = new Map<string, (typeof appointmentStore.itemsActiveArray)[number][]>()

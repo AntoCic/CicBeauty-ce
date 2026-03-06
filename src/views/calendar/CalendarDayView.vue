@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, useStoreWatch } from 'cic-kit'
-import { computed } from 'vue'
+import { Btn, cicKitStore } from 'cic-kit'
+import { computed, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
+import { useAppointmentWatchManager } from '../../composables/useAppointmentWatchManager'
 import { Auth } from '../../main'
 import { appConfigStore } from '../../stores/appConfigStore'
 import { appointmentStore } from '../../stores/appointmentStore'
@@ -19,10 +20,8 @@ import { asDate } from '../../utils/date'
 const route = useRoute()
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
-
-useStoreWatch([
-  { store: appointmentStore, getOpts: {  } },
-])
+const DAY_WATCH_REASON = 'calendar-day-view'
+const { activateDayWatch, releaseAppointmentWatch } = useAppointmentWatchManager()
 
 const selectedDate = computed(() => {
   const raw = String(route.query.date ?? '').trim()
@@ -31,6 +30,18 @@ const selectedDate = computed(() => {
   const next = new Date(`${raw}T12:00:00`)
   if (Number.isNaN(next.getTime())) return startOfDay(fallback)
   return startOfDay(next)
+})
+
+watch(
+  selectedDate,
+  (date) => {
+    activateDayWatch(date, DAY_WATCH_REASON)
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(() => {
+  releaseAppointmentWatch(DAY_WATCH_REASON)
 })
 
 const selectedOperatorId = computed(() => String(route.query.operatorId ?? '').trim())

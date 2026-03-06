@@ -9,11 +9,13 @@ import { UserPermission } from './enums/UserPermission';
 import CookieConsentBanner from './components/CookieConsentBanner.vue';
 import { appConfigStore } from './stores/appConfigStore';
 import AppQuickToolbar from './components/navigation/AppQuickToolbar.vue';
+import { buildDefaultAppointmentWatchOpts } from './composables/useAppointmentWatchManager';
 import { treatmentStore } from './stores/treatmentStore';
 import { treatmentCategoryStore } from './stores/treatmentCategoryStore';
 import { productStore } from './stores/productStore';
 import { productCategoryStore } from './stores/productCategoryStore';
 import { typeExpenseStore } from './stores/typeExpenseStore';
+import { appointmentStore } from './stores/appointmentStore';
 import { clientStore } from './stores/clientStore';
 import { couponStore } from './stores/couponStore';
 import { typeCouponStore } from './stores/typeCouponStore';
@@ -47,6 +49,7 @@ startToday.setHours(0, 0, 0, 0);
 
 const tomorrow = new Date(startToday);
 tomorrow.setDate(tomorrow.getDate() + 1);
+const defaultAppointmentWatchOpts = buildDefaultAppointmentWatchOpts(new Date());
 
 useStoreWatch([
   { store: appConfigStore, checkLogin: false },
@@ -58,6 +61,7 @@ useStoreWatch([
   { store: publicUserStore },
   { store: typeExpenseStore },
   { store: typeCouponStore },
+  { store: appointmentStore, getOpts: defaultAppointmentWatchOpts },
   {
     store: couponStore,
     getOpts: {

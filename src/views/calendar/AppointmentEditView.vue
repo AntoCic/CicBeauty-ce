@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { Accordion, Btn, FieldTiptap, cicKitStore, toast, useStoreWatch } from 'cic-kit'
+import { Accordion, Btn, FieldTiptap, cicKitStore, toast } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { Timestamp } from 'firebase/firestore'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { callAvailabilityAgent } from '../../call/callAvailabilityAgent'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
+import { useAppointmentWatchManager } from '../../composables/useAppointmentWatchManager'
 import { Auth } from '../../main'
 import type { Appointment } from '../../models/Appointment'
 import { appConfigStore } from '../../stores/appConfigStore'
@@ -58,10 +59,13 @@ const treatmentSearch = ref('')
 
 const routeId = computed(() => String(route.params.id ?? '').trim())
 const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
+const EDIT_WATCH_SUSPEND_REASON = 'appointment-edit-view'
+const { suspendAppointmentWatch, releaseAppointmentWatch } = useAppointmentWatchManager()
 
-useStoreWatch([
-  { store: appointmentStore, getOpts: {} },
-])
+suspendAppointmentWatch(EDIT_WATCH_SUSPEND_REASON)
+onBeforeUnmount(() => {
+  releaseAppointmentWatch(EDIT_WATCH_SUSPEND_REASON)
+})
 
 const formKey = computed(() => (isCreateMode.value ? 'appointment-new' : current.value?.id ?? 'appointment-edit'))
 const schema = toTypedSchema(

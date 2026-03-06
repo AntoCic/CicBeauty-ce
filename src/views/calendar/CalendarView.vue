@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, useStoreWatch } from 'cic-kit'
-import { computed, ref } from 'vue'
+import { Btn, cicKitStore } from 'cic-kit'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAppointmentWatchManager } from '../../composables/useAppointmentWatchManager'
 import { Auth } from '../../main'
 import { appConfigStore } from '../../stores/appConfigStore'
 import { appointmentStore } from '../../stores/appointmentStore'
@@ -57,13 +58,20 @@ const showOnlyMyPersonal = ref(false)
 const isFilterModalOpen = ref(false)
 const draftOperatorId = ref<'all' | string>('all')
 const draftShowOnlyMyPersonal = ref(false)
+const CALENDAR_WATCH_REASON = 'calendar-month-view'
+const { activateCalendarMonthWatch, releaseAppointmentWatch } = useAppointmentWatchManager()
 
-useStoreWatch([
-  {
-    store: appointmentStore,
-    getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' } },
+watch(
+  visibleMonth,
+  (month) => {
+    activateCalendarMonthWatch(month, CALENDAR_WATCH_REASON)
   },
-])
+  { immediate: true },
+)
+
+onBeforeUnmount(() => {
+  releaseAppointmentWatch(CALENDAR_WATCH_REASON)
+})
 
 const operators = computed(() => {
   return publicUserStore.itemsActiveArray
