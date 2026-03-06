@@ -3,16 +3,6 @@ import { cicKitStore } from 'cic-kit'
 import { computed, ref } from 'vue'
 import { Auth } from '../../main'
 import { AUTH_HOME_APPS, type HomeAppShortcut } from './homeApps'
-import { publicUserStore } from '@src/stores/publicUser'
-import { appConfigStore } from '@src/stores/appConfigStore'
-import { treatmentStore } from '@src/stores/treatmentStore'
-import { productCategoryStore } from '@src/stores/productCategoryStore'
-import { treatmentCategoryStore } from '@src/stores/treatmentCategoryStore'
-import { productStore } from '@src/stores/productStore'
-import { clientStore } from '@src/stores/clientStore'
-import { typeExpenseStore } from '@src/stores/typeExpenseStore'
-import { typeCouponStore } from '@src/stores/typeCouponStore'
-import { couponStore } from '@src/stores/couponStore'
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const isQrModalOpen = ref(false)
@@ -72,24 +62,9 @@ function closeSettingsFolder() {
 
 <template>
   <div class="home-page pb-t" :style="bgStyle">
-    <p>store [appConfigStore] : {{ appConfigStore.live ? '🟢' : '🔴'}}</p>
-<p>store [treatmentCategoryStore] : {{ treatmentCategoryStore.live ? '🟢' : '🔴'}}</p>
-<p>store [treatmentStore] : {{ treatmentStore.live ? '🟢' : '🔴'}}</p>
-<p>store [productStore] : {{ productStore.live ? '🟢' : '🔴'}}</p>
-<p>store [productCategoryStore] : {{ productCategoryStore.live ? '🟢' : '🔴'}}</p>
-<p>store [clientStore] : {{ clientStore.live ? '🟢' : '🔴'}}</p>
-<p>store [publicUserStore] : {{ publicUserStore.live ? '🟢' : '🔴'}}</p>
-<p>store [typeExpenseStore] : {{ typeExpenseStore.live ? '🟢' : '🔴'}}</p>
-<p>store [typeCouponStore] : {{ typeCouponStore.live ? '🟢' : '🔴'}}</p>
-<p>store [couponStore] : {{ couponStore.live ? '🟢' : '🔴'}}</p>
     <section class="home-main">
       <div class="apps-grid">
-        <RouterLink
-          v-for="app in visibleMainApps"
-          :key="app.id"
-          :to="app.to"
-          class="app-shortcut text-decoration-none"
-        >
+        <RouterLink v-for="app in visibleMainApps" :key="app.id" :to="app.to" class="app-shortcut text-decoration-none">
           <div class="app-tile">
             <div class="app-icon" :class="app.iconClass">
               <span class="material-symbols-outlined app-icon-symbol">{{ app.icon }}</span>
@@ -98,17 +73,12 @@ function closeSettingsFolder() {
           </div>
         </RouterLink>
 
-        <button
-          v-if="hasSettingsApps"
-          type="button"
-          class="app-shortcut app-shortcut-btn"
-          :aria-expanded="isSettingsFolderOpen"
-          aria-controls="settings-folder-panel"
-          @click="toggleSettingsFolder"
-        >
+        <button v-if="hasSettingsApps" type="button" class="app-shortcut app-shortcut-btn"
+          :aria-expanded="isSettingsFolderOpen" aria-controls="settings-folder-panel" @click="toggleSettingsFolder">
           <div class="app-tile">
             <div class="app-icon app-icon-night">
-              <span class="material-symbols-outlined app-icon-symbol">{{ isSettingsFolderOpen ? 'folder_open' : 'folder' }}</span>
+              <span class="material-symbols-outlined app-icon-symbol">{{ isSettingsFolderOpen ? 'folder_open' : 'folder'
+                }}</span>
             </div>
             <span class="app-title">Conf. App</span>
           </div>
@@ -116,26 +86,17 @@ function closeSettingsFolder() {
       </div>
 
       <Transition name="settings-folder">
-        <section
-          v-if="hasSettingsApps && isSettingsFolderOpen"
-          id="settings-folder-panel"
-          class="settings-folder"
-          role="region"
-          aria-label="Cartella impostazioni"
-        >
+        <section v-if="hasSettingsApps && isSettingsFolderOpen" id="settings-folder-panel" class="settings-folder"
+          role="region" aria-label="Cartella impostazioni">
           <div class="settings-folder__header">
             <h2 class="settings-folder__title">Impostazioni</h2>
-            <button type="button" class="btn-close settings-folder__close" aria-label="Chiudi cartella impostazioni" @click="closeSettingsFolder"></button>
+            <button type="button" class="btn-close settings-folder__close" aria-label="Chiudi cartella impostazioni"
+              @click="closeSettingsFolder"></button>
           </div>
 
           <div class="settings-grid">
-            <RouterLink
-              v-for="app in visibleSettingsApps"
-              :key="app.id"
-              :to="app.to"
-              class="app-shortcut text-decoration-none"
-              @click="closeSettingsFolder"
-            >
+            <RouterLink v-for="app in visibleSettingsApps" :key="app.id" :to="app.to"
+              class="app-shortcut text-decoration-none" @click="closeSettingsFolder">
               <div class="app-tile">
                 <div class="app-icon" :class="app.iconClass">
                   <span class="material-symbols-outlined app-icon-symbol">{{ app.icon }}</span>
@@ -147,22 +108,16 @@ function closeSettingsFolder() {
         </section>
       </Transition>
 
-      <img
-        class="home-qr"
-        src="/img/qr.png"
-        alt="QR Cic Beauty"
-        role="button"
-        tabindex="0"
-        aria-label="Apri QR ingrandito"
-        @click="openQrModal"
-        @keydown="onQrKeydown"
-      />
+      <img class="home-qr" src="/img/qr.png" alt="QR Cic Beauty" role="button" tabindex="0"
+        aria-label="Apri QR ingrandito" @click="openQrModal" @keydown="onQrKeydown" />
     </section>
 
-    <div v-if="isQrModalOpen" class="home-qr-modal" role="dialog" aria-modal="true" aria-label="QR Cic Beauty ingrandito">
+    <div v-if="isQrModalOpen" class="home-qr-modal" role="dialog" aria-modal="true"
+      aria-label="QR Cic Beauty ingrandito">
       <div class="home-qr-modal__backdrop" @click="closeQrModal"></div>
       <div class="home-qr-modal__content">
-        <button type="button" class="btn-close home-qr-modal__close" aria-label="Chiudi QR ingrandito" @click="closeQrModal"></button>
+        <button type="button" class="btn-close home-qr-modal__close" aria-label="Chiudi QR ingrandito"
+          @click="closeQrModal"></button>
         <img class="home-qr-modal__image" src="/img/qr.png" alt="QR Cic Beauty ingrandito" />
       </div>
     </div>
