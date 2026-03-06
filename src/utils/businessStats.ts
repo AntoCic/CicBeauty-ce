@@ -25,8 +25,7 @@ type TreatmentLike = {
 
 type CouponLike = {
   code: string
-  discount_value: number
-  discount_type: 'fixed' | 'percent'
+  title: string
 }
 
 type ExpenseLike = {
@@ -128,7 +127,7 @@ export function buildCouponUsage(appointments: AppointmentLike[], couponsById: M
     const coupon = couponsById.get(couponId)
     const current = map.get(couponId) ?? {
       couponId,
-      label: coupon ? `${coupon.code} (${coupon.discount_value}${coupon.discount_type === 'percent' ? '%' : 'EUR'})` : couponId,
+      label: coupon ? `${coupon.code} - ${coupon.title}` : couponId,
       usage: 0,
     }
     current.usage += 1

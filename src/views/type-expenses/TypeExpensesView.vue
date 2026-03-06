@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, toast, useChangeHeader, useStoreWatch } from "cic-kit";
+import { Btn, cicKitStore, toast, useChangeHeader } from "cic-kit";
 import { Form, Field, ErrorMessage } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/yup";
 import * as yup from "yup";
@@ -10,7 +10,6 @@ import { hasBetaFeaturesAccess } from "../../utils/permissions";
 
 useChangeHeader("Tipi di spesa", "/");
 const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin);
-useStoreWatch(canManage.value ? [{ store: typeExpenseStore, getOpts: {  } }] : []);
 
 type TypeExpenseForm = {
   emoji: string;

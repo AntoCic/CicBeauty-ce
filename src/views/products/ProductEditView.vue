@@ -9,7 +9,6 @@ import {
   uploadFilesToUrls,
   type FieldFileValue,
   useChangeHeader,
-  useStoreWatch,
 } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
@@ -44,22 +43,6 @@ type ProductForm = {
 type SetFieldValueFn = (field: string, value: unknown, shouldValidate?: boolean) => void
 
 useChangeHeader('Modifica prodotto', { name: 'ProductCategoriesView' })
-useStoreWatch([
-  { store: typeExpenseStore, getOpts: {  } },
-  {
-    store: productCategoryStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-  },
-  {
-    store: treatmentCategoryStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-  },
-  {
-    store: treatmentStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-])
 
 const route = useRoute()
 const router = useRouter()

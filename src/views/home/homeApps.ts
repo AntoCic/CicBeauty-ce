@@ -103,6 +103,15 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     group: 'settings',
   },
   {
+    id: 'type-coupons',
+    title: 'Tipi Coupon',
+    to: { name: 'TypeCouponsView' },
+    icon: 'sell',
+    iconClass: 'app-icon-soft',
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
+    group: 'settings',
+  },
+  {
     id: 'ai-beauty-chat',
     title: 'Chat AI Beauty',
     to: { name: 'AiBeautyChatView' },

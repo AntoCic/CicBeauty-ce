@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { cicKitStore, loading, toast, useStoreWatch } from 'cic-kit'
+import { cicKitStore, loading, toast } from 'cic-kit'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CatalogCard from '../../components/CatalogCard.vue'
@@ -15,23 +15,6 @@ import { productStore } from '../../stores/productStore'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
 
-useStoreWatch([
-  {
-    store: treatmentStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-  {
-    store: treatmentCategoryStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-  {
-    store: productStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-])
 
 const route = useRoute()
 const router = useRouter()

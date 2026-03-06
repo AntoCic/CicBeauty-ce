@@ -3,6 +3,16 @@ import { cicKitStore } from 'cic-kit'
 import { computed, ref } from 'vue'
 import { Auth } from '../../main'
 import { AUTH_HOME_APPS, type HomeAppShortcut } from './homeApps'
+import { publicUserStore } from '@src/stores/publicUser'
+import { appConfigStore } from '@src/stores/appConfigStore'
+import { treatmentStore } from '@src/stores/treatmentStore'
+import { productCategoryStore } from '@src/stores/productCategoryStore'
+import { treatmentCategoryStore } from '@src/stores/treatmentCategoryStore'
+import { productStore } from '@src/stores/productStore'
+import { clientStore } from '@src/stores/clientStore'
+import { typeExpenseStore } from '@src/stores/typeExpenseStore'
+import { typeCouponStore } from '@src/stores/typeCouponStore'
+import { couponStore } from '@src/stores/couponStore'
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const isQrModalOpen = ref(false)
@@ -32,6 +42,7 @@ const SETTINGS_APP_ORDER = [
   'product-categories-manage',
   'treatment-categories-manage',
   'type-expenses',
+  'type-coupons',
   'relations',
   'test-playground',
   'catalog-backup',
@@ -61,6 +72,16 @@ function closeSettingsFolder() {
 
 <template>
   <div class="home-page pb-t" :style="bgStyle">
+    <p>store [appConfigStore] : {{ appConfigStore.live ? '🟢' : '🔴'}}</p>
+<p>store [treatmentCategoryStore] : {{ treatmentCategoryStore.live ? '🟢' : '🔴'}}</p>
+<p>store [treatmentStore] : {{ treatmentStore.live ? '🟢' : '🔴'}}</p>
+<p>store [productStore] : {{ productStore.live ? '🟢' : '🔴'}}</p>
+<p>store [productCategoryStore] : {{ productCategoryStore.live ? '🟢' : '🔴'}}</p>
+<p>store [clientStore] : {{ clientStore.live ? '🟢' : '🔴'}}</p>
+<p>store [publicUserStore] : {{ publicUserStore.live ? '🟢' : '🔴'}}</p>
+<p>store [typeExpenseStore] : {{ typeExpenseStore.live ? '🟢' : '🔴'}}</p>
+<p>store [typeCouponStore] : {{ typeCouponStore.live ? '🟢' : '🔴'}}</p>
+<p>store [couponStore] : {{ couponStore.live ? '🟢' : '🔴'}}</p>
     <section class="home-main">
       <div class="apps-grid">
         <RouterLink

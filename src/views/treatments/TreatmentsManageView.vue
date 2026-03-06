@@ -1,24 +1,11 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, useStoreWatch } from 'cic-kit'
+import { Btn, cicKitStore } from 'cic-kit'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { treatmentStore } from '../../stores/treatmentStore'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { Auth } from '../../main'
-
-useStoreWatch([
-  {
-    store: treatmentStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-  {
-    store: treatmentCategoryStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-])
 
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())

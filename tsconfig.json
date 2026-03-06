@@ -5,6 +5,9 @@
       "@shared/*": [
         "shared/*"
       ],
+      "@src/*": [
+        "src/*"
+      ],
     },
     "outDir": "lib",
     "rootDir": "..",

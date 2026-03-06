@@ -5,6 +5,11 @@ import ParallaxImage from '../components/ParallaxImage.vue'
 import { usePrefersReducedMotion } from '../composables/usePrefersReducedMotion'
 import { useScrollReveal } from '../composables/useScrollReveal'
 import type { HomeContent } from '../homeContent'
+import { publicUserStore } from '@src/stores/publicUser'
+import { appConfigStore } from '@src/stores/appConfigStore'
+import { treatmentStore } from '@src/stores/treatmentStore'
+import { productCategoryStore } from '@src/stores/productCategoryStore'
+import { treatmentCategoryStore } from '@src/stores/treatmentCategoryStore'
 
 defineProps<{
   content: HomeContent['hero']
@@ -50,7 +55,12 @@ const actionMotion = computed(() => {
 <template>
   <section id="hero" class="home-hero home-panel">
     <div class="home-hero__copy">
-      <p class="home-kicker">11---{{ content.kicker }}</p>
+      <p>store [publicUserStore] : {{ publicUserStore.live ? '🟢' : '🔴'}}</p>
+      <p>store [appConfigStore] : {{ appConfigStore.live ? '🟢' : '🔴'}}</p>
+      <p>store [treatmentStore] : {{ treatmentStore.live ? '🟢' : '🔴'}}</p>
+      <p>store [productCategoryStore] : {{ productCategoryStore.live ? '🟢' : '🔴'}}</p>
+      <p>store [treatmentCategoryStore] : {{ treatmentCategoryStore.live ? '🟢' : '🔴'}}</p>
+      <p class="home-kicker">{{ content.kicker }}</p>
 
       <RevealText
         as="h1"

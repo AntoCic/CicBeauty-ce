@@ -9,7 +9,6 @@ import {
   uploadFilesToUrls,
   type FieldFileValue,
   useChangeHeader,
-  useStoreWatch,
 } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
@@ -28,11 +27,6 @@ type ProductCategoryForm = {
 useChangeHeader('Categorie prodotti', { name: 'ProductCategoriesView' })
 
 const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin)
-useStoreWatch(
-  canManage.value
-    ? [{ store: productCategoryStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } } }]
-    : [],
-)
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const formKey = ref(0)

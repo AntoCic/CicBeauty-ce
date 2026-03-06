@@ -13,6 +13,7 @@ import {
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
+import { Timestamp } from 'firebase/firestore'
 import { computed, ref } from 'vue'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { Auth } from '../../main'
@@ -39,9 +40,7 @@ const fileValue = ref<FieldFileValue>([])
 
 useStoreWatch([
   { store: expenseStore, getOpts: { orderBy: { fieldPath: 'paidAt', directionStr: 'desc' },  } },
-  { store: typeExpenseStore, getOpts: {  } },
   { store: couponStore, getOpts: {  } },
-  { store: clientStore, getOpts: {  } },
 ])
 
 const schema = toTypedSchema(
@@ -145,7 +144,7 @@ async function onSubmit(values: Record<string, unknown>) {
       status: normalizeString(values.status) || 'paid',
       coupon_id: normalizeString(values.coupon_id),
       client_id: normalizeString(values.client_id),
-      paidAt: asDate(values.paidAt) ?? new Date(),
+      paidAt: Timestamp.fromDate(asDate(values.paidAt) ?? new Date()),
       dueAt: undefined,
       attachments: [],
       receiptUrls: false,

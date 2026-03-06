@@ -24,10 +24,7 @@ const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 
 useStoreWatch([
   { store: appointmentStore, getOpts: {  } },
-  { store: clientStore, getOpts: {  } },
-  { store: treatmentStore, getOpts: {  }, checkLogin: false },
   { store: expenseStore, getOpts: {  } },
-  { store: typeExpenseStore, getOpts: {  } },
   { store: couponStore, getOpts: {  } },
 ])
 

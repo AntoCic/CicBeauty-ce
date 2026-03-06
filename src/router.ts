@@ -18,6 +18,7 @@ const TreatmentCategoriesManageView = () => import('./views/treatments/Treatment
 const TreatmentView = () => import('./views/treatments/TreatmentView.vue');
 const TreatmentEditView = () => import('./views/treatments/TreatmentEditView.vue');
 const TypeExpensesView = () => import('./views/type-expenses/TypeExpensesView.vue');
+const TypeCouponsView = () => import('./views/type-coupons/TypeCouponsView.vue');
 const AnnouncementsView = () => import('./views/announcements/AnnouncementsView.vue');
 const AiBeautyChatView = () => import('./views/ai/AiBeautyChatView.vue');
 const PdfPlacementDemoView = () => import('./views/tools/PdfPlacementDemoView.vue');
@@ -134,6 +135,7 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   { path: '/type-expenses', name: 'TypeExpensesView', component: TypeExpensesView, meta: { loginStatus: true } },
+  { path: '/type-coupons', name: 'TypeCouponsView', component: TypeCouponsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/calendar', name: 'CalendarView', component: CalendarView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/calendar/day', name: 'CalendarDayView', component: CalendarDayView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/appointments/:id', name: 'AppointmentEditView', component: AppointmentEditView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },

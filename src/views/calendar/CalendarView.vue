@@ -63,20 +63,6 @@ useStoreWatch([
     store: appointmentStore,
     getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' } },
   },
-  {
-    store: clientStore,
-    getOpts: { orderBy: { fieldPath: 'surname', directionStr: 'asc' } },
-  },
-  {
-    store: treatmentStore,
-    getOpts: { orderBy: { fieldPath: 'title', directionStr: 'asc' } },
-    checkLogin: false,
-  },
-  {
-    store: treatmentCategoryStore,
-    getOpts: { orderBy: { fieldPath: 'title', directionStr: 'asc' } },
-    checkLogin: false,
-  },
 ])
 
 const operators = computed(() => {

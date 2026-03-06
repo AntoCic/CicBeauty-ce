@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Accordion, Btn, cicKitStore, toast, useChangeHeader, useStoreWatch } from 'cic-kit'
+import { Accordion, Btn, cicKitStore, toast, useChangeHeader } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -37,22 +37,6 @@ type TreatmentForm = {
 type SetFieldValueFn = (field: string, value: unknown, shouldValidate?: boolean) => void
 
 useChangeHeader('Modifica trattamento', { name: 'TreatmentCategoriesView' })
-useStoreWatch([
-  { store: typeExpenseStore, getOpts: {  } },
-  {
-    store: treatmentCategoryStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-  },
-  {
-    store: productCategoryStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-  },
-  {
-    store: productStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-])
 
 const route = useRoute()
 const router = useRouter()

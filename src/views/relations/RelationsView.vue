@@ -8,18 +8,16 @@ import { couponStore } from '../../stores/couponStore'
 import { expenseStore } from '../../stores/expenseStore'
 import { productStore } from '../../stores/productStore'
 import { treatmentStore } from '../../stores/treatmentStore'
+import { typeCouponStore } from '../../stores/typeCouponStore'
 import { typeExpenseStore } from '../../stores/typeExpenseStore'
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 
 useStoreWatch([
   { store: appointmentStore, getOpts: {  } },
-  { store: clientStore, getOpts: {  } },
-  { store: treatmentStore, getOpts: {  }, checkLogin: false },
-  { store: productStore, getOpts: {  }, checkLogin: false },
-  { store: typeExpenseStore, getOpts: {  } },
   { store: expenseStore, getOpts: {  } },
   { store: couponStore, getOpts: {  } },
+  { store: typeCouponStore, getOpts: {  } },
 ])
 
 const relationships = computed(() => {
@@ -32,6 +30,7 @@ const relationships = computed(() => {
   const expenseWithCoupon = expenseStore.itemsActiveArray.filter((item) => item.coupon_id).length
   const treatmentWithType = treatmentStore.itemsActiveArray.filter((item) => item.type_expense_id).length
   const productWithType = productStore.itemsActiveArray.filter((item) => item.type_expense_id).length
+  const couponWithType = couponStore.itemsActiveArray.filter((item) => item.type_coupon_id).length
   const clientWithPreferences = clientStore.itemsActiveArray.filter((item) => (item.preferredOperatorIds ?? []).length > 0).length
 
   return [
@@ -106,6 +105,18 @@ const relationships = computed(() => {
       connected: couponStore.itemsActiveArray.filter((item) => item.client_id).length,
       total: couponStore.itemsActiveArray.length,
       note: 'client_id opzionale nel coupon',
+    },
+    {
+      name: 'TipoCoupon 1 -> N Coupon',
+      connected: couponWithType,
+      total: couponStore.itemsActiveArray.length,
+      note: 'coupon.type_coupon_id',
+    },
+    {
+      name: 'Tipi coupon configurati',
+      connected: typeCouponStore.itemsActiveArray.filter((item) => item.valid).length,
+      total: typeCouponStore.itemsActiveArray.length,
+      note: 'valid = true',
     },
     {
       name: 'Migrazione old_id su Trattamenti',

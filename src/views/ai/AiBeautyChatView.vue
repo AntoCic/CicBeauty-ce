@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, useChangeHeader, useStoreWatch } from 'cic-kit'
+import { Btn, cicKitStore, useChangeHeader } from 'cic-kit'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
@@ -30,18 +30,6 @@ type AssistantMessage = {
 type ChatMessage = UserMessage | AssistantMessage
 
 useChangeHeader('Beauty AI Chat', { name: 'home' })
-useStoreWatch([
-  {
-    store: productStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-  {
-    store: treatmentStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-])
 
 const route = useRoute()
 const router = useRouter()

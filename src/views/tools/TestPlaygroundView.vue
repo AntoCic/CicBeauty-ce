@@ -5,22 +5,18 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AiPromptLauncherCard from '../../components/ai/AiPromptLauncherCard.vue'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
-import { callTestFillMissingCategoryEmojis, type TestFillMissingCategoryEmojisResponse } from '../../call/callTestFillMissingCategoryEmojis'
-import { parseAiError } from '../../call/_utilityApi'
 import { Auth } from '../../main'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
 import { couponStore } from '../../stores/couponStore'
 import { publicUserStore } from '../../stores/publicUser'
 import { treatmentStore } from '../../stores/treatmentStore'
+import { typeCouponStore } from '../../stores/typeCouponStore'
 
 useChangeHeader('Test Playground', { name: 'home' })
 
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
-const isFillingCategoryEmojis = ref(false)
-const fillCategoryEmojiResult = ref<TestFillMissingCategoryEmojisResponse | undefined>(undefined)
-const fillCategoryEmojiError = ref('')
 const runningAction = ref('')
 const actionLog = ref<string[]>([])
 
@@ -53,7 +49,7 @@ const monthOptions = [
 ] as const
 
 type ClientVariant = 'base' | 'premium' | 'no-phone' | 'male'
-type CouponVariant = 'fixed' | 'percent' | 'dedicated' | 'flash'
+type CouponVariant = 'standard' | 'premium' | 'dedicated' | 'flash'
 type AppointmentVariant = 'personal' | 'center-basic' | 'center-complete-no-coupon' | 'center-coupon'
 type AppointmentOverrides = {
   applyDiscount?: boolean
@@ -65,11 +61,7 @@ type MixedBatchOptions = AppointmentOverrides & {
 }
 
 useStoreWatch([
-  { store: clientStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } } },
-  { store: couponStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } } },
   { store: appointmentStore, getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' } } },
-  { store: publicUserStore, getOpts: {} },
-  { store: treatmentStore, getOpts: { orderBy: { fieldPath: 'title', directionStr: 'asc' } }, checkLogin: false },
 ])
 
 const hasBetaFeatures = computed(() => Auth?.user?.hasPermission(defaultUserPermission.BETA_FEATURES) ?? false)
@@ -297,7 +289,26 @@ async function ensureActiveCouponId() {
   const active = couponStore.itemsActiveArray.filter((item) => item.active)
   const existingId = normalizeString(randomFrom(active)?.id)
   if (existingId) return existingId
-  const created = await createRandomCoupon('fixed')
+  const created = await createRandomCoupon('standard')
+  return created.id
+}
+
+async function ensureTypeCouponId() {
+  const validTypes = typeCouponStore.itemsActiveArray.filter((item) => item.valid)
+  const existingId = normalizeString(randomFrom(validTypes)?.id)
+  if (existingId) return existingId
+
+  const now = Date.now()
+  const created = await typeCouponStore.add({
+    name: `Tipo coupon test ${randomToken(4)}`,
+    usage_limit: randomInt(1, 10),
+    price: randomInt(10, 40),
+    valid: true,
+    note: 'Tipo coupon generato dal playground',
+    imgUrls: [],
+    meta: { source: 'playground', seed: now },
+    updateBy: defaultUpdateBy(),
+  })
   return created.id
 }
 
@@ -337,53 +348,49 @@ async function createRandomCoupon(variant: CouponVariant) {
   validTo.setDate(validTo.getDate() + randomInt(10, 45))
   validTo.setHours(23, 59, 59, 0)
 
-  let discountType: 'fixed' | 'percent' = 'fixed'
-  let discountValue = randomInt(10, 25)
+  const typeCouponId = await ensureTypeCouponId()
+  let usage = randomInt(1, 5)
   let title = 'Coupon test'
-  let description = 'Coupon generato da playground'
-  let usageLimit: number | undefined = randomInt(1, 5)
+  let note = 'Coupon generato da playground'
   let clientId: string | undefined
 
-  if (variant === 'percent') {
-    discountType = 'percent'
-    discountValue = randomInt(5, 30)
-    title = 'Sconto percentuale'
-    description = 'Valido su appuntamenti test'
+  if (variant === 'premium') {
+    title = 'Coupon premium'
+    note = 'Valido su appuntamenti premium test'
+    usage = randomInt(3, 12)
   }
 
   if (variant === 'dedicated') {
     clientId = await ensureClientId()
     title = 'Coupon cliente dedicato'
-    description = 'Uso singolo su cliente specifico'
-    usageLimit = 1
+    note = 'Uso singolo su cliente specifico'
+    usage = 1
   }
 
   if (variant === 'flash') {
-    discountType = 'fixed'
-    discountValue = randomInt(5, 15)
     title = 'Flash coupon giornata'
-    description = 'Scade rapidamente'
-    usageLimit = randomInt(1, 2)
+    note = 'Scade rapidamente'
+    usage = randomInt(1, 2)
     validTo.setDate(validFrom.getDate() + randomInt(1, 4))
   }
 
-  const codePrefix = variant === 'percent' ? 'P' : variant === 'dedicated' ? 'D' : variant === 'flash' ? 'F' : 'X'
+  const codePrefix = variant === 'premium' ? 'P' : variant === 'dedicated' ? 'D' : variant === 'flash' ? 'F' : 'X'
   const code = `${codePrefix}${Date.now().toString().slice(-5)}${randomToken(3)}`
 
   return couponStore.add({
     code,
     title,
-    description,
-    discount_type: discountType,
-    discount_value: discountValue,
+    note,
     active: true,
-    valid_from: validFrom,
-    valid_to: validTo,
-    usage_limit: usageLimit,
-    usage_count: 0,
+    valid_from: Timestamp.fromDate(validFrom),
+    valid_to: Timestamp.fromDate(validTo),
+    usage,
     client_id: clientId,
     treatment_ids: [],
     product_ids: [],
+    type_coupon_id: typeCouponId,
+    fileUrls: [],
+    meta: { source: 'playground', variant },
     updateBy: defaultUpdateBy(),
   })
 }
@@ -517,18 +524,18 @@ async function onCreateClientBatch100() {
 }
 
 async function onCreateCouponFixed() {
-  await runAction('coupon-fixed', 'Creazione coupon fisso', async () => {
-    const created = await createRandomCoupon('fixed')
-    toast.success(`Coupon fisso creato: ${created.code}`)
-    pushLog(`Coupon fisso creato (${created.id})`)
+  await runAction('coupon-fixed', 'Creazione coupon standard', async () => {
+    const created = await createRandomCoupon('standard')
+    toast.success(`Coupon standard creato: ${created.code}`)
+    pushLog(`Coupon standard creato (${created.id})`)
   })
 }
 
 async function onCreateCouponPercent() {
-  await runAction('coupon-percent', 'Creazione coupon percentuale', async () => {
-    const created = await createRandomCoupon('percent')
-    toast.success(`Coupon percentuale creato: ${created.code}`)
-    pushLog(`Coupon percentuale creato (${created.id})`)
+  await runAction('coupon-percent', 'Creazione coupon premium', async () => {
+    const created = await createRandomCoupon('premium')
+    toast.success(`Coupon premium creato: ${created.code}`)
+    pushLog(`Coupon premium creato (${created.id})`)
   })
 }
 
@@ -542,7 +549,7 @@ async function onCreateCouponDedicated() {
 
 async function onCreateCouponBatch() {
   await runAction('coupon-batch', 'Creazione batch coupon', async () => {
-    const variants: CouponVariant[] = ['fixed', 'percent', 'flash']
+    const variants: CouponVariant[] = ['standard', 'premium', 'flash']
     for (const variant of variants) {
       await createRandomCoupon(variant)
     }
@@ -553,9 +560,9 @@ async function onCreateCouponBatch() {
 
 async function onCreateCouponBatch10() {
   await runAction('coupon-batch-10', 'Creazione 10 coupon misti', async () => {
-    const variants: CouponVariant[] = ['fixed', 'percent', 'dedicated', 'flash']
+    const variants: CouponVariant[] = ['standard', 'premium', 'dedicated', 'flash']
     for (let index = 0; index < 10; index += 1) {
-      await createRandomCoupon(randomFrom(variants) ?? 'fixed')
+      await createRandomCoupon(randomFrom(variants) ?? 'standard')
     }
     toast.success('Creati 10 coupon misti')
     pushLog('Batch coupon creato (10)')
@@ -636,6 +643,72 @@ async function onCreateAppointmentRange1000SixMonths() {
   })
 }
 
+function activeIds(items: Array<{ id: string }>) {
+  return items
+    .map((item) => normalizeString(item.id))
+    .filter(Boolean)
+}
+
+async function onDeleteAllAppointments() {
+  const total = appointmentStore.itemsActiveArray.length
+  if (!total) {
+    toast.warning('Nessun appuntamento da eliminare')
+    return
+  }
+
+  const ok = window.confirm(`Sei sicuro di eliminare tutti gli appuntamenti (${total})?`)
+  if (!ok) return
+
+  await runAction('delete-all-appointments', 'Eliminazione tutti gli appuntamenti', async () => {
+    const ids = activeIds(appointmentStore.itemsActiveArray)
+    for (const id of ids) {
+      await appointmentStore.delete(id)
+    }
+    toast.success(`Eliminati ${ids.length} appuntamenti`)
+    pushLog(`Eliminati ${ids.length} appuntamenti`)
+  })
+}
+
+async function onDeleteAllClients() {
+  const total = clientStore.itemsActiveArray.length
+  if (!total) {
+    toast.warning('Nessun cliente da eliminare')
+    return
+  }
+
+  const ok = window.confirm(`Sei sicuro di eliminare tutti i clienti (${total})?`)
+  if (!ok) return
+
+  await runAction('delete-all-clients', 'Eliminazione tutti i clienti', async () => {
+    const ids = activeIds(clientStore.itemsActiveArray)
+    for (const id of ids) {
+      await clientStore.delete(id)
+    }
+    toast.success(`Eliminati ${ids.length} clienti`)
+    pushLog(`Eliminati ${ids.length} clienti`)
+  })
+}
+
+async function onDeleteAllCoupons() {
+  const total = couponStore.itemsActiveArray.length
+  if (!total) {
+    toast.warning('Nessun coupon da eliminare')
+    return
+  }
+
+  const ok = window.confirm(`Sei sicuro di eliminare tutti i coupon (${total})?`)
+  if (!ok) return
+
+  await runAction('delete-all-coupons', 'Eliminazione tutti i coupon', async () => {
+    const ids = activeIds(couponStore.itemsActiveArray)
+    for (const id of ids) {
+      await couponStore.delete(id)
+    }
+    toast.success(`Eliminati ${ids.length} coupon`)
+    pushLog(`Eliminati ${ids.length} coupon`)
+  })
+}
+
 async function onGenerateAppointmentsTodayFromForm() {
   await runAction('appointment-form-today', 'Form appuntamenti oggi', async () => {
     const count = normalizePositiveInt(appointmentsTodayCount.value, 12, 1, 1000)
@@ -706,24 +779,6 @@ async function onGenerateAppointmentsByCheckedMonthsFromForm() {
     pushLog(`Form mesi check: creati ${totalCreated} appuntamenti`)
   })
 }
-
-async function fillMissingCategoryEmojis() {
-  if (isFillingCategoryEmojis.value) return
-
-  isFillingCategoryEmojis.value = true
-  fillCategoryEmojiError.value = ''
-  try {
-    const result = await callTestFillMissingCategoryEmojis({ limit: 120 })
-    fillCategoryEmojiResult.value = result
-    toast.success(`:white_check_mark: Emoji aggiornate: ${result.updated}/${result.attempted}`)
-  } catch (error) {
-    const message = parseAiError(error)
-    fillCategoryEmojiError.value = message
-    toast.error(`:warning: ${message}`)
-  } finally {
-    isFillingCategoryEmojis.value = false
-  }
-}
 </script>
 
 <template>
@@ -744,6 +799,45 @@ async function fillMissingCategoryEmojis() {
         <p v-if="runningAction" class="small text-muted mb-0 mt-2">
           Azione in corso: <strong>{{ runningAction }}</strong>
         </p>
+      </section>
+
+      <section class="card border-0 shadow-sm p-3 p-md-4 mt-3">
+        <h2 class="h6 text-uppercase mb-1">Pulizia Dati</h2>
+        <p class="small text-muted mb-3">
+          Azioni distruttive: eliminano definitivamente tutti i record della categoria scelta dopo conferma.
+        </p>
+        <div class="playground-actions">
+          <Btn
+            type="button"
+            color="dark"
+            icon="delete_sweep"
+            :loading="isActionBusy('delete-all-appointments')"
+            :disabled="isActionDisabled('delete-all-appointments')"
+            @click="onDeleteAllAppointments"
+          >
+            Elimina tutti gli appuntamenti
+          </Btn>
+          <Btn
+            type="button"
+            color="dark"
+            icon="person_remove"
+            :loading="isActionBusy('delete-all-clients')"
+            :disabled="isActionDisabled('delete-all-clients')"
+            @click="onDeleteAllClients"
+          >
+            Elimina tutti i clienti
+          </Btn>
+          <Btn
+            type="button"
+            color="dark"
+            icon="local_offer"
+            :loading="isActionBusy('delete-all-coupons')"
+            :disabled="isActionDisabled('delete-all-coupons')"
+            @click="onDeleteAllCoupons"
+          >
+            Elimina tutti i coupon
+          </Btn>
+        </div>
       </section>
 
       <section class="card border-0 shadow-sm p-3 p-md-4 mt-3">
@@ -818,7 +912,7 @@ async function fillMissingCategoryEmojis() {
       <section class="card border-0 shadow-sm p-3 p-md-4 mt-3">
         <h2 class="h6 text-uppercase mb-1">Coupon Random</h2>
         <p class="small text-muted mb-3">
-          Crea coupon con regole diverse: fisso, percentuale, dedicato a cliente e batch misto.
+          Crea coupon con regole diverse: standard, premium, dedicato a cliente e batch misto.
         </p>
         <div class="playground-actions">
           <Btn
@@ -829,7 +923,7 @@ async function fillMissingCategoryEmojis() {
             :disabled="isActionDisabled('coupon-fixed')"
             @click="onCreateCouponFixed"
           >
-            Coupon importo fisso
+            Coupon standard
           </Btn>
           <Btn
             type="button"
@@ -839,7 +933,7 @@ async function fillMissingCategoryEmojis() {
             :disabled="isActionDisabled('coupon-percent')"
             @click="onCreateCouponPercent"
           >
-            Coupon percentuale
+            Coupon premium
           </Btn>
           <Btn
             type="button"
@@ -1072,44 +1166,6 @@ async function fillMissingCategoryEmojis() {
         </div>
       </section>
 
-      <section class="card border-0 shadow-sm p-3 p-md-4 mt-3">
-        <h2 class="h6 text-uppercase mb-1">Test Emoji Categorie</h2>
-        <p class="small text-muted mb-3">
-          Chiamata API di test: prende tutte le categorie e aggiunge emoji solo a quelle che non la hanno.
-        </p>
-
-        <div class="d-flex flex-wrap align-items-center gap-2">
-          <Btn
-            type="button"
-            color="dark"
-            icon="auto_awesome"
-            :loading="isFillingCategoryEmojis"
-            :disabled="isFillingCategoryEmojis"
-            @click="fillMissingCategoryEmojis"
-          >
-            Genera emoji mancanti
-          </Btn>
-          <small v-if="fillCategoryEmojiResult" class="text-muted">
-            Modello: {{ fillCategoryEmojiResult.model }} | Aggiornate: {{ fillCategoryEmojiResult.updated }}/{{ fillCategoryEmojiResult.attempted }}
-          </small>
-        </div>
-
-        <p v-if="fillCategoryEmojiError" class="text-danger small mt-2 mb-0">
-          {{ fillCategoryEmojiError }}
-        </p>
-
-        <div v-if="fillCategoryEmojiResult" class="small mt-3">
-          <p class="mb-2 text-muted">
-            Scansionate: {{ fillCategoryEmojiResult.scanned }} | Mancanti prima: {{ fillCategoryEmojiResult.missingBefore }}
-          </p>
-          <div class="emoji-results-list">
-            <div v-for="item in fillCategoryEmojiResult.items" :key="`${item.collection}-${item.id}`" class="emoji-result-row">
-              [{{ item.collection }}] {{ item.title }} -> {{ item.emoji || '-' }} ({{ item.status }})
-            </div>
-          </div>
-        </div>
-      </section>
-
       <AiPromptLauncherCard class="mt-3" />
     </div>
   </div>
@@ -1198,21 +1254,6 @@ async function fillMissingCategoryEmojis() {
   padding: 0.24rem 0.45rem;
   font-size: 0.82rem;
   background: rgba(255, 255, 255, 0.78);
-}
-
-.emoji-results-list {
-  max-height: 260px;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.emoji-result-row {
-  border: 1px solid rgba(84, 44, 58, 0.12);
-  border-radius: 0.35rem;
-  padding: 0.2rem 0.4rem;
-  background: rgba(255, 255, 255, 0.75);
 }
 </style>
 

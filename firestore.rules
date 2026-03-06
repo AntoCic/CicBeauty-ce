@@ -75,6 +75,11 @@ service cloud.firestore {
       allow read: if isSignedIn() && isOperator();
       allow write: if isSignedIn() && isOperator();
     }
+
+    match /typeCoupons/{id} {
+      allow read: if isSignedIn() && isOperator();
+      allow write: if isSignedIn() && isOperator();
+    }
     
     match /products/{id} {
       allow read: if true;

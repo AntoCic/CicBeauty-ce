@@ -1,24 +1,11 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, useStoreWatch } from 'cic-kit'
+import { Btn, cicKitStore } from 'cic-kit'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { productStore } from '../../stores/productStore'
 import { productCategoryStore } from '../../stores/productCategoryStore'
 import { Auth } from '../../main'
-
-useStoreWatch([
-  {
-    store: productStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-  {
-    store: productCategoryStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-])
 
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())

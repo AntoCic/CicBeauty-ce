@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, useStoreWatch } from 'cic-kit'
+import { Btn, cicKitStore } from 'cic-kit'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import CategoryCatalogCard from '../../components/CategoryCatalogCard.vue'
@@ -11,19 +11,6 @@ import { Auth } from '../../main'
 import { productCategoryStore } from '../../stores/productCategoryStore'
 import { productStore } from '../../stores/productStore'
 import '../../styles/catalog-view.scss'
-
-useStoreWatch([
-  {
-    store: productStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-  {
-    store: productCategoryStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-])
 
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())

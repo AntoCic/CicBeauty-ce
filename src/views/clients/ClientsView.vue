@@ -15,10 +15,6 @@ const search = ref('')
 
 useStoreWatch([
   {
-    store: clientStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' },  },
-  },
-  {
     store: appointmentStore,
     getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' },  },
   },

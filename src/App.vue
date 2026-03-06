@@ -9,6 +9,15 @@ import { UserPermission } from './enums/UserPermission';
 import CookieConsentBanner from './components/CookieConsentBanner.vue';
 import { appConfigStore } from './stores/appConfigStore';
 import AppQuickToolbar from './components/navigation/AppQuickToolbar.vue';
+import { treatmentStore } from './stores/treatmentStore';
+import { treatmentCategoryStore } from './stores/treatmentCategoryStore';
+import { productStore } from './stores/productStore';
+import { productCategoryStore } from './stores/productCategoryStore';
+import { typeExpenseStore } from './stores/typeExpenseStore';
+import { clientStore } from './stores/clientStore';
+import { couponStore } from './stores/couponStore';
+import { typeCouponStore } from './stores/typeCouponStore';
+import { Timestamp, where } from 'firebase/firestore';
 
 const route = useRoute();
 let initAppLoadingClosed = false;
@@ -31,7 +40,35 @@ const publicMainInlineStyle = computed<CSSProperties | undefined>(() => {
     overflowX: 'clip',
   }
 })
-useStoreWatch([{ store: appConfigStore, checkLogin: false }, { store: publicUserStore }]);
+
+
+const startToday = new Date();
+startToday.setHours(0, 0, 0, 0);
+
+const tomorrow = new Date(startToday);
+tomorrow.setDate(tomorrow.getDate() + 1);
+
+useStoreWatch([
+  { store: appConfigStore, checkLogin: false },
+  { store: treatmentCategoryStore, checkLogin: false },
+  { store: treatmentStore, checkLogin: false },
+  { store: productStore, checkLogin: false },
+  { store: productCategoryStore, checkLogin: false },
+  { store: clientStore },
+  { store: publicUserStore },
+  { store: typeExpenseStore },
+  { store: typeCouponStore },
+  {
+    store: couponStore,
+    getOpts: {
+      query: [
+        where("active", "==", true),
+        where("valid_from", ">=", Timestamp.fromDate(startToday)),
+        where("valid_to", "<=", Timestamp.fromDate(tomorrow)),
+      ],
+    },
+  },
+]);
 
 watch(
   () => route.fullPath,

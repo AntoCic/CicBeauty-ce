@@ -24,8 +24,6 @@ const clientsSummary = ref<ImportSummary | null>(null)
 const appointmentsSummary = ref<ImportSummary | null>(null)
 
 useStoreWatch([
-  { store: clientStore, getOpts: {  } },
-  { store: treatmentStore, getOpts: {  }, checkLogin: false },
   { store: appointmentStore, getOpts: {  } },
 ])
 

@@ -9,7 +9,6 @@ import {
   uploadFilesToUrls,
   type FieldFileValue,
   useChangeHeader,
-  useStoreWatch,
 } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
@@ -28,13 +27,7 @@ type TreatmentCategoryForm = {
 
 useChangeHeader('Categorie trattamenti', { name: 'TreatmentCategoriesView' })
 
-const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin)
-useStoreWatch(
-  canManage.value
-    ? [{ store: treatmentCategoryStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } } }]
-    : [],
-)
-
+const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin);
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const formKey = ref(0)
 const isUploading = ref(false)
@@ -280,15 +273,8 @@ async function removeCategoryImage(category: (typeof treatmentCategoryStore.item
       Questa sezione e riservata ad amministratori e super amministratori.
     </p>
 
-    <Form
-      v-if="canManage"
-      :key="formKey"
-      class="card border-0 shadow-sm p-3 my-3"
-      :validation-schema="schema"
-      :initial-values="defaultValues"
-      @submit="onSubmit"
-      v-slot="{ isSubmitting }"
-    >
+    <Form v-if="canManage" :key="formKey" class="card border-0 shadow-sm p-3 my-3" :validation-schema="schema"
+      :initial-values="defaultValues" @submit="onSubmit" v-slot="{ isSubmitting }">
       <p class="fw-semibold mb-2">
         {{ isEditMode ? 'Modifica categoria trattamenti' : 'Nuova categoria trattamenti' }}
       </p>
@@ -316,15 +302,8 @@ async function removeCategoryImage(category: (typeof treatmentCategoryStore.item
         </div>
         <div class="col-12">
           <label class="form-label">Immagini categoria (una o piu)</label>
-          <FieldFile
-            name="uploadCategoryImages"
-            v-model="fileValue"
-            accept="image/*"
-            multiple
-            :show-errors="false"
-            :disabled="isUploading"
-            @clear="resetFileSelection"
-          >
+          <FieldFile name="uploadCategoryImages" v-model="fileValue" accept="image/*" multiple :show-errors="false"
+            :disabled="isUploading" @clear="resetFileSelection">
             <template #dropzone="{ open, clear, files, disabled, dragging }">
               <div class="dropzone-wrap" :class="{ dragging, disabled }">
                 <div class="fw-semibold">
@@ -335,7 +314,8 @@ async function removeCategoryImage(category: (typeof treatmentCategoryStore.item
                   <Btn type="button" icon="upload_file" color="dark" :disabled="disabled" @click="open">
                     Scegli file
                   </Btn>
-                  <Btn type="button" icon="delete" variant="outline" color="secondary" :disabled="disabled || !files.length" @click="clear">
+                  <Btn type="button" icon="delete" variant="outline" color="secondary"
+                    :disabled="disabled || !files.length" @click="clear">
                     Svuota selezione
                   </Btn>
                 </div>
@@ -349,23 +329,11 @@ async function removeCategoryImage(category: (typeof treatmentCategoryStore.item
       </div>
 
       <div class="d-flex gap-2 mt-3 flex-wrap">
-        <Btn
-          type="submit"
-          color="dark"
-          :icon="isEditMode ? 'save' : 'add'"
-          :loading="isSubmitting || isUploading"
-        >
+        <Btn type="submit" color="dark" :icon="isEditMode ? 'save' : 'add'" :loading="isSubmitting || isUploading">
           {{ isEditMode ? 'Salva modifiche categoria trattamenti' : 'Aggiungi categoria trattamenti' }}
         </Btn>
-        <Btn
-          v-if="isEditMode"
-          type="button"
-          color="secondary"
-          variant="outline"
-          icon="close"
-          :disabled="isSubmitting || isUploading"
-          @click="goCreateMode"
-        >
+        <Btn v-if="isEditMode" type="button" color="secondary" variant="outline" icon="close"
+          :disabled="isSubmitting || isUploading" @click="goCreateMode">
           Annulla modifica
         </Btn>
       </div>
@@ -378,7 +346,8 @@ async function removeCategoryImage(category: (typeof treatmentCategoryStore.item
     </div>
 
     <div v-if="canManage" class="vstack gap-2 mb-3">
-      <article v-for="item in treatmentCategoryStore.itemsActiveArray" :key="item.id" class="card border-0 shadow-sm p-3">
+      <article v-for="item in treatmentCategoryStore.itemsActiveArray" :key="item.id"
+        class="card border-0 shadow-sm p-3">
         <div class="d-flex justify-content-between align-items-center gap-2 mb-2 flex-wrap">
           <div>
             <strong>{{ item.emoji }} {{ item.title }}</strong>
@@ -386,23 +355,11 @@ async function removeCategoryImage(category: (typeof treatmentCategoryStore.item
           </div>
           <div class="d-flex align-items-center gap-2">
             <small class="text-muted">{{ item.updateBy }}</small>
-            <Btn
-              type="button"
-              icon="edit"
-              color="secondary"
-              variant="outline"
-              @click="goEditMode(item.id)"
-            >
+            <Btn type="button" icon="edit" color="secondary" variant="outline" @click="goEditMode(item.id)">
               Edit
             </Btn>
-            <Btn
-              type="button"
-              icon="delete"
-              color="danger"
-              variant="outline"
-              :loading="Boolean(deletingIds[item.id])"
-              @click="removeCategory(item)"
-            >
+            <Btn type="button" icon="delete" color="danger" variant="outline" :loading="Boolean(deletingIds[item.id])"
+              @click="removeCategory(item)">
               Elimina
             </Btn>
           </div>
@@ -411,19 +368,18 @@ async function removeCategoryImage(category: (typeof treatmentCategoryStore.item
         <div v-if="item.imgUrls?.length" class="saved-image-grid">
           <article v-for="(url, index) in item.imgUrls" :key="`${url}-${index}`" class="saved-image-card">
             <img :src="url" :alt="`Categoria trattamenti ${index + 1}`" class="saved-image" />
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-danger"
+            <button type="button" class="btn btn-sm btn-outline-danger"
               :disabled="Boolean(removingImageIds[imageRemovingKey(item.id, index)])"
-              @click="removeCategoryImage(item, index)"
-            >
+              @click="removeCategoryImage(item, index)">
               {{ removingImageIds[imageRemovingKey(item.id, index)] ? 'Rimozione...' : 'Rimuovi foto' }}
             </button>
           </article>
         </div>
       </article>
 
-      <p v-if="!treatmentCategoryStore.itemsActiveArray.length" class="text-muted small mb-0">Nessuna categoria trattamenti.</p>
+      <p v-if="!treatmentCategoryStore.itemsActiveArray.length" class="text-muted small mb-0">Nessuna categoria
+        trattamenti.
+      </p>
     </div>
   </div>
 </template>

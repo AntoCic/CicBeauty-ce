@@ -61,9 +61,6 @@ const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
 
 useStoreWatch([
   { store: appointmentStore, getOpts: {} },
-  { store: clientStore, getOpts: { orderBy: { fieldPath: 'surname', directionStr: 'asc' } } },
-  { store: treatmentStore, getOpts: { orderBy: { fieldPath: 'title', directionStr: 'asc' } }, checkLogin: false },
-  { store: couponStore, getOpts: {} },
 ])
 
 const formKey = computed(() => (isCreateMode.value ? 'appointment-new' : current.value?.id ?? 'appointment-edit'))

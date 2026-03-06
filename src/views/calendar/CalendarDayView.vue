@@ -22,8 +22,6 @@ const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 
 useStoreWatch([
   { store: appointmentStore, getOpts: {  } },
-  { store: clientStore, getOpts: {  } },
-  { store: treatmentStore, getOpts: {  }, checkLogin: false },
 ])
 
 const selectedDate = computed(() => {
