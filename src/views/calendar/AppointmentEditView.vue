@@ -130,6 +130,20 @@ const filteredTreatments = computed(() => {
     return label.includes(search)
   })
 })
+const selectableCoupons = computed(() => {
+  const nowMs = Date.now()
+  return couponStore.itemsActiveArray.filter((coupon) => {
+    if (!coupon.active) return false
+
+    const from = asDate(coupon.valid_from)
+    if (from && from.getTime() > nowMs) return false
+
+    const to = asDate(coupon.valid_to)
+    if (to && to.getTime() < nowMs) return false
+
+    return true
+  })
+})
 
 const currentClientId = computed(() => normalizeString(current.value?.client_id ?? current.value?.user_id))
 const currentClient = computed(() => {
@@ -795,7 +809,7 @@ watch(() => route.params.id, loadItem)
             <label class="form-label">Coupon</label>
             <Field name="coupon_id" as="select" class="form-select">
               <option value="">Nessuno</option>
-              <option v-for="coupon in couponStore.itemsActiveArray" :key="coupon.id" :value="coupon.id">
+              <option v-for="coupon in selectableCoupons" :key="coupon.id" :value="coupon.id">
                 {{ coupon.code }} - {{ coupon.title }}
               </option>
             </Field>
@@ -985,8 +999,6 @@ watch(() => route.params.id, loadItem)
                       name: currentPrimaryOperator.name,
                       surname: currentPrimaryOperator.surname,
                       email: currentPrimaryOperator.email,
-                      phoneNumber: currentPrimaryOperator.phoneNumber,
-                      description: currentPrimaryOperator.description,
                     }
                   : undefined
               "

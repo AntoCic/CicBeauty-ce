@@ -11,6 +11,11 @@ import { publicUserStore } from '../../stores/publicUser'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
 import { addMonths, computeAppointmentDurationMinutes, startOfDay } from '../../utils/calendar'
+import {
+  getCalendarSpecialBadges,
+  type CalendarSpecialBadge,
+  type ClientBirthdaySource,
+} from '../../utils/calendarSpecialDays'
 import { asDate } from '../../utils/date'
 import CalendarAppointmentCard from './components/CalendarAppointmentCard.vue'
 import CalendarHeaderExtra from './components/CalendarHeaderExtra.vue'
@@ -43,11 +48,20 @@ type CalendarDayCell = {
   dayNumber: number
   isCurrentMonth: boolean
   isToday: boolean
+  isSunday: boolean
+  isHoliday: boolean
   isSelected: boolean
+  specialBadges: CalendarSpecialBadge[]
   appointments: VisibleAppointment[]
 }
 
+type CalendarGridDayMeta = Omit<
+  CalendarDayCell,
+  'isSelected' | 'isHoliday' | 'specialBadges' | 'appointments'
+>
+
 const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
+const OVERFLOW_EMOJI = '\u2795'
 
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
@@ -59,6 +73,7 @@ const isFilterModalOpen = ref(false)
 const draftOperatorId = ref<'all' | string>('all')
 const draftShowOnlyMyPersonal = ref(false)
 const CALENDAR_WATCH_REASON = 'calendar-month-view'
+const currentViewerId = computed(() => String(Auth.uid ?? '').trim())
 const { activateCalendarMonthWatch, releaseAppointmentWatch } = useAppointmentWatchManager()
 
 watch(
@@ -92,6 +107,15 @@ const clientsById = computed(() => {
       },
     ]),
   )
+})
+
+const clientsForCalendarSpecialDays = computed<ClientBirthdaySource[]>(() => {
+  return clientStore.itemsActiveArray.map((client) => ({
+    id: client.id,
+    name: client.name,
+    surname: client.surname,
+    birthdate: client.birthdate,
+  }))
 })
 
 const treatmentsById = computed(() => {
@@ -146,100 +170,141 @@ const activeFilters = computed(() => {
 
 const hasActiveFilters = computed(() => activeFilters.value.length > 0)
 
-const visibleAppointments = computed<VisibleAppointment[]>(() => {
-  const items = appointmentStore.itemsActiveArray
-    .map((appointment) => {
-      const start = asDate(appointment.date_time)
-      if (!start) return undefined
-      if (!canReadAppointment(appointment)) return undefined
-      if (!operatorMatch(appointment)) return undefined
-      if (showOnlyMyPersonal.value && !appointment.isPersonal) return undefined
-
-      const clientId = String(appointment.client_id ?? appointment.user_id ?? '').trim()
-      const client = clientId ? clientsById.value.get(clientId) : undefined
-      const clientFirstName = String(client?.firstName ?? '').trim() || 'Cliente'
-      const clientSurname = String(client?.surname ?? '').trim()
-
-      const linkedTreatments = (appointment.treatment_ids ?? [])
-        .map((id) => treatmentsById.value.get(id))
-        .filter((item): item is TreatmentLite => Boolean(item))
-
-      const treatmentNames = linkedTreatments
-        .map((item) => item.title)
-        .filter(Boolean)
-
-      const totalPrice = linkedTreatments.reduce((total, treatment) => {
-        return total + (Number.isFinite(treatment.price) ? treatment.price : 0)
-      }, 0)
-
-      const durationMinutes = computeAppointmentDurationMinutes(
-        {
-          fix_duration: appointment.fix_duration,
-          treatment_ids: appointment.treatment_ids ?? [],
-        },
-        treatmentsById.value,
-        defaultDurationMinutes.value,
-      )
-
-      const emojis = [
-        ...new Set(
-          linkedTreatments
-            .flatMap((treatment) => treatment.categoryIds)
-            .map((categoryId) => String(categoryEmojiById.value.get(categoryId) ?? '').trim())
-            .filter(Boolean),
-        ),
-      ].slice(0, 3)
-
-      return {
-        id: appointment.id,
-        start,
-        dayKey: keyForDay(start),
-        clientFirstName,
-        clientSurname,
-        treatmentNames,
-        durationMinutes,
-        totalPrice,
-        emojis,
-        isPersonal: Boolean(appointment.isPersonal),
-      }
-    })
-    .filter((item): item is VisibleAppointment => Boolean(item))
-
-  return items.sort((a, b) => a.start.getTime() - b.start.getTime())
-})
-
-const appointmentsByDay = computed(() => {
-  const map = new Map<string, VisibleAppointment[]>()
-  for (const appointment of visibleAppointments.value) {
-    const current = map.get(appointment.dayKey) ?? []
-    current.push(appointment)
-    map.set(appointment.dayKey, current)
-  }
-  return map
-})
-
-const calendarDays = computed<CalendarDayCell[]>(() => {
+const calendarGridWindow = computed(() => {
   const start = calendarGridStart(visibleMonth.value)
-  const selectedKey = keyForDay(selectedDate.value)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 41)
+  end.setHours(23, 59, 59, 999)
+  return {
+    start,
+    startTs: start.getTime(),
+    endTs: end.getTime(),
+  }
+})
+
+const calendarGridMeta = computed<CalendarGridDayMeta[]>(() => {
+  const selectedMonth = visibleMonth.value.getMonth()
   const todayKey = keyForDay(new Date())
-  const list: CalendarDayCell[] = []
+  const startDate = calendarGridWindow.value.start
+  const list: CalendarGridDayMeta[] = []
 
   for (let index = 0; index < 42; index += 1) {
-    const date = new Date(start)
-    date.setDate(start.getDate() + index)
+    const date = new Date(startDate)
+    date.setDate(startDate.getDate() + index)
     const dayKey = keyForDay(date)
     list.push({
       key: dayKey,
       date,
       dayNumber: date.getDate(),
-      isCurrentMonth: date.getMonth() === visibleMonth.value.getMonth(),
+      isCurrentMonth: date.getMonth() === selectedMonth,
       isToday: dayKey === todayKey,
-      isSelected: dayKey === selectedKey,
-      appointments: appointmentsByDay.value.get(dayKey) ?? [],
+      isSunday: date.getDay() === 0,
     })
   }
 
   return list
+})
+
+const visibleAppointments = computed<VisibleAppointment[]>(() => {
+  const items: VisibleAppointment[] = []
+  const currentUserId = currentViewerId.value
+  const selectedOperator = selectedOperatorId.value
+  const onlyPersonal = showOnlyMyPersonal.value
+  const rangeStart = calendarGridWindow.value.startTs
+  const rangeEnd = calendarGridWindow.value.endTs
+  const clientsMap = clientsById.value
+  const treatmentsMap = treatmentsById.value
+  const categoryEmojiMap = categoryEmojiById.value
+  const fallbackDuration = defaultDurationMinutes.value
+
+  for (const appointment of appointmentStore.itemsActiveArray) {
+    const start = asDate(appointment.date_time)
+    if (!start) continue
+
+    const startTs = start.getTime()
+    if (startTs < rangeStart || startTs > rangeEnd) continue
+    if (!canReadAppointment(appointment, currentUserId)) continue
+    if (!operatorMatch(appointment, selectedOperator)) continue
+
+    const isPersonal = Boolean(appointment.isPersonal)
+    if (onlyPersonal && !isPersonal) continue
+
+    const clientId = String(appointment.client_id ?? appointment.user_id ?? '').trim()
+    const client = clientId ? clientsMap.get(clientId) : undefined
+    const clientFirstName = String(client?.firstName ?? '').trim() || 'Cliente'
+    const clientSurname = String(client?.surname ?? '').trim()
+
+    const linkedTreatments = (appointment.treatment_ids ?? [])
+      .map((id) => treatmentsMap.get(id))
+      .filter((item): item is TreatmentLite => Boolean(item))
+
+    const treatmentNames = linkedTreatments
+      .map((item) => item.title)
+      .filter(Boolean)
+
+    const totalPrice = linkedTreatments.reduce((total, treatment) => {
+      return total + (Number.isFinite(treatment.price) ? treatment.price : 0)
+    }, 0)
+
+    const durationMinutes = computeAppointmentDurationMinutes(
+      {
+        fix_duration: appointment.fix_duration,
+        treatment_ids: appointment.treatment_ids ?? [],
+      },
+      treatmentsMap,
+      fallbackDuration,
+    )
+
+    items.push({
+      id: appointment.id,
+      start,
+      dayKey: keyForDay(start),
+      clientFirstName,
+      clientSurname,
+      treatmentNames,
+      durationMinutes,
+      totalPrice,
+      emojis: buildAppointmentEmojis(linkedTreatments, categoryEmojiMap),
+      isPersonal,
+    })
+  }
+
+  return items.sort((a, b) => a.start.getTime() - b.start.getTime())
+})
+
+const specialBadgesByDayKey = computed(() => {
+  const badgesMap = new Map<string, CalendarSpecialBadge[]>()
+  const clients = clientsForCalendarSpecialDays.value
+
+  for (const day of calendarGridMeta.value) {
+    const badges = getCalendarSpecialBadges(day.date, clients)
+    if (badges.length) {
+      badgesMap.set(day.key, badges)
+    }
+  }
+
+  return badgesMap
+})
+
+const calendarDays = computed<CalendarDayCell[]>(() => {
+  const appointmentsMap = new Map<string, VisibleAppointment[]>()
+  for (const appointment of visibleAppointments.value) {
+    const current = appointmentsMap.get(appointment.dayKey) ?? []
+    current.push(appointment)
+    appointmentsMap.set(appointment.dayKey, current)
+  }
+
+  const selectedKey = keyForDay(selectedDate.value)
+  return calendarGridMeta.value.map((day) => {
+    const specialBadges = specialBadgesByDayKey.value.get(day.key) ?? []
+    return {
+      ...day,
+      isHoliday: specialBadges.some((badge) => badge.kind === 'holiday'),
+      isSelected: day.key === selectedKey,
+      specialBadges,
+      appointments: appointmentsMap.get(day.key) ?? [],
+    }
+  })
 })
 
 function keyForDay(date: Date) {
@@ -259,24 +324,52 @@ function calendarGridStart(month: Date) {
   return new Date(start.getFullYear(), start.getMonth(), start.getDate() - mondayOffset, 0, 0, 0, 0)
 }
 
+function treatmentPrimaryEmoji(treatment: TreatmentLite, emojiByCategory: Map<string, string>) {
+  for (const categoryId of treatment.categoryIds) {
+    const emoji = String(emojiByCategory.get(categoryId) ?? '').trim()
+    if (emoji) return emoji
+  }
+  return ''
+}
+
+function buildAppointmentEmojis(linkedTreatments: TreatmentLite[], emojiByCategory: Map<string, string>) {
+  if (!linkedTreatments.length) return []
+
+  const treatmentEmojis = linkedTreatments
+    .map((treatment) => treatmentPrimaryEmoji(treatment, emojiByCategory))
+    .filter(Boolean)
+
+  const firstEmoji = treatmentEmojis[0]
+  if (!firstEmoji) return []
+
+  if (linkedTreatments.length === 1) {
+    return [firstEmoji]
+  }
+
+  if (linkedTreatments.length === 2) {
+    return [firstEmoji, treatmentEmojis[1] || firstEmoji]
+  }
+
+  return [firstEmoji, OVERFLOW_EMOJI]
+}
+
 function primaryOperatorId(appointment: StoreAppointment) {
   return String((appointment.operator_ids ?? [])[0] ?? '').trim()
 }
 
-function canReadAppointment(appointment: StoreAppointment) {
+function canReadAppointment(appointment: StoreAppointment, currentUserId: string) {
   const isPersonal = appointment.isPersonal ?? false
   if (!isPersonal) return true
 
-  const me = String(Auth.uid ?? '').trim()
-  if (!me) return false
+  if (!currentUserId) return false
 
   const primary = primaryOperatorId(appointment)
-  if (primary) return primary === me
-  return (appointment.operator_ids ?? []).includes(me)
+  if (primary) return primary === currentUserId
+  return (appointment.operator_ids ?? []).includes(currentUserId)
 }
 
-function operatorMatch(appointment: StoreAppointment) {
-  const selected = selectedOperatorId.value
+function operatorMatch(appointment: StoreAppointment, selectedOperator: 'all' | string) {
+  const selected = selectedOperator
   if (selected === 'all') return true
 
   const normalized = String(selected).trim()
@@ -360,14 +453,14 @@ function applyFilters() {
 </script>
 
 <template>
-  <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
+  <div class="container-fluid px-0 pb-t overflow-auto h-100" :style="bgStyle">
     <CalendarHeaderExtra
       :has-active-filters="hasActiveFilters"
       @create-appointment="openNewAppointment"
       @open-filters="openFiltersModal"
     />
 
-    <div class="px-2 pb-4">
+    <div class="pb-4">
       <section class="card border-0 shadow-sm p-2 mb-2">
         <div class="month-switcher">
           <button type="button" class="month-arrow-btn" aria-label="Mese precedente" @click="goToPreviousMonth">
@@ -386,9 +479,14 @@ function applyFilters() {
         </div>
       </section>
 
-      <section class="card border-0 shadow-sm p-1 calendar-shell">
+      <section class="card border-0 shadow-sm p-0 calendar-shell">
         <div class="calendar-grid">
-          <div v-for="label in WEEKDAY_LABELS" :key="label" class="calendar-weekday">
+          <div
+            v-for="(label, index) in WEEKDAY_LABELS"
+            :key="label"
+            class="calendar-weekday"
+            :class="{ 'calendar-weekday--sunday': index === 6 }"
+          >
             {{ label }}
           </div>
 
@@ -399,19 +497,41 @@ function applyFilters() {
             :class="{
               'calendar-day--outside': !day.isCurrentMonth,
               'calendar-day--today': day.isToday,
+              'calendar-day--sunday': day.isSunday,
+              'calendar-day--holiday': day.isHoliday,
               'calendar-day--selected': day.isSelected,
             }"
             role="button"
             tabindex="0"
-            @click="openDay(day.date)"
+            @click.self="openDay(day.date)"
             @keydown="onDayKeydown($event, day.date)"
           >
-            <header class="calendar-day__header">
-              <span class="calendar-day__number">{{ day.dayNumber }}</span>
+            <header class="calendar-day__header" @click.stop="openDay(day.date)">
+              <span
+                class="calendar-day__number"
+                :class="{
+                  'calendar-day__number--today': day.isToday,
+                  'calendar-day__number--alert': day.isSunday || day.isHoliday,
+                }"
+              >
+                {{ day.dayNumber }}
+              </span>
               <span v-if="day.appointments.length" class="calendar-day__count">
-                {{ day.appointments.length }}
+                {{ day.appointments.length }} app.
               </span>
             </header>
+
+            <div v-if="day.specialBadges.length" class="calendar-day__specials">
+              <div
+                v-for="badge in day.specialBadges"
+                :key="badge.id"
+                class="calendar-day-special"
+                :class="`calendar-day-special--${badge.kind}`"
+                :title="badge.label"
+              >
+                {{ badge.label }}
+              </div>
+            </div>
 
             <div class="calendar-day__appointments">
               <CalendarAppointmentCard
@@ -421,6 +541,8 @@ function applyFilters() {
                 @open="openAppointment"
               />
             </div>
+
+            <div class="calendar-day__open-space" @click.stop="openDay(day.date)"></div>
           </article>
         </div>
       </section>
@@ -510,27 +632,31 @@ function applyFilters() {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.2rem;
+  gap: 0;
 }
 
 .calendar-weekday {
   text-align: center;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 600;
-  color: rgba(84, 44, 58, 0.76);
-  padding-bottom: 0.05rem;
+  color: rgba(84, 44, 58, 0.68);
+  padding: 0.2rem 0.08rem 0.12rem;
+}
+
+.calendar-weekday--sunday {
+  color: rgba(166, 27, 41, 0.9);
 }
 
 .calendar-day {
-  min-height: 70px;
+  min-height: 72px;
   border: 1px solid rgba(84, 44, 58, 0.18);
-  border-radius: 7px;
-  padding: 0.22rem;
+  border-radius: 0;
+  padding: 0.15rem 0.16rem;
   background: #fff;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.12rem;
 }
 
 .calendar-day:hover {
@@ -548,7 +674,17 @@ function applyFilters() {
 }
 
 .calendar-day--today {
-  border-color: rgba(84, 44, 58, 0.58);
+  border-color: rgba(84, 44, 58, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(84, 44, 58, 0.26);
+}
+
+.calendar-day--sunday {
+  border-color: rgba(166, 27, 41, 0.3);
+}
+
+.calendar-day--holiday {
+  border-color: rgba(166, 27, 41, 0.45);
+  background: linear-gradient(180deg, rgba(255, 244, 246, 0.84) 0%, #fff 36%);
 }
 
 .calendar-day--selected {
@@ -559,29 +695,95 @@ function applyFilters() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
+  cursor: pointer;
 }
 
 .calendar-day__number {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
+  line-height: 1;
+  min-width: 1.35rem;
+  min-height: 1.35rem;
+  padding: 0.2rem 0.3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+.calendar-day__number--today {
+  background: rgba(84, 44, 58, 0.14);
+  color: #4b2935;
+}
+
+.calendar-day__number--alert {
+  color: rgba(166, 27, 41, 0.95);
+}
+
+.calendar-day__number--today.calendar-day__number--alert {
+  background: rgba(220, 53, 69, 0.18);
+  color: rgba(131, 24, 35, 0.98);
 }
 
 .calendar-day__count {
-  min-width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  font-size: 0.62rem;
-  line-height: 16px;
-  text-align: center;
-  background: rgba(84, 44, 58, 0.16);
-  color: #4b2935;
+  font-size: 0.5rem;
+  line-height: 1.1;
+  font-weight: 500;
+  color: rgba(84, 44, 58, 0.54);
+  white-space: nowrap;
+}
+
+.calendar-day--sunday .calendar-day__count,
+.calendar-day--holiday .calendar-day__count {
+  color: rgba(166, 27, 41, 0.82);
+}
+
+.calendar-day__specials {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.calendar-day-special {
+  border-radius: 4px;
+  border: 1px solid transparent;
+  padding: 0.12rem 0.2rem;
+  font-size: 0.5rem;
+  line-height: 1.15;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar-day-special--holiday {
+  border-color: rgba(166, 27, 41, 0.35);
+  background: rgba(220, 53, 69, 0.16);
+  color: rgba(131, 24, 35, 0.98);
+}
+
+.calendar-day-special--recurrence {
+  border-color: rgba(197, 107, 0, 0.32);
+  background: rgba(245, 158, 11, 0.18);
+  color: rgba(126, 69, 0, 0.96);
+}
+
+.calendar-day-special--birthday {
+  border-color: rgba(3, 105, 161, 0.3);
+  background: rgba(14, 165, 233, 0.16);
+  color: rgba(8, 92, 140, 0.98);
 }
 
 .calendar-day__appointments {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.12rem;
+}
+
+.calendar-day__open-space {
+  flex: 1 1 auto;
+  min-height: 0.28rem;
 }
 
 .calendar-filter-modal {
@@ -612,27 +814,38 @@ function applyFilters() {
   }
 
   .calendar-grid {
-    gap: 0.26rem;
+    gap: 0;
   }
 
   .calendar-weekday {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
+    padding-top: 0.25rem;
   }
 
   .calendar-day {
-    min-height: 95px;
-    padding: 0.3rem;
+    min-height: 98px;
+    padding: 0.2rem;
   }
 
   .calendar-day__number {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
+  }
+
+  .calendar-day-special {
+    padding: 0.16rem 0.24rem;
+    font-size: 0.56rem;
   }
 }
 
 @media (min-width: 992px) {
   .calendar-day {
-    min-height: 118px;
-    padding: 0.35rem;
+    min-height: 120px;
+    padding: 0.25rem;
+  }
+
+  .calendar-day-special {
+    font-size: 0.62rem;
   }
 }
 </style>
+
