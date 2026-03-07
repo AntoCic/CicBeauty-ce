@@ -108,6 +108,8 @@ type HomeFinalCtaContent = {
   phoneHref: string
   whatsappHref: string
   whatsappLabel: string
+  instagramHref: string
+  instagramLabel: string
   links: HomeFinalCtaLink[]
 }
 
@@ -182,6 +184,7 @@ export function buildHomeContent(config: AppConfigData): HomeContent {
   // const breakEnd = String(config.breakEnd ?? '').trim()
   const appointmentSlot = Number(config.appointmentSlotMinutes ?? 15)
   const workingDaysLabel = formatWorkingDays(config.workingDays ?? [])
+  const instagramHref = 'https://www.instagram.com/_cnc_beauty_'
 
   const hoursLabel = `${dayStart}-${dayEnd}`
 
@@ -393,6 +396,8 @@ export function buildHomeContent(config: AppConfigData): HomeContent {
       phoneHref: toTelHref(phone),
       whatsappHref: toWhatsAppUrl(phone),
       whatsappLabel: 'Scrivi su WhatsApp',
+      instagramHref,
+      instagramLabel: 'Scrivimi su Instagram',
       links,
     },
   }

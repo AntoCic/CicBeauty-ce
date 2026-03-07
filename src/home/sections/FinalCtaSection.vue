@@ -64,6 +64,28 @@ const ctaMotion = computed(() => {
           </span>
           <span>{{ content.whatsappLabel }}</span>
         </a>
+        <a
+          v-if="content.instagramHref"
+          class="home-final-cta__wa-link home-final-cta__ig-link"
+          :href="content.instagramHref"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Apri profilo Instagram"
+        >
+          <span class="home-final-cta__wa-icon home-final-cta__ig-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" focusable="false" aria-hidden="true">
+              <path
+                d="M12 7.7a4.3 4.3 0 1 0 0 8.6 4.3 4.3 0 0 0 0-8.6Zm0 7.1a2.8 2.8 0 1 1 0-5.6 2.8 2.8 0 0 1 0 5.6Zm5.4-7.2a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"
+                fill="currentColor"
+              />
+              <path
+                d="M7.9 2.5h8.2a5.4 5.4 0 0 1 5.4 5.4v8.2a5.4 5.4 0 0 1-5.4 5.4H7.9a5.4 5.4 0 0 1-5.4-5.4V7.9a5.4 5.4 0 0 1 5.4-5.4Zm0 1.6a3.8 3.8 0 0 0-3.8 3.8v8.2a3.8 3.8 0 0 0 3.8 3.8h8.2a3.8 3.8 0 0 0 3.8-3.8V7.9a3.8 3.8 0 0 0-3.8-3.8H7.9Z"
+                fill="currentColor"
+              />
+            </svg>
+          </span>
+          <span>{{ content.instagramLabel }}</span>
+        </a>
       </div>
 
       <div class="home-final-cta__actions">

@@ -829,6 +829,18 @@
   background: rgba(13, 99, 60, 0.52);
 }
 
+.home-final-cta__ig-link {
+  border-color: rgba(255, 182, 217, 0.46);
+  background: linear-gradient(135deg, rgba(101, 44, 156, 0.52), rgba(226, 81, 128, 0.56), rgba(253, 178, 68, 0.48));
+  color: #fff7fb;
+}
+
+.home-final-cta__ig-link:hover,
+.home-final-cta__ig-link:focus-visible {
+  border-color: rgba(255, 218, 236, 0.78);
+  background: linear-gradient(135deg, rgba(111, 52, 168, 0.66), rgba(234, 92, 139, 0.7), rgba(253, 190, 90, 0.62));
+}
+
 .home-final-cta__wa-icon {
   width: 1.22rem;
   height: 1.22rem;
@@ -836,6 +848,10 @@
   align-items: center;
   justify-content: center;
   color: #6bf4b0;
+}
+
+.home-final-cta__ig-icon {
+  color: #ffd6e9;
 }
 
 .home-final-cta__wa-icon svg {
