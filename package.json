@@ -1,7 +1,7 @@
 {
   "name": "cicbeauty-ce",
   "private": true,
-  "version": "0.0.38",
+  "version": "0.0.39",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +11,7 @@
     "i:l": "npm uninstall cic-kit && npm i ../../__PACKAGE/root_cic-kit/cic-kit/cic-kit-0.0.29.tgz",
     "only-deploy": "firebase deploy --only hosting,firestore,functions,storage",
     "deploy": "npx cic-bump && npm run build && npx cic-push",
+    "deploy:firebase": "npx cic-bump && npm run build && npx cic-push && npm run only-deploy ",
     "deploy:codex": "npx cic-bump && npm run build && npx cic-push",
     "deploy-no-push": "npx cic-bump && npm run build && npm run only-deploy && npm run notify:release",
     "docker:build": "docker compose -f docker-compose.emu.yml build --no-cache",
