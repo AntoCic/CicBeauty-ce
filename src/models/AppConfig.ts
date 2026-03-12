@@ -38,6 +38,8 @@ export type AppConfigFields = {
   availabilityMinNoticeMinutes: number
   googleCalendarSyncEnabled: boolean
   googleCalendarId: string
+  googleCalendarAccessRole: string
+  googleCalendarAllowedEmailsCsv: string
 }
 
 export interface AppConfigData extends AppConfigFields, Partial<Timestampble> {
@@ -152,6 +154,8 @@ export const APP_CONFIG_DEFAULTS: AppConfigFields = {
   availabilityMinNoticeMinutes: 30,
   googleCalendarSyncEnabled: false,
   googleCalendarId: '',
+  googleCalendarAccessRole: 'writer',
+  googleCalendarAllowedEmailsCsv: '',
 }
 
 export function mergeAppConfigWithDefaults(data?: Partial<AppConfigData> | null): AppConfigData {
@@ -223,6 +227,8 @@ export class AppConfig extends FirestoreModel<AppConfigData> {
   availabilityMinNoticeMinutes: number
   googleCalendarSyncEnabled: boolean
   googleCalendarId: string
+  googleCalendarAccessRole: string
+  googleCalendarAllowedEmailsCsv: string
 
   constructor(data: AppConfigData) {
     super(data)
@@ -262,6 +268,9 @@ export class AppConfig extends FirestoreModel<AppConfigData> {
       data.availabilityMinNoticeMinutes ?? APP_CONFIG_DEFAULTS.availabilityMinNoticeMinutes
     this.googleCalendarSyncEnabled = data.googleCalendarSyncEnabled ?? APP_CONFIG_DEFAULTS.googleCalendarSyncEnabled
     this.googleCalendarId = data.googleCalendarId ?? APP_CONFIG_DEFAULTS.googleCalendarId
+    this.googleCalendarAccessRole = data.googleCalendarAccessRole ?? APP_CONFIG_DEFAULTS.googleCalendarAccessRole
+    this.googleCalendarAllowedEmailsCsv =
+      data.googleCalendarAllowedEmailsCsv ?? APP_CONFIG_DEFAULTS.googleCalendarAllowedEmailsCsv
   }
 
   toData(): AppConfigData {
@@ -300,6 +309,8 @@ export class AppConfig extends FirestoreModel<AppConfigData> {
       availabilityMinNoticeMinutes: this.availabilityMinNoticeMinutes,
       googleCalendarSyncEnabled: this.googleCalendarSyncEnabled,
       googleCalendarId: this.googleCalendarId,
+      googleCalendarAccessRole: this.googleCalendarAccessRole,
+      googleCalendarAllowedEmailsCsv: this.googleCalendarAllowedEmailsCsv,
       ...this.timestampbleProps()
     }
   }

@@ -1,3 +1,9 @@
+## v0.0.42 - 2026-03-12
+
+calendar test
+
+---
+
 ## v0.0.41 - 2026-03-12
 
 appointment fixing

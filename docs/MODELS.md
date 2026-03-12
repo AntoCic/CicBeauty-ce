@@ -30,7 +30,7 @@ Schema pensato per la migrazione dal progetto legacy e per la gestione multi-ope
 - Slot: `appointmentSlotMinutes`, `defaultAppointmentDurationMinutes`, `personalAppointmentDurationMinutes`.
 - Performance calendario: `calendarPrefetchMonths`.
 - Disponibilita: `availabilitySearchDays`, `availabilityMinNoticeMinutes`.
-- Sync Google Calendar: `googleCalendarSyncEnabled`, `googleCalendarId`.
+- Sync Google Calendar: `googleCalendarSyncEnabled`, `googleCalendarId`, `googleCalendarAccessRole`, `googleCalendarAllowedEmailsCsv`.
 
 ## Note sicurezza/permessi
 

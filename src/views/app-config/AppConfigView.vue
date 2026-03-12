@@ -81,8 +81,21 @@ const schema = toTypedSchema(
     calendarPrefetchMonths: yup.number().typeError("Numero obbligatorio").min(0).max(6).required("Campo obbligatorio"),
     availabilitySearchDays: yup.number().typeError("Numero obbligatorio").min(1).max(365).required("Campo obbligatorio"),
     availabilityMinNoticeMinutes: yup.number().typeError("Numero obbligatorio").min(0).max(720).required("Campo obbligatorio"),
-    googleCalendarSyncEnabled: yup.boolean().required("Campo obbligatorio"),
+    googleCalendarSyncEnabled: yup
+      .boolean()
+      .transform((value, originalValue) => {
+        if (typeof originalValue === "string") {
+          const normalized = originalValue.trim().toLowerCase()
+          if (["on", "true", "1", "yes"].includes(normalized)) return true
+          if (["off", "false", "0", "no", ""].includes(normalized)) return false
+        }
+        if (typeof originalValue === "number") return originalValue === 1
+        return value
+      })
+      .required("Campo obbligatorio"),
     googleCalendarId: yup.string().trim().default(""),
+    googleCalendarAccessRole: yup.string().trim().oneOf(["freeBusyReader", "reader", "writer"]).default("writer"),
+    googleCalendarAllowedEmailsCsv: yup.string().trim().default(""),
   }),
 );
 
@@ -120,6 +133,8 @@ const initialValues = computed<AppConfigForm>(() => ({
   availabilityMinNoticeMinutes: currentConfigData.value.availabilityMinNoticeMinutes,
   googleCalendarSyncEnabled: currentConfigData.value.googleCalendarSyncEnabled,
   googleCalendarId: currentConfigData.value.googleCalendarId,
+  googleCalendarAccessRole: currentConfigData.value.googleCalendarAccessRole,
+  googleCalendarAllowedEmailsCsv: currentConfigData.value.googleCalendarAllowedEmailsCsv,
 }));
 
 function normalizeHtml(value: unknown) {
@@ -169,6 +184,8 @@ async function onSubmit(values: Record<string, unknown>) {
     availabilityMinNoticeMinutes: Number(values.availabilityMinNoticeMinutes ?? 30),
     googleCalendarSyncEnabled: Boolean(values.googleCalendarSyncEnabled),
     googleCalendarId: String(values.googleCalendarId ?? "").trim(),
+    googleCalendarAccessRole: String(values.googleCalendarAccessRole ?? "writer").trim(),
+    googleCalendarAllowedEmailsCsv: String(values.googleCalendarAllowedEmailsCsv ?? "").trim(),
   };
 
   try {
@@ -579,7 +596,14 @@ function resetFieldToDefault(field: AppConfigFieldKey, setFieldValue: (field: st
 
           <div class="col-12 col-md-4">
             <div class="form-check mt-4">
-              <Field id="googleCalendarSyncEnabled" name="googleCalendarSyncEnabled" type="checkbox" class="form-check-input" />
+              <Field
+                id="googleCalendarSyncEnabled"
+                name="googleCalendarSyncEnabled"
+                type="checkbox"
+                class="form-check-input"
+                :value="true"
+                :unchecked-value="false"
+              />
               <label for="googleCalendarSyncEnabled" class="form-check-label">
                 Sync Google Calendar attivo
               </label>
@@ -591,6 +615,28 @@ function resetFieldToDefault(field: AppConfigFieldKey, setFieldValue: (field: st
             <Field name="googleCalendarId" class="form-control" placeholder="example@group.calendar.google.com" />
             <small class="text-muted">Usato dal backend per sincronizzare gli appuntamenti.</small>
             <ErrorMessage name="googleCalendarId" class="text-danger small d-block" />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Ruolo accesso email</label>
+            <Field name="googleCalendarAccessRole" as="select" class="form-select">
+              <option value="writer">writer (modifica eventi)</option>
+              <option value="reader">reader (sola lettura)</option>
+              <option value="freeBusyReader">freeBusyReader (solo disponibilita)</option>
+            </Field>
+            <small class="text-muted">Applicato alle email configurate sotto.</small>
+            <ErrorMessage name="googleCalendarAccessRole" class="text-danger small d-block" />
+          </div>
+          <div class="col-12">
+            <label class="form-label">Email abilitate al calendario</label>
+            <Field
+              name="googleCalendarAllowedEmailsCsv"
+              as="textarea"
+              rows="3"
+              class="form-control"
+              placeholder="utente1@email.com&#10;utente2@email.com"
+            />
+            <small class="text-muted">Una email per riga (oppure separate da virgola).</small>
+            <ErrorMessage name="googleCalendarAllowedEmailsCsv" class="text-danger small d-block" />
           </div>
         </div>
       </section>
