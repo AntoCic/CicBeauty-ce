@@ -6,7 +6,7 @@ import * as yup from 'yup'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAppointmentWatchManager } from '../../composables/useAppointmentWatchManager'
-import type { Client } from '../../models/Client'
+import type { Client, ClientDeposit, ClientDepositSettlement } from '../../models/Client'
 import { Auth } from '../../main'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
@@ -47,9 +47,16 @@ const current = ref<Client | undefined>(undefined)
 const isLoading = ref(false)
 const isDeleting = ref(false)
 const isEditMode = ref(false)
+const isPurchaseModalOpen = ref(false)
+const purchaseDraft = ref<ClientDeposit>(emptyDeposit())
+const editingPurchaseIndex = ref(-1)
+const isPurchaseHeaderEditing = ref(false)
+const settlementEditMap = ref<Record<number, boolean>>({})
+const isSavingPurchase = ref(false)
 
 const routeId = computed(() => String(route.params.id ?? '').trim())
 const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
+const isCreatingPurchase = computed(() => editingPurchaseIndex.value < 0)
 const CLIENT_EDIT_WATCH_SUSPEND_REASON = 'client-edit-view'
 const { suspendAppointmentWatch, releaseAppointmentWatch } = useAppointmentWatchManager()
 
@@ -110,11 +117,263 @@ function normalizeNoteForSave(value: unknown) {
   return normalized && normalized !== EMPTY_NOTE_HTML ? normalized : ''
 }
 
+function normalizeMoney(value: unknown, fallback = 0) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.max(0, Math.round(parsed * 100) / 100)
+}
+
+function toIsoDate(value: unknown, fallback = '') {
+  const raw = normalizeString(value)
+  if (!raw) return fallback
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return fallback
+  const year = parsed.getFullYear()
+  const month = String(parsed.getMonth() + 1).padStart(2, '0')
+  const day = String(parsed.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function cloneSettlements(list: ClientDepositSettlement[]) {
+  return list.map((item) => ({
+    note: normalizeString(item.note),
+    paidAmount: normalizeMoney(item.paidAmount),
+    date: toIsoDate(item.date),
+  }))
+}
+
+function cloneDeposits(list: ClientDeposit[]) {
+  return list.map((deposit) => ({
+    totalAmount: normalizeMoney(deposit.totalAmount),
+    reason: normalizeString(deposit.reason),
+    settlements: cloneSettlements(deposit.settlements ?? []),
+  }))
+}
+
+function emptySettlement(): ClientDepositSettlement {
+  return {
+    note: '',
+    paidAmount: 0,
+    date: toIsoDate(new Date()),
+  }
+}
+
+function emptyDeposit(): ClientDeposit {
+  return {
+    totalAmount: 0,
+    reason: '',
+    settlements: [],
+  }
+}
+
+function normalizeDepositsForSave(deposits: ClientDeposit[]) {
+  return deposits.map((deposit) => ({
+    totalAmount: normalizeMoney(deposit.totalAmount),
+    reason: normalizeString(deposit.reason),
+    settlements: (deposit.settlements ?? []).map((settlement) => ({
+      note: normalizeString(settlement.note),
+      paidAmount: normalizeMoney(settlement.paidAmount),
+      date: toIsoDate(settlement.date),
+    })),
+  }))
+}
+
+function normalizeSingleDepositForSave(deposit: ClientDeposit) {
+  return normalizeDepositsForSave([deposit])[0] ?? emptyDeposit()
+}
+
+function resetPurchaseModalState() {
+  isPurchaseModalOpen.value = false
+  purchaseDraft.value = emptyDeposit()
+  editingPurchaseIndex.value = -1
+  isPurchaseHeaderEditing.value = false
+  settlementEditMap.value = {}
+}
+
+function closePurchaseModal() {
+  if (isSavingPurchase.value) return
+  resetPurchaseModalState()
+}
+
+function cloneCurrentDeposits() {
+  return cloneDeposits(current.value?.deposits ?? [])
+}
+
+function openPurchaseModalForCreate() {
+  if (!current.value || isCreateMode.value) return
+  purchaseDraft.value = emptyDeposit()
+  editingPurchaseIndex.value = -1
+  isPurchaseHeaderEditing.value = true
+  settlementEditMap.value = {}
+  isPurchaseModalOpen.value = true
+}
+
+function openPurchaseModalForEdit(depositIndex: number) {
+  const selected = cloneCurrentDeposits()[depositIndex]
+  if (!selected) return
+  purchaseDraft.value = selected
+  editingPurchaseIndex.value = depositIndex
+  isPurchaseHeaderEditing.value = false
+  settlementEditMap.value = {}
+  isPurchaseModalOpen.value = true
+}
+
+function setSettlementInEditMode(index: number, enabled: boolean) {
+  if (index < 0) return
+  const next = { ...settlementEditMap.value }
+  if (enabled) {
+    next[index] = true
+  } else {
+    delete next[index]
+  }
+  settlementEditMap.value = next
+}
+
+function isSettlementInEditMode(index: number) {
+  return Boolean(settlementEditMap.value[index])
+}
+
+function addPurchaseSettlement() {
+  purchaseDraft.value.settlements = [...(purchaseDraft.value.settlements ?? []), emptySettlement()]
+  setSettlementInEditMode((purchaseDraft.value.settlements ?? []).length - 1, true)
+}
+
+function removePurchaseSettlement(settlementIndex: number) {
+  const settlements = purchaseDraft.value.settlements ?? []
+  if (settlementIndex < 0 || settlementIndex >= settlements.length) return
+
+  purchaseDraft.value.settlements = settlements.filter((_, index) => index !== settlementIndex)
+
+  const nextMap: Record<number, boolean> = {}
+  Object.entries(settlementEditMap.value).forEach(([key, enabled]) => {
+    const index = Number(key)
+    if (!enabled || !Number.isInteger(index) || index === settlementIndex) return
+    nextMap[index < settlementIndex ? index : index - 1] = true
+  })
+  settlementEditMap.value = nextMap
+}
+
+function buildDepositsFromPurchaseDraft() {
+  const next = cloneCurrentDeposits()
+  const draft = normalizeSingleDepositForSave(purchaseDraft.value)
+  if (editingPurchaseIndex.value >= 0 && editingPurchaseIndex.value < next.length) {
+    next[editingPurchaseIndex.value] = draft
+    return next
+  }
+  return [...next, draft]
+}
+
+async function savePurchaseModal() {
+  if (!current.value || isCreateMode.value || isSavingPurchase.value) return
+
+  const nextDeposits = buildDepositsFromPurchaseDraft()
+  const savePayload = normalizeDepositsForSave(nextDeposits)
+  const wasEditingExistingPurchase = editingPurchaseIndex.value >= 0
+
+  isSavingPurchase.value = true
+  try {
+    await current.value.update({
+      acconti: savePayload,
+      deposits: savePayload,
+      updateBy: defaultUpdateBy(),
+    })
+    await loadItem()
+    resetPurchaseModalState()
+    toast.success(wasEditingExistingPurchase ? 'Acquisto con acconto aggiornato' : 'Acquisto con acconto creato')
+  } catch (error) {
+    console.error(error)
+    toast.error('Errore salvataggio acquisto con acconto')
+  } finally {
+    isSavingPurchase.value = false
+  }
+}
+
+async function deletePurchaseFromModal() {
+  if (!current.value || isCreateMode.value || isSavingPurchase.value || editingPurchaseIndex.value < 0) return
+  const ok = window.confirm('Eliminare questo acquisto con acconto?')
+  if (!ok) return
+
+  const indexToDelete = editingPurchaseIndex.value
+  const nextDeposits = cloneCurrentDeposits().filter((_, index) => index !== indexToDelete)
+  const savePayload = normalizeDepositsForSave(nextDeposits)
+
+  isSavingPurchase.value = true
+  try {
+    await current.value.update({
+      acconti: savePayload,
+      deposits: savePayload,
+      updateBy: defaultUpdateBy(),
+    })
+    await loadItem()
+    resetPurchaseModalState()
+    toast.success('Acquisto con acconto eliminato')
+  } catch (error) {
+    console.error(error)
+    toast.error('Errore eliminazione acquisto con acconto')
+  } finally {
+    isSavingPurchase.value = false
+  }
+}
+
+function depositPaidTotal(deposit: ClientDeposit) {
+  return normalizeMoney(
+    (deposit.settlements ?? []).reduce((total, settlement) => total + normalizeMoney(settlement.paidAmount), 0),
+  )
+}
+
+function depositRemainingTotal(deposit: ClientDeposit) {
+  return normalizeMoney(Math.max(0, normalizeMoney(deposit.totalAmount) - depositPaidTotal(deposit)))
+}
+
+function latestSettlement(deposit: ClientDeposit) {
+  const settlements = deposit.settlements ?? []
+  if (!settlements.length) return undefined
+
+  return settlements.reduce<{ item: ClientDepositSettlement; date: string; index: number } | undefined>(
+    (best, item, index) => {
+      const date = toIsoDate(item.date)
+      if (!best) return { item, date, index }
+      if (date > best.date) return { item, date, index }
+      if (date === best.date && index > best.index) return { item, date, index }
+      return best
+    },
+    undefined,
+  )?.item
+}
+
+function latestSettlementLabel(deposit: ClientDeposit) {
+  const latest = latestSettlement(deposit)
+  if (!latest) return ''
+  const note = normalizeString(latest.note)
+  const amount = formatCurrency(latest.paidAmount)
+  return note
+    ? `Ultimo acconto: ${formatDepositDate(latest.date)} - ${amount} - ${note}`
+    : `Ultimo acconto: ${formatDepositDate(latest.date)} - ${amount}`
+}
+
+function formatCurrency(value: unknown) {
+  return new Intl.NumberFormat('it-IT', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(normalizeMoney(value))
+}
+
+function formatDepositDate(value: unknown) {
+  const normalized = toIsoDate(value)
+  if (!normalized) return '-'
+  return new Date(`${normalized}T12:00:00`).toLocaleDateString('it-IT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
 function defaultUpdateBy() {
   return String(Auth.user?.email ?? Auth.uid ?? 'admin').trim()
 }
 
 function enterEditMode() {
+  resetPurchaseModalState()
   isEditMode.value = true
 }
 
@@ -131,6 +390,7 @@ function openAppointment(appointment: AppointmentLike) {
 }
 
 async function loadItem() {
+  resetPurchaseModalState()
   if (isCreateMode.value) {
     current.value = undefined
     isEditMode.value = true
@@ -386,6 +646,206 @@ watch(() => route.params.id, loadItem)
             <p v-if="!clientAppointments.length" class="text-muted small mb-0">Nessun appuntamento trovato per questo cliente.</p>
           </div>
         </section>
+
+        <section class="mt-3">
+          <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+            <h2 class="h6 mb-0">Acquisti con acconto</h2>
+            <Btn type="button" color="dark" variant="outline" icon="add" @click="openPurchaseModalForCreate">
+              Aggiungi acquisto con acconto
+            </Btn>
+          </div>
+
+          <div v-if="(current.deposits ?? []).length" class="vstack gap-2">
+            <button
+              v-for="(deposit, depositIndex) in current.deposits"
+              :key="`view-deposit-${depositIndex}`"
+              type="button"
+              class="deposit-view-card deposit-view-card--button text-start"
+              @click="openPurchaseModalForEdit(depositIndex)"
+            >
+              <div class="deposit-view-card__head">
+                <div>
+                  <p class="mb-1 fw-semibold">{{ deposit.reason || 'Acquisto con acconto senza motivo' }}</p>
+                  <small class="text-muted d-block">Totale acquisto: {{ formatCurrency(deposit.totalAmount) }}</small>
+                  <small class="text-muted d-block">Residuo: {{ formatCurrency(depositRemainingTotal(deposit)) }}</small>
+                </div>
+                <span class="badge text-bg-light border deposit-view-card__open">Apri</span>
+              </div>
+
+              <small class="text-muted deposit-view-card__latest">
+                {{ latestSettlementLabel(deposit) || 'Nessun acconto registrato.' }}
+              </small>
+            </button>
+          </div>
+          <p v-else class="text-muted small mb-0">Nessun acquisto con acconto registrato.</p>
+        </section>
+
+        <div
+          v-if="isPurchaseModalOpen"
+          class="client-purchase-modal"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="isCreatingPurchase ? 'Nuovo acquisto con acconto' : 'Dettaglio acquisto con acconto'"
+        >
+          <div class="client-purchase-modal__backdrop" @click="closePurchaseModal"></div>
+
+          <div class="client-purchase-modal__content card border-0 shadow-lg p-3 p-md-4">
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+              <h3 class="h6 mb-0">{{ isCreatingPurchase ? 'Nuovo acquisto con acconto' : 'Acquisto con acconto' }}</h3>
+              <button type="button" class="btn-close" aria-label="Chiudi acquisto con acconto" @click="closePurchaseModal"></button>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+              <strong>Dettagli acquisto</strong>
+              <Btn
+                type="button"
+                color="secondary"
+                variant="outline"
+                icon="edit"
+                @click="isPurchaseHeaderEditing = !isPurchaseHeaderEditing"
+              >
+                {{ isPurchaseHeaderEditing ? 'Fine modifica dettagli' : 'Modifica dettagli' }}
+              </Btn>
+            </div>
+
+            <div class="row g-2">
+              <div class="col-12 col-md-4">
+                <label class="form-label mb-1">Totale acquisto</label>
+                <input
+                  v-if="isPurchaseHeaderEditing"
+                  v-model.number="purchaseDraft.totalAmount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="form-control"
+                >
+                <p v-else class="form-control-plaintext mb-0 fw-semibold">{{ formatCurrency(purchaseDraft.totalAmount) }}</p>
+              </div>
+              <div class="col-12 col-md-8">
+                <label class="form-label mb-1">Motivo</label>
+                <input
+                  v-if="isPurchaseHeaderEditing"
+                  v-model="purchaseDraft.reason"
+                  type="text"
+                  class="form-control"
+                  placeholder="Es. Conferma pacchetto, prenotazione evento..."
+                >
+                <p v-else class="form-control-plaintext mb-0">{{ purchaseDraft.reason || '-' }}</p>
+              </div>
+            </div>
+
+            <div class="deposit-card__meta mt-2">
+              <span class="badge text-bg-light border">Totale acconti: {{ formatCurrency(depositPaidTotal(purchaseDraft)) }}</span>
+              <span class="badge text-bg-light border">Residuo: {{ formatCurrency(depositRemainingTotal(purchaseDraft)) }}</span>
+            </div>
+
+            <div class="deposit-settlements mt-3">
+              <div class="deposit-settlements__header">
+                <strong>Acconti</strong>
+                <Btn type="button" color="dark" variant="outline" icon="add" @click="addPurchaseSettlement">
+                  Aggiungi acconto
+                </Btn>
+              </div>
+
+              <div v-if="!(purchaseDraft.settlements ?? []).length" class="deposit-settlements__empty">
+                Nessun acconto registrato.
+              </div>
+
+              <div
+                v-for="(settlement, settlementIndex) in purchaseDraft.settlements"
+                :key="`modal-settlement-${settlementIndex}`"
+                class="deposit-settlement-row"
+              >
+                <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-1">
+                  <small class="text-muted fw-semibold">Acconto {{ settlementIndex + 1 }}</small>
+                  <div class="d-flex gap-2">
+                    <Btn
+                      type="button"
+                      color="secondary"
+                      variant="outline"
+                      icon="edit"
+                      @click="setSettlementInEditMode(settlementIndex, !isSettlementInEditMode(settlementIndex))"
+                    >
+                      {{ isSettlementInEditMode(settlementIndex) ? 'Fine modifica' : 'Modifica' }}
+                    </Btn>
+                    <Btn
+                      type="button"
+                      color="danger"
+                      variant="outline"
+                      icon="delete"
+                      @click="removePurchaseSettlement(settlementIndex)"
+                    >
+                      Rimuovi
+                    </Btn>
+                  </div>
+                </div>
+
+                <div class="row g-2 align-items-end">
+                  <div class="col-12 col-md-3">
+                    <label class="form-label mb-1">Data</label>
+                    <input
+                      v-if="isSettlementInEditMode(settlementIndex)"
+                      v-model="settlement.date"
+                      type="date"
+                      class="form-control"
+                    >
+                    <p v-else class="form-control-plaintext mb-0">{{ formatDepositDate(settlement.date) }}</p>
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <label class="form-label mb-1">Acconto</label>
+                    <input
+                      v-if="isSettlementInEditMode(settlementIndex)"
+                      v-model.number="settlement.paidAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      class="form-control"
+                    >
+                    <p v-else class="form-control-plaintext mb-0">{{ formatCurrency(settlement.paidAmount) }}</p>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label mb-1">Nota</label>
+                    <input
+                      v-if="isSettlementInEditMode(settlementIndex)"
+                      v-model="settlement.note"
+                      type="text"
+                      class="form-control"
+                      placeholder="Es. acconto in contanti, bonifico, POS..."
+                    >
+                    <p v-else class="form-control-plaintext mb-0">{{ settlement.note || '-' }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-3 flex-wrap">
+              <Btn type="button" color="dark" icon="save" :loading="isSavingPurchase" @click="savePurchaseModal">
+                Salva acquisto con acconto
+              </Btn>
+              <Btn
+                type="button"
+                color="secondary"
+                variant="outline"
+                icon="close"
+                :disabled="isSavingPurchase"
+                @click="closePurchaseModal"
+              >
+                Annulla
+              </Btn>
+              <Btn
+                v-if="!isCreatingPurchase"
+                type="button"
+                color="danger"
+                variant="outline"
+                icon="delete"
+                :loading="isSavingPurchase"
+                @click="deletePurchaseFromModal"
+              >
+                Elimina acquisto con acconto
+              </Btn>
+            </div>
+          </div>
+        </div>
       </div>
 
       <p v-else class="text-muted small mt-3">Cliente non trovato.</p>
@@ -458,6 +918,101 @@ watch(() => route.params.id, loadItem)
   background: #0d6efd;
   border-color: #0d6efd;
   color: #ffffff;
+}
+
+.deposit-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.deposit-settlements {
+  border-top: 1px dashed rgba(84, 44, 58, 0.2);
+  padding-top: 0.55rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.deposit-settlements__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.deposit-settlements__empty {
+  font-size: 0.84rem;
+  color: #725663;
+}
+
+.deposit-settlement-row {
+  padding: 0.45rem;
+  border: 1px solid rgba(84, 44, 58, 0.12);
+  border-radius: 0.5rem;
+  background: rgba(247, 241, 242, 0.62);
+}
+
+.deposit-view-card {
+  border: 1px solid rgba(84, 44, 58, 0.14);
+  border-radius: 0.62rem;
+  padding: 0.62rem;
+  background: rgba(255, 255, 255, 0.8);
+  display: grid;
+  gap: 0.45rem;
+}
+
+.deposit-view-card--button {
+  width: 100%;
+  border: 1px solid rgba(84, 44, 58, 0.14);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.deposit-view-card--button:hover,
+.deposit-view-card--button:focus-visible {
+  border-color: rgba(84, 44, 58, 0.32);
+  box-shadow: 0 0 0 0.2rem rgba(84, 44, 58, 0.1);
+  transform: translateY(-1px);
+}
+
+.deposit-view-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.deposit-view-card__open {
+  align-self: flex-start;
+}
+
+.deposit-view-card__latest {
+  font-size: 0.82rem;
+  color: #6f4f5c;
+}
+
+.client-purchase-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.client-purchase-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.client-purchase-modal__content {
+  position: relative;
+  width: min(calc(100vw - 2rem), 820px);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
 }
 </style>
 

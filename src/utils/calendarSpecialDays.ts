@@ -28,9 +28,6 @@ type HolidayDefinition = {
 
 const ITALY_FLAG_EMOJI = '\u{1F1EE}\u{1F1F9}'
 const DOVE_EMOJI = '\u{1F54A}\uFE0F'
-const BOTTLE_EMOJI = '\u{1F9F4}'
-const MEGAPHONE_EMOJI = '\u{1F4E3}'
-const SHIELD_EMOJI = '\u{1F6E1}\uFE0F'
 const REPEAT_EMOJI = '\u{1F501}'
 const BIRTHDAY_EMOJI = '\u{1F382}'
 
@@ -52,49 +49,40 @@ const ITALIAN_MOVEABLE_HOLIDAYS: ItalianMoveableHoliday[] = [
   { daysFromEaster: 1, title: "Lunedi dell'Angelo", emoji: DOVE_EMOJI },
 ]
 
-export type PersonalRecurrenceFrequency =
-  | 'weekly'
-  | 'every-2-weeks'
-  | 'monthly'
-  | 'every-2-months'
-  | 'every-3-months'
-  | 'every-4-months'
-  | 'yearly'
-  | 'every-2-years'
+export const CALENDAR_RECURRENCE_FREQUENCIES = [
+  'weekly',
+  'every-2-weeks',
+  'monthly',
+  'every-2-months',
+  'every-3-months',
+  'every-4-months',
+  'yearly',
+  'every-2-years',
+] as const
 
-export type PersonalRecurrenceRule = {
+export type CalendarRecurrenceFrequency = (typeof CALENDAR_RECURRENCE_FREQUENCIES)[number]
+
+export const CALENDAR_RECURRENCE_CATEGORIES = [
+  'italian-holiday',
+  'local-holiday',
+  'general',
+] as const
+
+export type CalendarRecurrenceCategory = (typeof CALENDAR_RECURRENCE_CATEGORIES)[number]
+
+export type CalendarRecurrenceRuleSource = {
   id: string
   title: string
-  emoji: string
+  emoji?: string
   startsOn: string
-  recurrence: PersonalRecurrenceFrequency
+  recurrence: CalendarRecurrenceFrequency
+  category?: CalendarRecurrenceCategory
+  active?: boolean
 }
 
-// Frequenze supportate:
-// weekly, every-2-weeks, monthly, every-2-months, every-3-months, every-4-months, yearly, every-2-years
-export const PERSONAL_RECURRENT_EVENTS: PersonalRecurrenceRule[] = [
-  {
-    id: 'riordino-cabina',
-    title: 'Riordino cabina',
-    emoji: BOTTLE_EMOJI,
-    startsOn: '2026-01-07',
-    recurrence: 'monthly',
-  },
-  {
-    id: 'check-social',
-    title: 'Check contenuti social',
-    emoji: MEGAPHONE_EMOJI,
-    startsOn: '2026-01-09',
-    recurrence: 'every-2-weeks',
-  },
-  {
-    id: 'rinnovo-assicurazione',
-    title: 'Rinnovo assicurazione',
-    emoji: SHIELD_EMOJI,
-    startsOn: '2026-02-20',
-    recurrence: 'yearly',
-  },
-]
+// Backward compatibility aliases
+export type PersonalRecurrenceFrequency = CalendarRecurrenceFrequency
+export type PersonalRecurrenceRule = CalendarRecurrenceRuleSource
 
 export type ClientBirthdaySource = {
   id: string
@@ -103,7 +91,7 @@ export type ClientBirthdaySource = {
   birthdate?: string
 }
 
-const RECURRENCE_LABELS: Record<PersonalRecurrenceFrequency, string> = {
+export const RECURRENCE_LABELS: Record<CalendarRecurrenceFrequency, string> = {
   weekly: 'settimanale',
   'every-2-weeks': 'ogni 2 settimane',
   monthly: 'mensile',
@@ -120,6 +108,7 @@ const DAY_MS = 86_400_000
 export function getCalendarSpecialBadges(
   date: Date,
   clients: readonly ClientBirthdaySource[],
+  recurrentRules: readonly CalendarRecurrenceRuleSource[] = [],
 ): CalendarSpecialBadge[] {
   const safeDate = toDateOnly(date)
   const dayKey = dayKeyForDate(safeDate)
@@ -134,13 +123,19 @@ export function getCalendarSpecialBadges(
     })
   }
 
-  for (const recurrence of PERSONAL_RECURRENT_EVENTS) {
+  for (const recurrence of recurrentRules) {
+    if (recurrence.active === false) continue
+    const title = String(recurrence.title ?? '').trim()
+    if (!title) continue
     if (!matchesPersonalRecurrence(safeDate, recurrence)) continue
     const frequencyLabel = RECURRENCE_LABELS[recurrence.recurrence]
+    const isHolidayType =
+      recurrence.category === 'italian-holiday' || recurrence.category === 'local-holiday'
+    const fallbackEmoji = isHolidayType ? ITALY_FLAG_EMOJI : REPEAT_EMOJI
     badges.push({
       id: `recurrence-${recurrence.id}-${dayKey}`,
-      kind: 'recurrence',
-      label: `${recurrence.emoji || REPEAT_EMOJI} ${recurrence.title} (${frequencyLabel})`,
+      kind: isHolidayType ? 'holiday' : 'recurrence',
+      label: `${recurrence.emoji || fallbackEmoji} ${title} (${frequencyLabel})`,
     })
   }
 
@@ -248,7 +243,7 @@ function easterSunday(year: number) {
   return new Date(year, month - 1, day, 12, 0, 0, 0)
 }
 
-function recurrenceStepMonths(frequency: PersonalRecurrenceFrequency) {
+function recurrenceStepMonths(frequency: CalendarRecurrenceFrequency) {
   switch (frequency) {
     case 'monthly':
       return 1
@@ -263,7 +258,7 @@ function recurrenceStepMonths(frequency: PersonalRecurrenceFrequency) {
   }
 }
 
-function recurrenceStepYears(frequency: PersonalRecurrenceFrequency) {
+function recurrenceStepYears(frequency: CalendarRecurrenceFrequency) {
   switch (frequency) {
     case 'yearly':
       return 1
@@ -274,7 +269,7 @@ function recurrenceStepYears(frequency: PersonalRecurrenceFrequency) {
   }
 }
 
-function matchesPersonalRecurrence(date: Date, recurrence: PersonalRecurrenceRule) {
+function matchesPersonalRecurrence(date: Date, recurrence: CalendarRecurrenceRuleSource) {
   const anchorDate = parseDateOnly(recurrence.startsOn)
   if (!anchorDate) return false
 

@@ -24,6 +24,18 @@ const femaleNames = ['Giulia', 'Martina', 'Elisa', 'Francesca', 'Sara', 'Alessia
 const maleNames = ['Luca', 'Marco', 'Andrea', 'Davide', 'Matteo', 'Simone', 'Gabriele']
 const surnames = ['Rossi', 'Bianchi', 'Romano', 'Colombo', 'Greco', 'Ferrari', 'Gallo', 'Ricci', 'Costa']
 const notePool = ['predilige trattamenti viso', 'ama i pacchetti corpo', 'arriva puntuale', 'preferisce orari serali']
+const depositReasonPool = [
+  'Pacchetto viso stagionale',
+  'Percorso corpo rimodellante',
+  'Gift card trattamenti',
+  'Percorso epilazione progressiva',
+]
+const settlementNotePool = [
+  'Acconto iniziale',
+  'Secondo versamento',
+  'Saldo parziale in cassa',
+  'Versamento POS',
+]
 const appointmentSlots: Array<[number, number]> = [
   [9, 0],
   [10, 30],
@@ -48,12 +60,12 @@ const monthOptions = [
   { key: '12', label: 'Dic' },
 ] as const
 
-type ClientVariant = 'base' | 'premium' | 'no-phone' | 'male'
+type ClientVariant = 'base' | 'premium' | 'no-phone' | 'male' | 'with-deposits'
 type CouponVariant = 'standard' | 'premium' | 'dedicated' | 'flash'
 type AppointmentVariant = 'personal' | 'center-basic' | 'center-complete-no-coupon' | 'center-coupon'
+type AppointmentPriceMode = 'none' | 'down' | 'up' | 'mixed'
 type AppointmentOverrides = {
-  applyDiscount?: boolean
-  applyExtra?: boolean
+  priceMode?: AppointmentPriceMode
   applyCoupon?: boolean
 }
 type MixedBatchOptions = AppointmentOverrides & {
@@ -91,12 +103,12 @@ const appointmentsMonthValue = ref(toMonthInputValue())
 const appointmentsMonthCount = ref(40)
 const appointmentsMonthAdvancedValue = ref(toMonthInputValue())
 const appointmentsMonthAdvancedCount = ref(40)
-const appointmentsMonthAdvancedDiscount = ref(false)
-const appointmentsMonthAdvancedExtra = ref(false)
+const appointmentsMonthAdvancedPriceMode = ref<AppointmentPriceMode>('mixed')
 const appointmentsMonthAdvancedCoupon = ref(false)
 const appointmentsByMonthsYear = ref(new Date().getFullYear())
 const appointmentsByMonthsCount = ref(20)
 const appointmentsByMonthsSelection = ref(defaultMonthSelection())
+let operatorRoundRobinCursor = 0
 
 watch(
   hasBetaFeatures,
@@ -150,11 +162,90 @@ function randomToken(size = 4) {
   return Math.random().toString(36).slice(2, 2 + size).toUpperCase()
 }
 
+function roundCurrency(value: number) {
+  return Math.round(value * 100) / 100
+}
+
 function randomBirthdate() {
   const year = randomInt(1962, 2003)
   const month = randomInt(1, 12)
   const day = randomInt(1, 28)
   return `${year}-${pad2(month)}-${pad2(day)}`
+}
+
+function toIsoDate(value: Date) {
+  return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`
+}
+
+function randomPastDate(maxDaysBack = 220) {
+  const date = new Date()
+  date.setHours(12, 0, 0, 0)
+  date.setDate(date.getDate() - randomInt(1, maxDaysBack))
+  return date
+}
+
+function randomClientDeposits() {
+  const depositsCount = randomFrom([1, 1, 2]) ?? 1
+  const deposits: Array<{
+    totalAmount: number
+    reason: string
+    settlements: Array<{ note: string; paidAmount: number; date: string }>
+  }> = []
+
+  for (let index = 0; index < depositsCount; index += 1) {
+    const totalAmount = roundCurrency(randomInt(55, 240))
+    const reason = randomFrom(depositReasonPool) ?? 'Pacchetto trattamenti'
+    const firstSettlementDate = randomPastDate(220)
+    const firstPaidAmount = roundCurrency(
+      Math.max(
+        10,
+        Math.min(totalAmount, randomInt(15, Math.max(20, Math.round(totalAmount * 0.55)))),
+      ),
+    )
+    const settlements: Array<{ note: string; paidAmount: number; date: string }> = [
+      {
+        note: randomFrom(settlementNotePool) ?? 'Acconto iniziale',
+        paidAmount: firstPaidAmount,
+        date: toIsoDate(firstSettlementDate),
+      },
+    ]
+
+    let paidTotal = firstPaidAmount
+    if (paidTotal < totalAmount) {
+      const shouldAddSecondSettlement = randomFrom([true, false, true]) ?? true
+      if (shouldAddSecondSettlement) {
+        const remainingBeforeSecond = roundCurrency(Math.max(0, totalAmount - paidTotal))
+        const shouldCloseDeposit = index === 0 ? (randomFrom([true, false]) ?? false) : false
+        const secondPaidAmount = shouldCloseDeposit
+          ? remainingBeforeSecond
+          : roundCurrency(
+            Math.max(
+              5,
+              Math.min(
+                remainingBeforeSecond,
+                randomInt(5, Math.max(8, Math.round(remainingBeforeSecond * 0.7))),
+              ),
+            ),
+          )
+        const secondSettlementDate = new Date(firstSettlementDate)
+        secondSettlementDate.setDate(secondSettlementDate.getDate() + randomInt(3, 45))
+        settlements.push({
+          note: randomFrom(settlementNotePool) ?? 'Secondo versamento',
+          paidAmount: secondPaidAmount,
+          date: toIsoDate(secondSettlementDate),
+        })
+        paidTotal = roundCurrency(paidTotal + secondPaidAmount)
+      }
+    }
+
+    deposits.push({
+      totalAmount,
+      reason,
+      settlements,
+    })
+  }
+
+  return deposits
 }
 
 function randomPhone() {
@@ -275,13 +366,55 @@ function pickOperators(minCount: number, maxCount: number) {
     throw new Error(`Servono almeno ${minCount} operatori disponibili`)
   }
   const count = randomInt(minCount, Math.min(maxCount, available.length))
-  return pickUniqueIds(available, count)
+  const firstIndex = operatorRoundRobinCursor % available.length
+  operatorRoundRobinCursor = (operatorRoundRobinCursor + 1) % available.length
+
+  const firstOperatorId = available[firstIndex]
+  if (!firstOperatorId) {
+    return pickUniqueIds(available, count)
+  }
+
+  const remaining = available.filter((id) => id !== firstOperatorId)
+  return [firstOperatorId, ...shuffle(remaining)].slice(0, Math.min(count, available.length))
+}
+
+function estimateTreatmentsTotal(ids: string[]) {
+  const total = ids.reduce((sum, id) => {
+    return sum + Number(treatmentStore.findItemsById(id)?.price ?? 0)
+  }, 0)
+  return roundCurrency(Math.max(0, total))
+}
+
+function randomPriceAdjustment(treatmentsTotal: number, mode: AppointmentPriceMode) {
+  const base = roundCurrency(Math.max(0, treatmentsTotal))
+  if (base <= 0 || mode === 'none') return 0
+  const percent = randomFrom([0.05, 0.1, 0.15, 0.2]) ?? 0.1
+  const amount = roundCurrency(base * percent)
+  if (mode === 'up') return amount
+  if (mode === 'down') return -amount
+  const direction = randomFrom([-1, 1] as const) ?? 1
+  return amount * direction
+}
+
+function appointmentTotalFromTreatments(treatmentsTotal: number, mode: AppointmentPriceMode) {
+  const base = roundCurrency(Math.max(0, treatmentsTotal))
+  const adjustment = randomPriceAdjustment(base, mode)
+  return roundCurrency(Math.max(0, base + adjustment))
 }
 
 async function ensureClientId() {
   const existingId = normalizeString(randomFrom(clientStore.itemsActiveArray)?.id)
   if (existingId) return existingId
   const created = await createRandomClient('base')
+  return created.id
+}
+
+async function ensureClientWithDepositsId() {
+  const existingId = normalizeString(
+    randomFrom(clientStore.itemsActiveArray.filter((item) => (item.deposits ?? []).length > 0))?.id,
+  )
+  if (existingId) return existingId
+  const created = await createRandomClient('with-deposits')
   return created.id
 }
 
@@ -318,8 +451,9 @@ async function createRandomClient(variant: ClientVariant) {
     ? randomFrom(maleNames) ?? 'Luca'
     : randomFrom(femaleNames) ?? 'Giulia'
   const surname = randomFrom(surnames) ?? 'Rossi'
-  const preferredOperatorIds = variant === 'premium' ? pickOperators(1, 2) : []
+  const preferredOperatorIds = variant === 'premium' || variant === 'with-deposits' ? pickOperators(1, 2) : []
   const code = `${Date.now().toString().slice(-5)}${randomToken(3)}`.toLocaleLowerCase()
+  const deposits = variant === 'with-deposits' ? randomClientDeposits() : []
 
   return clientStore.add({
     name,
@@ -333,9 +467,13 @@ async function createRandomClient(variant: ClientVariant) {
     note:
       variant === 'premium'
         ? `Cliente premium, ${randomFrom(notePool) ?? 'preferenze elevate'}`
+        : variant === 'with-deposits'
+          ? `Cliente con acquisti a deposito, ${randomFrom(notePool) ?? 'pagamenti pianificati'}`
         : variant === 'no-phone'
           ? 'Contatto senza numero di telefono'
           : randomFrom(notePool) ?? '',
+    acconti: deposits,
+    deposits,
     updateBy: defaultUpdateBy(),
   })
 }
@@ -400,6 +538,7 @@ async function createRandomAppointment(variant: AppointmentVariant, startAt?: Da
   const selectedOperators = variant === 'center-complete-no-coupon' ? pickOperators(1, 2) : pickOperators(1, 1)
 
   if (variant === 'personal') {
+    const ownerId = normalizeString(selectedOperators[0] ?? Auth.uid)
     return appointmentStore.add({
       date_time: Timestamp.fromDate(startDate),
       user_id: undefined,
@@ -407,9 +546,9 @@ async function createRandomAppointment(variant: AppointmentVariant, startAt?: Da
       treatment_ids: [],
       product_ids: [],
       operator_ids: selectedOperators,
-      isPersonal: true,
-      discount: 0,
-      extra: 0,
+      personalOwnerId: ownerId || undefined,
+      isPublic: randomFrom([false, false, true]) ?? false,
+      total: 0,
       fix_duration: randomFrom([-10, -5, 0, 5, 10]) ?? 0,
       coupon_id: undefined,
       notes: randomFrom(['personale', 'pausa personale', 'riunione personale']) ?? 'personale',
@@ -418,13 +557,15 @@ async function createRandomAppointment(variant: AppointmentVariant, startAt?: Da
     })
   }
 
-  const clientId = await ensureClientId()
+  const shouldPreferClientWithDeposits = variant !== 'center-basic' || Boolean(randomFrom([false, true, false]))
+  const clientId = shouldPreferClientWithDeposits ? await ensureClientWithDepositsId() : await ensureClientId()
   const isComplete = variant === 'center-complete-no-coupon'
   const treatmentSelection = isComplete ? pickTreatments(2, 3) : pickTreatments(1, 2)
-  const applyDiscount = overrides.applyDiscount ?? isComplete
-  const applyExtra = overrides.applyExtra ?? true
+  const priceMode = overrides.priceMode ?? (isComplete ? 'down' : 'mixed')
   const applyCoupon = overrides.applyCoupon ?? (variant === 'center-coupon')
   const couponId = applyCoupon ? await ensureActiveCouponId() : undefined
+  const treatmentTotal = estimateTreatmentsTotal(treatmentSelection)
+  const total = appointmentTotalFromTreatments(treatmentTotal, priceMode)
 
   return appointmentStore.add({
     date_time: Timestamp.fromDate(startDate),
@@ -433,16 +574,16 @@ async function createRandomAppointment(variant: AppointmentVariant, startAt?: Da
     treatment_ids: treatmentSelection,
     product_ids: [],
     operator_ids: selectedOperators,
-    isPersonal: false,
-    discount: applyDiscount ? (randomFrom([5, 10, 15, 20]) ?? 10) : 0,
-    extra: applyExtra ? (randomFrom([0, 0, 5, 10]) ?? 0) : 0,
+    personalOwnerId: undefined,
+    isPublic: true,
+    total,
     fix_duration: randomFrom([0, 5, 10, 15]) ?? 0,
     coupon_id: couponId,
     notes:
       applyCoupon
         ? 'Appuntamento test con coupon'
-        : applyDiscount && isComplete
-          ? 'Appuntamento completo test (2+ trattamenti, sconto, no coupon)'
+        : isComplete
+          ? 'Appuntamento completo test (2+ trattamenti, prezzo personalizzato, no coupon)'
           : 'Appuntamento centro estetico test',
     reminded: false,
     updateBy: defaultUpdateBy(),
@@ -458,8 +599,7 @@ async function createMixedAppointments(countValue: unknown, dateFactory: () => D
   for (let index = 0; index < count; index += 1) {
     const variant = randomFrom(baseVariants) ?? 'center-basic'
     await createRandomAppointment(variant, dateFactory(), {
-      applyDiscount: options.applyDiscount,
-      applyExtra: options.applyExtra,
+      priceMode: options.priceMode,
       applyCoupon: options.applyCoupon,
     })
   }
@@ -499,27 +639,38 @@ async function onCreateClientMale() {
   })
 }
 
+async function onCreateClientWithDeposits() {
+  await runAction('client-with-deposits', 'Creazione cliente con acconti', async () => {
+    const created = await createRandomClient('with-deposits')
+    toast.success(`Cliente con acconti creato: ${created.name} ${created.surname}`)
+    pushLog(`Cliente con acconti creato (${created.id})`)
+  })
+}
+
 async function onCreateClientBatch() {
   await runAction('client-batch', 'Creazione batch clienti', async () => {
-    const variants: ClientVariant[] = ['base', 'premium', 'no-phone', 'male']
+    const variants: ClientVariant[] = ['base', 'premium', 'no-phone', 'male', 'with-deposits']
     const createdIds: string[] = []
-    for (let index = 0; index < 5; index += 1) {
+    const withDeposits = await createRandomClient('with-deposits')
+    createdIds.push(withDeposits.id)
+    for (let index = 1; index < 5; index += 1) {
       const created = await createRandomClient(randomFrom(variants) ?? 'base')
       createdIds.push(created.id)
     }
-    toast.success(`Creati 5 clienti misti`)
-    pushLog(`Batch clienti creato (${createdIds.length})`)
+    toast.success('Creati 5 clienti misti (almeno 1 con acconti)')
+    pushLog(`Batch clienti creato (${createdIds.length}, con acconti incluso)`)
   })
 }
 
 async function onCreateClientBatch100() {
   await runAction('client-batch-100', 'Creazione 100 clienti misti', async () => {
-    const variants: ClientVariant[] = ['base', 'premium', 'no-phone', 'male']
-    for (let index = 0; index < 100; index += 1) {
+    const variants: ClientVariant[] = ['base', 'premium', 'no-phone', 'male', 'with-deposits']
+    await createRandomClient('with-deposits')
+    for (let index = 1; index < 100; index += 1) {
       await createRandomClient(randomFrom(variants) ?? 'base')
     }
-    toast.success('Creati 100 clienti misti')
-    pushLog('Batch clienti creato (100)')
+    toast.success('Creati 100 clienti misti (almeno 1 con acconti)')
+    pushLog('Batch clienti creato (100, con acconti incluso)')
   })
 }
 
@@ -591,7 +742,7 @@ async function onCreateAppointmentCompleteTodayNoCoupon() {
   await runAction('appointment-complete', 'Creazione appuntamento completo', async () => {
     const start = todayAt(randomFrom([13, 14, 15, 16]) ?? 14, randomFrom([0, 15, 30]) ?? 30)
     const created = await createRandomAppointment('center-complete-no-coupon', start)
-    toast.success(`Appuntamento completo (2+ trattamenti, sconto, no coupon) alle ${formatHour(start)}`)
+    toast.success(`Appuntamento completo (2+ trattamenti, prezzo personalizzato, no coupon) alle ${formatHour(start)}`)
     pushLog(`Appuntamento completo no-coupon creato (${created.id})`)
   })
 }
@@ -640,6 +791,18 @@ async function onCreateAppointmentRange1000SixMonths() {
 
     toast.success(`Creati ${created} appuntamenti nel range 6 mesi`)
     pushLog(`Batch appuntamenti range 6 mesi creato (${created})`)
+  })
+}
+
+async function onCreateAppointmentCurrentMonth100() {
+  await runAction('appointment-100-current-month', 'Creazione 100 appuntamenti mese corrente', async () => {
+    const currentMonth = toMonthInputValue(new Date())
+    const { start, end, label } = monthRangeFromInput(currentMonth)
+    const created = await createMixedAppointments(100, () => randomDateInRange(start, end), {
+      includeCouponVariant: true,
+    })
+    toast.success(`Creati ${created} appuntamenti misti su ${label}`)
+    pushLog(`Batch appuntamenti mese corrente creato (${created})`)
   })
 }
 
@@ -744,8 +907,7 @@ async function onGenerateAppointmentsMonthAdvancedFromForm() {
     const includeCoupon = Boolean(appointmentsMonthAdvancedCoupon.value)
     const created = await createMixedAppointments(count, () => randomDateInRange(start, end), {
       includeCouponVariant: includeCoupon,
-      applyDiscount: Boolean(appointmentsMonthAdvancedDiscount.value),
-      applyExtra: Boolean(appointmentsMonthAdvancedExtra.value),
+      priceMode: appointmentsMonthAdvancedPriceMode.value,
       applyCoupon: includeCoupon,
     })
     toast.success(`Creati ${created} appuntamenti su ${label} (form avanzato)`)
@@ -843,7 +1005,7 @@ async function onGenerateAppointmentsByCheckedMonthsFromForm() {
       <section class="card border-0 shadow-sm p-3 p-md-4 mt-3">
         <h2 class="h6 text-uppercase mb-1">Clienti Random</h2>
         <p class="small text-muted mb-3">
-          Ogni bottone crea clienti con profili diversi (base, premium, no-phone, maschile, batch).
+          Ogni bottone crea clienti con profili diversi (base, premium, no-phone, maschile, con acconti, batch).
         </p>
         <div class="playground-actions">
           <Btn
@@ -885,6 +1047,16 @@ async function onGenerateAppointmentsByCheckedMonthsFromForm() {
             @click="onCreateClientMale"
           >
             Cliente maschile
+          </Btn>
+          <Btn
+            type="button"
+            color="dark"
+            icon="payments"
+            :loading="isActionBusy('client-with-deposits')"
+            :disabled="isActionDisabled('client-with-deposits')"
+            @click="onCreateClientWithDeposits"
+          >
+            Cliente con acconti
           </Btn>
           <Btn
             type="button"
@@ -971,7 +1143,7 @@ async function onGenerateAppointmentsByCheckedMonthsFromForm() {
       <section class="card border-0 shadow-sm p-3 p-md-4 mt-3">
         <h2 class="h6 text-uppercase mb-1">Appuntamenti Random</h2>
         <p class="small text-muted mb-3">
-          Bottoni validati: personale, base centro, completo (2+ trattamenti, sconto, no coupon), con coupon, batch giornata.
+          Bottoni validati: personale, base centro, completo (2+ trattamenti, prezzo personalizzato, no coupon), con coupon, batch giornata.
         </p>
         <div class="playground-actions">
           <Btn
@@ -1002,7 +1174,7 @@ async function onGenerateAppointmentsByCheckedMonthsFromForm() {
             :disabled="isActionDisabled('appointment-complete')"
             @click="onCreateAppointmentCompleteTodayNoCoupon"
           >
-            Completo oggi (2+ trattamenti, sconto, no coupon)
+            Completo oggi (2+ trattamenti, prezzo personalizzato, no coupon)
           </Btn>
           <Btn
             type="button"
@@ -1028,6 +1200,16 @@ async function onGenerateAppointmentsByCheckedMonthsFromForm() {
             type="button"
             color="dark"
             icon="date_range"
+            :loading="isActionBusy('appointment-100-current-month')"
+            :disabled="isActionDisabled('appointment-100-current-month')"
+            @click="onCreateAppointmentCurrentMonth100"
+          >
+            100 appuntamenti (mese corrente)
+          </Btn>
+          <Btn
+            type="button"
+            color="dark"
+            icon="date_range"
             :loading="isActionBusy('appointment-1000-range')"
             :disabled="isActionDisabled('appointment-1000-range')"
             @click="onCreateAppointmentRange1000SixMonths"
@@ -1040,7 +1222,7 @@ async function onGenerateAppointmentsByCheckedMonthsFromForm() {
       <section class="card border-0 shadow-sm p-3 p-md-4 mt-3">
         <h2 class="h6 text-uppercase mb-1">Form Appuntamenti</h2>
         <p class="small text-muted mb-3">
-          Mini form per generare appuntamenti misti con quantità, mese e opzioni (sconto/extra/coupon).
+          Mini form per generare appuntamenti misti con quantità, mese e opzioni (prezzo/coupon).
         </p>
 
         <div class="appointment-forms-grid">
@@ -1087,7 +1269,7 @@ async function onGenerateAppointmentsByCheckedMonthsFromForm() {
           </form>
 
           <form class="mini-form" @submit.prevent="onGenerateAppointmentsMonthAdvancedFromForm">
-            <h3 class="h6 mb-2">Mese + quantita + check</h3>
+            <h3 class="h6 mb-2">Mese + quantità + opzioni</h3>
             <div class="mini-form__fields">
               <div>
                 <label class="form-label small mb-1">Mese</label>
@@ -1097,15 +1279,16 @@ async function onGenerateAppointmentsByCheckedMonthsFromForm() {
                 <label class="form-label small mb-1">Quanti appuntamenti</label>
                 <input v-model.number="appointmentsMonthAdvancedCount" type="number" min="1" max="2000" class="form-control form-control-sm" />
               </div>
+              <div>
+                <label class="form-label small mb-1">Prezzo finale</label>
+                <select v-model="appointmentsMonthAdvancedPriceMode" class="form-select form-select-sm">
+                  <option value="none">Totale trattamenti</option>
+                  <option value="down">Prezzo ridotto</option>
+                  <option value="up">Prezzo maggiorato</option>
+                  <option value="mixed">Variazione mista</option>
+                </select>
+              </div>
               <div class="mini-form__checks">
-                <label class="mini-check">
-                  <input v-model="appointmentsMonthAdvancedDiscount" type="checkbox" />
-                  <span>Sconto</span>
-                </label>
-                <label class="mini-check">
-                  <input v-model="appointmentsMonthAdvancedExtra" type="checkbox" />
-                  <span>Extra</span>
-                </label>
                 <label class="mini-check">
                   <input v-model="appointmentsMonthAdvancedCoupon" type="checkbox" />
                   <span>Coupon</span>

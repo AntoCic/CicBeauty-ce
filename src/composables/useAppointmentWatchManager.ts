@@ -1,4 +1,5 @@
 import type { GetProps } from 'cic-kit'
+import { Timestamp, where, type QueryConstraint } from 'firebase/firestore'
 import { appointmentStore } from '../stores/appointmentStore'
 import { appointmentWatchState } from '../stores/appointmentWatchState'
 
@@ -121,11 +122,15 @@ function addLoadedMonths(from: Date, untilMonth: Date) {
 }
 
 function buildRangeOpts(from: Date, to?: Date): GetProps {
-  // Avoid passing QueryConstraint objects built from a different Firestore SDK copy.
-  // Filtering by range is applied client-side in calendar views.
-  void from
-  void to
+  const query: QueryConstraint[] = [
+    where('date_time', '>=', Timestamp.fromDate(from)),
+  ]
+  if (to) {
+    query.push(where('date_time', '<', Timestamp.fromDate(to)))
+  }
+
   return {
+    query,
     orderBy: { fieldPath: 'date_time', directionStr: 'asc' },
   }
 }

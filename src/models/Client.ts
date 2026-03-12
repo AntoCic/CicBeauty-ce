@@ -1,6 +1,73 @@
 // src/models/Client.ts
 import { FirestoreModel, normalizeGender, type Gender, type Timestampble } from 'cic-kit'
 
+export type ClientDepositSettlement = {
+  note: string
+  paidAmount: number
+  date: string
+}
+
+export type ClientDeposit = {
+  totalAmount: number
+  reason: string
+  settlements: ClientDepositSettlement[]
+}
+
+function normalizeString(value: unknown) {
+  return String(value ?? '').trim()
+}
+
+function normalizeMoney(value: unknown) {
+  const next = Number(value)
+  if (!Number.isFinite(next)) return 0
+  return Math.max(0, Math.round(next * 100) / 100)
+}
+
+function normalizeDate(value: unknown) {
+  const raw = normalizeString(value)
+  if (!raw) return ''
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return ''
+  const year = parsed.getFullYear()
+  const month = String(parsed.getMonth() + 1).padStart(2, '0')
+  const day = String(parsed.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function normalizeSettlements(value: unknown) {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return undefined
+      const row = item as Record<string, unknown>
+      const date = normalizeDate(row.date)
+      return {
+        note: normalizeString(row.note),
+        paidAmount: normalizeMoney(row.paidAmount ?? row.amount ?? row.saldato),
+        date,
+      }
+    })
+    .filter((item): item is ClientDepositSettlement => Boolean(item))
+}
+
+function normalizeDeposits(value: unknown) {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return undefined
+      const row = item as Record<string, unknown>
+      const totalAmount = normalizeMoney(row.totalAmount ?? row.total ?? row.totale)
+      const reason = normalizeString(row.reason ?? row.motivo)
+      const settlements = normalizeSettlements(row.settlements ?? row.balances ?? row.saldi)
+      return {
+        totalAmount,
+        reason,
+        settlements,
+      }
+    })
+    .filter((item): item is ClientDeposit => Boolean(item))
+}
+
 export interface ClientData extends Partial<Timestampble> {
   id: string
   name: string
@@ -14,6 +81,8 @@ export interface ClientData extends Partial<Timestampble> {
   user_id?: string
   old_id?: string
   note?: string
+  acconti?: ClientDeposit[]
+  deposits?: ClientDeposit[]
   updateBy: string
 }
 
@@ -32,6 +101,7 @@ export class Client extends FirestoreModel<ClientData> {
   user_id?: string
   old_id?: string
   note?: string
+  deposits: ClientDeposit[]
   updateBy: string
 
   constructor(data: ClientData) {
@@ -48,6 +118,7 @@ export class Client extends FirestoreModel<ClientData> {
     this.user_id = data.user_id
     this.old_id = data.old_id
     this.note = data.note
+    this.deposits = normalizeDeposits(data.deposits ?? data.acconti)
     this.updateBy = data.updateBy
   }
 
@@ -65,6 +136,8 @@ export class Client extends FirestoreModel<ClientData> {
       user_id: this.user_id,
       old_id: this.old_id,
       note: this.note,
+      acconti: this.deposits,
+      deposits: this.deposits,
       updateBy: this.updateBy,
       ...this.timestampbleProps()
     }

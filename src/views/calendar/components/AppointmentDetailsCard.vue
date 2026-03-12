@@ -10,16 +10,16 @@ const props = withDefaults(
     operatorLabel: string
     treatmentsLabel: string
     couponLabel: string
-    discount?: number
-    extra?: number
+    total?: number
     isPersonal?: boolean
+    isPublic?: boolean
     notes?: string
     reminded?: boolean
   }>(),
   {
-    discount: 0,
-    extra: 0,
+    total: 0,
     isPersonal: false,
+    isPublic: false,
     notes: '',
     reminded: false,
   },
@@ -32,10 +32,15 @@ const notesText = computed(() =>
     .trim(),
 )
 
+const moneyFormatter = new Intl.NumberFormat('it-IT', {
+  style: 'currency',
+  currency: 'EUR',
+})
+
 const financialLabel = computed(() => {
-  const discount = Number(props.discount ?? 0)
-  const extra = Number(props.extra ?? 0)
-  return `Extra ${extra.toFixed(2)} EUR | Sconto ${discount.toFixed(2)} EUR`
+  const total = Number(props.total ?? 0)
+  if (!Number.isFinite(total) || total <= 0) return moneyFormatter.format(0)
+  return moneyFormatter.format(total)
 })
 </script>
 
@@ -77,7 +82,7 @@ const financialLabel = computed(() => {
       <div class="col-12 col-md-6">
         <small class="text-muted d-block">Tipo</small>
         <span>
-          <span v-if="isPersonal" class="badge text-bg-secondary">Personale</span>
+          <span v-if="isPersonal" class="badge text-bg-secondary">{{ isPublic ? 'Personale pubblico' : 'Personale privato' }}</span>
           <span v-else class="badge text-bg-light border">Standard</span>
           <span class="ms-2">Promemoria: {{ reminded ? 'inviato' : 'non inviato' }}</span>
         </span>

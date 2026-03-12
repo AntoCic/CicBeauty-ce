@@ -62,7 +62,7 @@ const relationships = computed(() => {
       name: 'Appuntamenti personali (solo owner)',
       connected: appointmentPersonal,
       total: appointmentStore.itemsActiveArray.length,
-      note: 'isPersonal + operator_ids[0]',
+      note: 'personalOwnerId + isPublic',
     },
     {
       name: 'TipoSpesa 1 -> N Trattamenti',

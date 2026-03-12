@@ -52,6 +52,11 @@ service cloud.firestore {
       allow write: if isSignedIn() && hasUserPermission('SUPERADMIN');
     }
 
+    match /calendarRecurrences/{id} {
+      allow read: if isSignedIn() && isOperator();
+      allow write: if isSignedIn() && isAdmin();
+    }
+
     match /agentPrompts/{id} {
       allow read, write: if isSignedIn() && isAdmin();
     }

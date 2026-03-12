@@ -124,19 +124,21 @@ function goToEdit(treatmentId: string) {
       title="Trattamenti"
       :to="{ name: 'home' }"
     >
-      <input
-        v-model="search"
-        class="app-header__search"
-        type="search"
-        placeholder="Cerca per titolo, sottotitolo, prezzo o categoria..."
-        aria-label="Cerca trattamenti"
-      />
-      <Btn
-        v-if="canManage"
-        icon="add"
-        variant="ghost"
-        @click="goToCreate"
-      />
+      <div class="app-header__tools">
+        <input
+          v-model="search"
+          class="app-header__search"
+          type="search"
+          placeholder="Cerca per titolo, sottotitolo, prezzo o categoria..."
+          aria-label="Cerca trattamenti"
+        />
+        <Btn
+          v-if="canManage"
+          icon="add"
+          variant="ghost"
+          @click="goToCreate"
+        />
+      </div>
     </HeaderApp>
 
     <section class="compact-list">

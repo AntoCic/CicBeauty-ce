@@ -8,7 +8,7 @@ import { Auth } from '../main';
     <RouterLink class="legal-link" :to="{ name: 'PrivacyPolicyView' }">Privacy</RouterLink>
     <RouterLink class="legal-link" :to="{ name: 'CookiePolicyView' }">Cookie</RouterLink>
     <RouterLink class="legal-link" :to="{ name: 'TermsConditionsView' }">Termini</RouterLink>
-    <RouterLink class="legal-link" :to="{ name: 'AiTransparencyView' }">AI</RouterLink>
+    <RouterLink v-if="Auth.isLoggedIn" class="legal-link" :to="{ name: 'AiTransparencyView' }">AI</RouterLink>
     <RouterLink v-if="!Auth.isLoggedIn" class="legal-link" :to="{ name: 'login' }"><span
         class="material-symbols-outlined" style="font-size: 0.7rem; vertical-align: middle;">
         lock_person

@@ -32,7 +32,7 @@ function goBack() {
 
       <h1 v-if="title" class="col app-header__title">{{ title }}</h1>
       <div v-if="title" class="col-12 d-md-none"></div>
-      <div v-if="$slots.default" class="col">
+      <div v-if="$slots.default" class="col app-header__slot">
         <slot />
       </div>
     </div>
@@ -92,7 +92,29 @@ function goBack() {
   text-overflow: ellipsis;
 }
 
-:slotted(.app-header__search) {
+.app-header__slot {
+  min-width: 0;
+}
+
+.app-header__slot :deep(.app-header__tools) {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.app-header__slot :deep(.app-header__tools > *) {
+  flex-shrink: 0;
+}
+
+.app-header__slot :deep(.app-header__tools .app-header__search) {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.app-header__slot :deep(.app-header__search) {
   width: min(100%, 440px);
   min-width: 220px;
   height: 34px;
@@ -106,11 +128,11 @@ function goBack() {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-:slotted(.app-header__search)::placeholder {
+.app-header__slot :deep(.app-header__search)::placeholder {
   color: rgba(75, 41, 53, 0.52);
 }
 
-:slotted(.app-header__search):focus {
+.app-header__slot :deep(.app-header__search):focus {
   border-color: rgba(84, 44, 58, 0.72);
   box-shadow: 0 0 0 2px rgba(232, 179, 190, 0.22);
 }
@@ -148,11 +170,19 @@ function goBack() {
     max-width: 100%;
   }
 
-  :slotted(.app-header__search) {
+  .app-header__slot :deep(.app-header__search) {
     width: 100%;
     min-width: 0;
     height: 32px;
     font-size: 0.74rem;
+  }
+
+  .app-header__slot :deep(.app-header__tools) {
+    gap: 0.34rem;
+  }
+
+  .app-header__slot :deep(.app-header__tools .app-header__search) {
+    width: auto;
   }
 }
 </style>

@@ -14,7 +14,9 @@ type AppointmentData = {
   user_id?: unknown;
   notes?: unknown;
   status?: unknown;
+  personalOwnerId?: unknown;
   isPersonal?: unknown;
+  isPublic?: unknown;
 };
 
 const MINUTE_MS = 60_000;
@@ -206,9 +208,11 @@ async function buildSummary(data: AppointmentData) {
 }
 
 function buildDescription(data: AppointmentData) {
+  const isPersonal = Boolean(normalizeString(data.personalOwnerId) || data.isPersonal);
   const lines = [
     `Stato: ${normalizeString(data.status) || 'planned'}`,
-    `Personale: ${Boolean(data.isPersonal) ? 'si' : 'no'}`,
+    `Personale: ${isPersonal ? 'si' : 'no'}`,
+    isPersonal ? `Pubblico: ${Boolean(data.isPublic) ? 'si' : 'no'}` : '',
     normalizeString(data.notes) ? `Note: ${normalizeString(data.notes)}` : '',
   ].filter(Boolean);
 

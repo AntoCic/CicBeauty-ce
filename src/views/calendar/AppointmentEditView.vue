@@ -17,6 +17,7 @@ import { clientStore } from '../../stores/clientStore'
 import { couponStore } from '../../stores/couponStore'
 import { publicUserStore } from '../../stores/publicUser'
 import { treatmentStore } from '../../stores/treatmentStore'
+import { appointmentPersonalOwnerId, isPersonalAppointment } from '../../utils/appointmentVisibility'
 import { computeAppointmentDurationMinutes, fromDateTimeLocalValue, toDateTimeLocalValue } from '../../utils/calendar'
 import { asDate } from '../../utils/date'
 import { hasAiAndOperatorAccess } from '../../utils/permissions'
@@ -33,10 +34,10 @@ type AppointmentForm = {
   date_time: string
   client_id: string
   notes: string
-  discount: number | string
-  extra: number | string
+  total: number | string
   fix_duration: number | string
   isPersonal: boolean
+  isPublic: boolean
   coupon_id: string
 }
 
@@ -51,6 +52,10 @@ const isDeleting = ref(false)
 const isEditMode = ref(false)
 const selectedTreatmentIds = ref<string[]>([])
 const selectedOperatorIds = ref<string[]>([])
+const initialTreatmentIds = ref<string[]>([])
+const initialTreatmentsTotal = ref(0)
+const initialAppointmentTotal = ref(0)
+const shouldForceTotalReentry = ref(false)
 const aiSuggestions = ref<Array<{ start: string; end: string; reason: string }>>([])
 const aiClientContext = ref<{ previousAppointmentAt?: string; nextAppointmentAt?: string; totalAppointments: number } | undefined>()
 const isAiLoading = ref(false)
@@ -80,10 +85,24 @@ const schema = toTypedSchema(
         otherwise: (value) => value.default(''),
       }),
     notes: yup.string().default(EMPTY_NOTE_HTML),
-    discount: yup.number().typeError('Numero non valido').default(0),
-    extra: yup.number().typeError('Numero non valido').default(0),
+    total: yup
+      .number()
+      .transform((value, originalValue) => {
+        const raw = String(originalValue ?? '').trim().replace(',', '.')
+        if (!raw) return Number.NaN
+        const normalized = Number(raw)
+        return Number.isFinite(normalized) ? normalized : value
+      })
+      .typeError('Numero non valido')
+      .min(0, 'Prezzo non valido')
+      .when('isPersonal', {
+        is: false,
+        then: (value) => value.required('Prezzo obbligatorio'),
+        otherwise: (value) => value.default(0),
+      }),
     fix_duration: yup.number().typeError('Numero non valido').min(-FIX_DURATION_LIMIT_MINUTES).max(FIX_DURATION_LIMIT_MINUTES).default(0),
     isPersonal: yup.boolean().required(),
+    isPublic: yup.boolean().default(false),
     coupon_id: yup.string().default(''),
   }),
 )
@@ -102,10 +121,10 @@ const initialValues = computed<AppointmentForm>(() => {
     date_time: initialDateTime,
     client_id: String(current.value?.client_id ?? current.value?.user_id ?? ''),
     notes: normalizeNoteForEditor(current.value?.notes),
-    discount: Number(current.value?.discount ?? 0),
-    extra: Number(current.value?.extra ?? 0),
+    total: Number(current.value?.total ?? estimateTreatmentsAmount()),
     fix_duration: clampFixDuration(current.value?.fix_duration ?? 0),
-    isPersonal: Boolean(current.value?.isPersonal),
+    isPersonal: Boolean(current.value ? isPersonalAppointment(current.value) : false),
+    isPublic: Boolean(current.value?.isPublic),
     coupon_id: String(current.value?.coupon_id ?? ''),
   }
 })
@@ -152,7 +171,12 @@ const currentClient = computed(() => {
   return clientsById.value.get(clientId)
 })
 
-const currentPrimaryOperatorId = computed(() => normalizeString((current.value?.operator_ids ?? [])[0]))
+const currentPrimaryOperatorId = computed(() => {
+  if (!current.value) return ''
+  const personalOwnerId = appointmentPersonalOwnerId(current.value)
+  if (personalOwnerId) return personalOwnerId
+  return normalizeString((current.value.operator_ids ?? [])[0])
+})
 const currentPrimaryOperator = computed(() => {
   const operatorId = currentPrimaryOperatorId.value
   if (!operatorId) return undefined
@@ -283,28 +307,28 @@ function roundCurrency(value: number) {
   return Math.round(value * 100) / 100
 }
 
-function estimateTreatmentsAmount() {
-  const total = selectedTreatmentIds.value
+function estimateTreatmentsAmountForIds(ids: string[]) {
+  const total = ids
     .map((id) => normalizeNumber(treatmentsById.value.get(id)?.price, 0))
     .filter((value) => Number.isFinite(value))
     .reduce((sum, current) => sum + current, 0)
   return roundCurrency(Math.max(0, total))
 }
 
-function estimateGrossAmount(values: Record<string, unknown>) {
-  const extra = normalizeNumber(values.extra, 0)
-  return roundCurrency(Math.max(0, estimateTreatmentsAmount() + extra))
+function estimateTreatmentsAmount() {
+  return estimateTreatmentsAmountForIds(selectedTreatmentIds.value)
 }
 
-function normalizeDiscountAmount(value: unknown, max = Number.POSITIVE_INFINITY) {
-  const normalized = roundCurrency(Math.max(0, normalizeNumber(value, 0)))
-  return roundCurrency(Math.min(normalized, max))
+function normalizePriceValue(value: unknown) {
+  const raw = String(value ?? '').trim().replace(',', '.')
+  if (!raw) return undefined
+  const normalized = Number(raw)
+  if (!Number.isFinite(normalized)) return undefined
+  return roundCurrency(Math.max(0, normalized))
 }
 
 function estimateFinalAmount(values: Record<string, unknown>) {
-  const gross = estimateGrossAmount(values)
-  const discount = normalizeDiscountAmount(values.discount, gross)
-  return roundCurrency(Math.max(0, gross - discount))
+  return roundCurrency(Math.max(0, normalizePriceValue(values.total) ?? 0))
 }
 
 function formatCurrency(value: unknown) {
@@ -340,24 +364,78 @@ function summaryTreatmentsLabel() {
   return labels.length ? labels.join(', ') : 'Nessun trattamento'
 }
 
+function isMissingPrice(values: Record<string, unknown>) {
+  return normalizePriceValue(values.total) === undefined
+}
+
+function isInitialPriceDifferenceActive() {
+  const difference = roundCurrency(initialAppointmentTotal.value - initialTreatmentsTotal.value)
+  return Math.abs(difference) > 0.001
+}
+
+function initialPriceDifference() {
+  return roundCurrency(initialAppointmentTotal.value - initialTreatmentsTotal.value)
+}
+
+function priceDiffMeta(totalValue: unknown, treatmentsTotal = estimateTreatmentsAmount()) {
+  const normalizedTotal = normalizePriceValue(totalValue)
+  if (normalizedTotal === undefined) {
+    return {
+      amount: 0,
+      label: 'Da definire',
+      icon: 'help',
+      colorClass: 'price-diff-badge--missing',
+    }
+  }
+
+  const diff = roundCurrency(normalizedTotal - treatmentsTotal)
+  if (diff > 0) {
+    return {
+      amount: diff,
+      label: `+${formatCurrency(diff)}`,
+      icon: 'arrow_upward',
+      colorClass: 'price-diff-badge--up',
+    }
+  }
+  if (diff < 0) {
+    return {
+      amount: diff,
+      label: `-${formatCurrency(Math.abs(diff))}`,
+      icon: 'arrow_downward',
+      colorClass: 'price-diff-badge--down',
+    }
+  }
+  return {
+    amount: 0,
+    label: formatCurrency(0),
+    icon: 'arrow_forward',
+    colorClass: 'price-diff-badge--same',
+  }
+}
+
+function resetTotalToTreatments(setFieldValue: (field: string, value: unknown, shouldValidate?: boolean) => void) {
+  shouldForceTotalReentry.value = false
+  setFieldValue('total', estimateTreatmentsAmount(), true)
+}
+
 function applyDiscountPercent(
   percent: number,
-  values: Record<string, unknown>,
   setFieldValue: (field: string, value: unknown, shouldValidate?: boolean) => void,
 ) {
-  const gross = estimateGrossAmount(values)
-  const discount = normalizeDiscountAmount((gross * percent) / 100, gross)
-  setFieldValue('discount', discount, true)
+  const base = estimateTreatmentsAmount()
+  const discountAmount = roundCurrency((base * percent) / 100)
+  shouldForceTotalReentry.value = false
+  setFieldValue('total', roundCurrency(Math.max(0, base - discountAmount)), true)
 }
 
 function applyDiscountRound(
-  values: Record<string, unknown>,
   setFieldValue: (field: string, value: unknown, shouldValidate?: boolean) => void,
 ) {
-  const gross = estimateGrossAmount(values)
-  const remainder = roundCurrency(gross % 5)
-  const discount = remainder > 0 && remainder <= 3 ? remainder : 0
-  setFieldValue('discount', normalizeDiscountAmount(discount, gross), true)
+  const base = estimateTreatmentsAmount()
+  const remainder = roundCurrency(base % 5)
+  const discountAmount = remainder > 0 && remainder <= 3 ? remainder : 0
+  shouldForceTotalReentry.value = false
+  setFieldValue('total', roundCurrency(Math.max(0, base - discountAmount)), true)
 }
 
 function isCenterAppointment(values: Record<string, unknown>) {
@@ -390,14 +468,48 @@ function hasOperatorsSelectionError(values: Record<string, unknown>, submitCount
   return !selectedOperatorIds.value.length
 }
 
-function toggleTreatment(id: string) {
+function shouldAutoUpdateTotal(values: Record<string, unknown>, previousTreatmentsTotal: number) {
+  if (shouldForceTotalReentry.value) return false
+  const currentTotal = normalizePriceValue(values.total)
+  if (currentTotal === undefined) return false
+  return Math.abs(roundCurrency(currentTotal - previousTreatmentsTotal)) <= 0.001
+}
+
+function shouldForceTotalResetOnTreatmentAdd(wasAdded: boolean, nextTreatmentsCount: number) {
+  if (!wasAdded) return false
+  if (isCreateMode.value || !current.value) return false
+  if (!isInitialPriceDifferenceActive()) return false
+  return nextTreatmentsCount > initialTreatmentIds.value.length
+}
+
+function toggleTreatment(
+  id: string,
+  values: Record<string, unknown>,
+  setFieldValue: (field: string, value: unknown, shouldValidate?: boolean) => void,
+) {
   const normalized = normalizeString(id)
   if (!normalized) return
-  if (selectedTreatmentIds.value.includes(normalized)) {
-    selectedTreatmentIds.value = selectedTreatmentIds.value.filter((value) => value !== normalized)
+
+  const previousSelection = [...selectedTreatmentIds.value]
+  const previousTreatmentsTotal = estimateTreatmentsAmountForIds(previousSelection)
+  const alreadySelected = previousSelection.includes(normalized)
+
+  if (alreadySelected) {
+    selectedTreatmentIds.value = previousSelection.filter((value) => value !== normalized)
+  } else {
+    selectedTreatmentIds.value = [...previousSelection, normalized]
+  }
+
+  const nextTreatmentsTotal = estimateTreatmentsAmount()
+  if (shouldForceTotalResetOnTreatmentAdd(!alreadySelected, selectedTreatmentIds.value.length)) {
+    shouldForceTotalReentry.value = true
+    setFieldValue('total', '', true)
     return
   }
-  selectedTreatmentIds.value = [...selectedTreatmentIds.value, normalized]
+
+  if (shouldAutoUpdateTotal(values, previousTreatmentsTotal)) {
+    setFieldValue('total', nextTreatmentsTotal, true)
+  }
 }
 
 function toggleOperator(id: string) {
@@ -443,6 +555,10 @@ async function loadItem() {
   if (isCreateMode.value) {
     current.value = undefined
     selectedTreatmentIds.value = []
+    initialTreatmentIds.value = []
+    initialTreatmentsTotal.value = 0
+    initialAppointmentTotal.value = 0
+    shouldForceTotalReentry.value = false
     selectedOperatorIds.value = normalizeUniqueIds([String(route.query.operatorId ?? ''), String(Auth.uid ?? '')])
     isEditMode.value = true
     return
@@ -456,7 +572,15 @@ async function loadItem() {
       return
     }
     selectedTreatmentIds.value = normalizeUniqueIds(current.value.treatment_ids ?? [])
-    selectedOperatorIds.value = normalizeUniqueIds(current.value.operator_ids ?? [])
+    initialTreatmentIds.value = [...selectedTreatmentIds.value]
+    initialTreatmentsTotal.value = estimateTreatmentsAmount()
+    initialAppointmentTotal.value = roundCurrency(normalizePriceValue(current.value.total) ?? initialTreatmentsTotal.value)
+    shouldForceTotalReentry.value = false
+    const personalOwnerId = appointmentPersonalOwnerId(current.value)
+    selectedOperatorIds.value = normalizeUniqueIds([
+      personalOwnerId,
+      ...(current.value.operator_ids ?? []),
+    ])
     if (!selectedOperatorIds.value.length) {
       selectedOperatorIds.value = normalizeUniqueIds([String(Auth.uid ?? '')])
     }
@@ -477,6 +601,7 @@ async function onSubmit(values: Record<string, unknown>) {
   }
 
   const isPersonal = Boolean(values.isPersonal)
+  const isPublic = isPersonal ? Boolean(values.isPublic) : true
   const clientId = isPersonal ? '' : normalizeString(values.client_id)
   const normalizedTreatments = normalizeUniqueIds(selectedTreatmentIds.value)
   const normalizedOperators = normalizeUniqueIds(selectedOperatorIds.value)
@@ -499,10 +624,23 @@ async function onSubmit(values: Record<string, unknown>) {
       normalizedOperators.push(me)
     }
   }
+  const personalOwnerId = isPersonal ? normalizeString(normalizedOperators[0] ?? Auth.uid) : ''
+  if (isPersonal && !personalOwnerId) {
+    toast.error('Impossibile salvare un appuntamento personale senza proprietario')
+    return
+  }
+  if (isPersonal) {
+    const normalizedForPersonal = normalizeUniqueIds([personalOwnerId, ...normalizedOperators])
+    normalizedOperators.splice(0, normalizedOperators.length, ...normalizedForPersonal)
+  }
 
   const normalizedNotes = normalizeNoteForSave(values.notes)
   const notes = isPersonal && !normalizedNotes ? PERSONAL_DEFAULT_NOTE : normalizedNotes
-  const grossAmount = estimateGrossAmount(values)
+  const normalizedTotal = isPersonal ? 0 : normalizePriceValue(values.total)
+  if (!isPersonal && normalizedTotal === undefined) {
+    toast.error('Inserisci un prezzo totale valido')
+    return
+  }
 
   const payload = {
     date_time: Timestamp.fromDate(startDate),
@@ -511,9 +649,10 @@ async function onSubmit(values: Record<string, unknown>) {
     treatment_ids: isPersonal ? [] : normalizedTreatments,
     product_ids: current.value?.product_ids ?? [],
     operator_ids: normalizedOperators,
+    personalOwnerId: personalOwnerId || undefined,
+    isPublic,
     isPersonal,
-    discount: isPersonal ? 0 : normalizeDiscountAmount(values.discount, grossAmount),
-    extra: isPersonal ? 0 : normalizeNumber(values.extra, 0),
+    total: isPersonal ? 0 : normalizedTotal,
     fix_duration: clampFixDuration(values.fix_duration),
     coupon_id: isPersonal ? undefined : normalizeString(values.coupon_id) || undefined,
     notes,
@@ -668,6 +807,19 @@ watch(() => route.params.id, loadItem)
             <ErrorMessage name="fix_duration" class="text-danger small" />
           </div>
 
+          <div v-if="values.isPersonal" class="col-12">
+            <div class="form-check">
+              <Field id="appointment-is-public" name="isPublic" type="checkbox" class="form-check-input" />
+              <label class="form-check-label" for="appointment-is-public">
+                Appuntamento personale visibile a tutti
+              </label>
+            </div>
+            <small class="text-muted d-block mt-1">
+              Se non attivo, lo vedra solo l'operatore proprietario.
+            </small>
+            <ErrorMessage name="isPublic" class="text-danger small d-block mt-1" />
+          </div>
+
           <div v-if="!values.isPersonal" class="col-12">
             <Accordion id="appointment-client-accordion" title="Cliente" :defaultOpen="true" class="appointment-filter-accordion">
               <template #header>
@@ -735,7 +887,7 @@ watch(() => route.params.id, loadItem)
                   type="button"
                   class="chip"
                   :class="{ 'chip--active': isTreatmentSelected(treatment.id) }"
-                  @click="toggleTreatment(treatment.id)"
+                  @click="toggleTreatment(treatment.id, values, setFieldValue)"
                 >
                   {{ treatment.title }} ({{ treatment.duration }}m | {{ formatCurrency(treatment.price) }})
                 </button>
@@ -745,75 +897,6 @@ watch(() => route.params.id, loadItem)
                 Seleziona almeno un trattamento.
               </small>
             </Accordion>
-          </div>
-
-          <div v-if="!values.isPersonal" class="col-12">
-            <div class="price-adjust-box mt-1">
-              <span class="badge text-bg-dark price-adjust-box__badge">Costo finale {{ formatCurrency(estimateFinalAmount(values)) }}</span>
-              <div class="row g-2">
-                <div class="col-6">
-                  <label class="form-label">Sconto</label>
-                  <Field name="discount" type="number" step="1" inputmode="decimal" class="form-control" />
-                  <div class="d-flex flex-wrap gap-1 mt-2">
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-secondary discount-preset-btn"
-                      @click="applyDiscountPercent(10, values, setFieldValue)"
-                    >
-                      10%
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-secondary discount-preset-btn"
-                      @click="applyDiscountPercent(20, values, setFieldValue)"
-                    >
-                      20%
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-secondary discount-preset-btn"
-                      @click="applyDiscountPercent(50, values, setFieldValue)"
-                    >
-                      50%
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-secondary discount-preset-btn"
-                      @click="applyDiscountPercent(100, values, setFieldValue)"
-                    >
-                      100%
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-dark discount-preset-btn"
-                      aria-label="Arrotonda"
-                      title="Arrotonda"
-                      @click="applyDiscountRound(values, setFieldValue)"
-                    >
-                      <span class="material-symbols-outlined discount-preset-icon" aria-hidden="true">payment_arrow_down</span>
-                    </button>
-                  </div>
-                  <ErrorMessage name="discount" class="text-danger small d-block mt-1" />
-                </div>
-
-                <div class="col-6">
-                  <label class="form-label">Extra</label>
-                  <Field name="extra" type="number" step="1" inputmode="decimal" class="form-control" />
-                  <ErrorMessage name="extra" class="text-danger small d-block mt-1" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div v-if="!values.isPersonal" class="col-12">
-            <label class="form-label">Coupon</label>
-            <Field name="coupon_id" as="select" class="form-select">
-              <option value="">Nessuno</option>
-              <option v-for="coupon in selectableCoupons" :key="coupon.id" :value="coupon.id">
-                {{ coupon.code }} - {{ coupon.title }}
-              </option>
-            </Field>
-            <ErrorMessage name="coupon_id" class="text-danger small" />
           </div>
 
           <div v-if="!values.isPersonal" class="col-12">
@@ -836,6 +919,97 @@ watch(() => route.params.id, loadItem)
               <span>+{{ FIX_DURATION_LIMIT_MINUTES }}</span>
             </div>
             <ErrorMessage name="fix_duration" class="text-danger small d-block mt-1" />
+          </div>
+
+          <div v-if="!values.isPersonal" class="col-12">
+            <div class="price-adjust-box mt-1">
+              <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+                <label class="form-label mb-0">Prezzo</label>
+                <span class="badge text-bg-light border">Totale trattamenti {{ formatCurrency(estimateTreatmentsAmount()) }}</span>
+              </div>
+
+              <div class="price-input-row">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary price-reset-btn"
+                  aria-label="Reset prezzo"
+                  title="Reset prezzo"
+                  @click="resetTotalToTreatments(setFieldValue)"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>
+                </button>
+                <Field name="total" type="number" step="0.01" inputmode="decimal" class="form-control" />
+                <span class="badge price-diff-badge" :class="priceDiffMeta(values.total).colorClass">
+                  <span class="material-symbols-outlined price-diff-badge__icon" aria-hidden="true">{{ priceDiffMeta(values.total).icon }}</span>
+                  {{ priceDiffMeta(values.total).label }}
+                </span>
+              </div>
+              <ErrorMessage name="total" class="text-danger small d-block mt-1" />
+
+              <div
+                v-if="shouldForceTotalReentry && isMissingPrice(values) && isInitialPriceDifferenceActive()"
+                class="price-reentry-hint mt-2"
+              >
+                <span>Con {{ initialTreatmentIds.length }} trattamenti il totale era {{ formatCurrency(initialAppointmentTotal) }}</span>
+                <span class="badge price-diff-badge" :class="priceDiffMeta(initialAppointmentTotal, initialTreatmentsTotal).colorClass">
+                  <span class="material-symbols-outlined price-diff-badge__icon" aria-hidden="true">
+                    {{ priceDiffMeta(initialAppointmentTotal, initialTreatmentsTotal).icon }}
+                  </span>
+                  {{ initialPriceDifference() >= 0 ? 'Extra' : 'Sconto' }} {{ priceDiffMeta(initialAppointmentTotal, initialTreatmentsTotal).label }}
+                </span>
+              </div>
+
+              <div class="d-flex flex-wrap gap-1 mt-2">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary discount-preset-btn"
+                  @click="applyDiscountPercent(10, setFieldValue)"
+                >
+                  10%
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary discount-preset-btn"
+                  @click="applyDiscountPercent(20, setFieldValue)"
+                >
+                  20%
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary discount-preset-btn"
+                  @click="applyDiscountPercent(50, setFieldValue)"
+                >
+                  50%
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary discount-preset-btn"
+                  @click="applyDiscountPercent(100, setFieldValue)"
+                >
+                  100%
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-dark discount-preset-btn"
+                  aria-label="Arrotonda"
+                  title="Arrotonda"
+                  @click="applyDiscountRound(setFieldValue)"
+                >
+                  <span class="material-symbols-outlined discount-preset-icon" aria-hidden="true">payment_arrow_down</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="!values.isPersonal" class="col-12">
+            <label class="form-label">Coupon</label>
+            <Field name="coupon_id" as="select" class="form-select">
+              <option value="">Nessuno</option>
+              <option v-for="coupon in selectableCoupons" :key="coupon.id" :value="coupon.id">
+                {{ coupon.code }} - {{ coupon.title }}
+              </option>
+            </Field>
+            <ErrorMessage name="coupon_id" class="text-danger small" />
           </div>
 
           <div v-if="!values.isPersonal" class="col-12">
@@ -908,6 +1082,28 @@ watch(() => route.params.id, loadItem)
           </div>
         </div>
 
+        <div v-if="!values.isPersonal" class="summary-compact mt-3">
+          <div class="summary-compact__metrics">
+            <div>
+              Durata totale:
+              <strong>{{ estimateDurationForFix(values.fix_duration) }} min</strong>
+            </div>
+            <div>
+              Costo finale:
+              <strong>{{ formatCurrency(estimateFinalAmount(values)) }}</strong>
+              <span class="badge price-diff-badge ms-1" :class="priceDiffMeta(values.total).colorClass">
+                <span class="material-symbols-outlined price-diff-badge__icon" aria-hidden="true">{{ priceDiffMeta(values.total).icon }}</span>
+                {{ priceDiffMeta(values.total).label }}
+              </span>
+            </div>
+          </div>
+          <div class="summary-compact__meta text-muted">
+            <span><strong>Cliente:</strong> {{ summaryClientLabel(values) }}</span>
+            <span><strong>Giorno:</strong> {{ summaryDayLabel(values) }}</span>
+            <span><strong>Trattamenti:</strong> {{ summaryTreatmentsLabel() }}</span>
+          </div>
+        </div>
+
         <div class="d-flex gap-2 mt-4 flex-wrap">
           <Btn type="submit" color="dark" icon="save" :loading="isSubmitting || isDeleting">
             {{ isCreateMode ? 'Crea' : 'Salva' }}
@@ -928,24 +1124,6 @@ watch(() => route.params.id, loadItem)
             Elimina
           </Btn>
         </div>
-
-        <div v-if="!values.isPersonal" class="summary-compact mt-3">
-          <div class="summary-compact__metrics">
-            <div>
-              Durata totale:
-              <strong>{{ estimateDurationForFix(values.fix_duration) }} min</strong>
-            </div>
-            <div>
-              Costo finale:
-              <strong>{{ formatCurrency(estimateFinalAmount(values)) }}</strong>
-            </div>
-          </div>
-          <div class="summary-compact__meta text-muted">
-            <span><strong>Cliente:</strong> {{ summaryClientLabel(values) }}</span>
-            <span><strong>Giorno:</strong> {{ summaryDayLabel(values) }}</span>
-            <span><strong>Trattamenti:</strong> {{ summaryTreatmentsLabel() }}</span>
-          </div>
-        </div>
       </Form>
 
       <div v-else-if="current" class="view-shell">
@@ -957,9 +1135,9 @@ watch(() => route.params.id, loadItem)
           :operator-label="currentOperatorLabel"
           :treatments-label="currentTreatmentsLabel"
           :coupon-label="currentCouponLabel"
-          :discount="current.discount"
-          :extra="current.extra"
+          :total="current.total"
           :is-personal="current.isPersonal"
+          :is-public="current.isPublic"
           :notes="current.notes"
           :reminded="current.reminded"
           class="appointment-main-card mx-auto"
@@ -1124,19 +1302,72 @@ watch(() => route.params.id, loadItem)
 }
 
 .price-adjust-box {
-  position: relative;
   border: 1px solid rgba(84, 44, 58, 0.2);
   border-radius: 0.5rem;
   padding: 0.75rem 0.55rem 0.5rem;
   background: rgba(255, 255, 255, 0.78);
 }
 
-.price-adjust-box__badge {
-  position: absolute;
-  top: -0.55rem;
-  right: 0.55rem;
-  font-size: 0.68rem;
+.price-input-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.price-reset-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.price-diff-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border: 1px solid transparent;
+  font-size: 0.72rem;
   font-weight: 600;
+}
+
+.price-diff-badge__icon {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.price-diff-badge--up {
+  background: rgba(25, 135, 84, 0.12);
+  border-color: rgba(25, 135, 84, 0.3);
+  color: #0f6b44;
+}
+
+.price-diff-badge--down {
+  background: rgba(220, 53, 69, 0.12);
+  border-color: rgba(220, 53, 69, 0.3);
+  color: #9f1f31;
+}
+
+.price-diff-badge--same {
+  background: rgba(108, 117, 125, 0.11);
+  border-color: rgba(108, 117, 125, 0.28);
+  color: #495057;
+}
+
+.price-diff-badge--missing {
+  background: rgba(255, 193, 7, 0.14);
+  border-color: rgba(255, 193, 7, 0.35);
+  color: #8d6300;
+}
+
+.price-reentry-hint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.76rem;
 }
 
 .summary-compact {

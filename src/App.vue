@@ -9,7 +9,6 @@ import { UserPermission } from './enums/UserPermission';
 import CookieConsentBanner from './components/CookieConsentBanner.vue';
 import { appConfigStore } from './stores/appConfigStore';
 import AppQuickToolbar from './components/navigation/AppQuickToolbar.vue';
-import { buildDefaultAppointmentWatchOpts } from './composables/useAppointmentWatchManager';
 import { treatmentStore } from './stores/treatmentStore';
 import { treatmentCategoryStore } from './stores/treatmentCategoryStore';
 import { productStore } from './stores/productStore';
@@ -19,6 +18,8 @@ import { appointmentStore } from './stores/appointmentStore';
 import { clientStore } from './stores/clientStore';
 import { couponStore } from './stores/couponStore';
 import { typeCouponStore } from './stores/typeCouponStore';
+import { calendarRecurrenceStore } from './stores/calendarRecurrenceStore';
+import { buildDefaultAppointmentWatchOpts } from './composables/useAppointmentWatchManager';
 
 const route = useRoute();
 let initAppLoadingClosed = false;
@@ -40,8 +41,6 @@ const publicMainInlineStyle = computed<CSSProperties | undefined>(() => {
   }
 })
 
-const defaultAppointmentWatchOpts = buildDefaultAppointmentWatchOpts(new Date());
-
 useStoreWatch([
   { store: appConfigStore, checkLogin: false },
   { store: treatmentCategoryStore, checkLogin: false },
@@ -52,7 +51,8 @@ useStoreWatch([
   { store: publicUserStore },
   { store: typeExpenseStore },
   { store: typeCouponStore },
-  { store: appointmentStore, getOpts: defaultAppointmentWatchOpts },
+  { store: calendarRecurrenceStore },
+  { store: appointmentStore, getOpts: buildDefaultAppointmentWatchOpts(new Date()) },
   { store: couponStore },
 ]);
 

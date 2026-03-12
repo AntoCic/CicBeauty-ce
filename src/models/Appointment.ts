@@ -18,6 +18,12 @@ function normalizeOptionalTimestamp(value: unknown) {
   return normalizeTimestamp(value)
 }
 
+function normalizeMoney(value: unknown) {
+  const next = Number(value)
+  if (!Number.isFinite(next)) return undefined
+  return Math.max(0, Math.round(next * 100) / 100)
+}
+
 export interface AppointmentData extends Partial<Timestampble> {
   id: string
   date_time: Timestamp
@@ -26,9 +32,11 @@ export interface AppointmentData extends Partial<Timestampble> {
   treatment_ids?: string[]
   product_ids?: string[]
   operator_ids?: string[]
+  personalOwnerId?: string
+  isPublic?: boolean
+  // Legacy support
   isPersonal?: boolean
-  discount?: number
-  extra?: number
+  total?: number
   fix_duration?: number
   coupon_id?: string
   old_id?: string
@@ -48,9 +56,9 @@ export class Appointment extends FirestoreModel<AppointmentData> {
   treatment_ids?: string[]
   product_ids?: string[]
   operator_ids?: string[]
-  isPersonal: boolean
-  discount?: number
-  extra?: number
+  personalOwnerId?: string
+  isPublic: boolean
+  total?: number
   fix_duration?: number
   coupon_id?: string
   old_id?: string
@@ -60,6 +68,14 @@ export class Appointment extends FirestoreModel<AppointmentData> {
   googleCalendarSyncedAt?: Timestamp
   updateBy: string
 
+  get isPersonal() {
+    return Boolean(this.personalOwnerId)
+  }
+
+  // Legacy guard: FirestoreModel may assign incoming fields with Object.assign.
+  // isPersonal is derived from personalOwnerId, so setter is intentionally a no-op.
+  set isPersonal(_value: boolean | undefined) {}
+
   constructor(data: AppointmentData) {
     super(data)
     this.date_time = normalizeTimestamp(data.date_time)
@@ -68,9 +84,13 @@ export class Appointment extends FirestoreModel<AppointmentData> {
     this.treatment_ids = Array.isArray(data.treatment_ids) ? data.treatment_ids.map((item) => normalizeString(item)).filter(Boolean) : []
     this.product_ids = Array.isArray(data.product_ids) ? data.product_ids.map((item) => normalizeString(item)).filter(Boolean) : []
     this.operator_ids = Array.isArray(data.operator_ids) ? data.operator_ids.map((item) => normalizeString(item)).filter(Boolean) : []
-    this.isPersonal = Boolean(data.isPersonal)
-    this.discount = data.discount
-    this.extra = data.extra
+    const personalOwnerId = normalizeString(data.personalOwnerId)
+    const legacyPersonalOwnerId = Boolean(data.isPersonal)
+      ? normalizeString(this.operator_ids[0] ?? data.user_id)
+      : ''
+    this.personalOwnerId = personalOwnerId || legacyPersonalOwnerId || undefined
+    this.isPublic = this.personalOwnerId ? Boolean(data.isPublic) : true
+    this.total = normalizeMoney(data.total)
     this.fix_duration = data.fix_duration
     this.coupon_id = normalizeString(data.coupon_id) || undefined
     this.old_id = normalizeString(data.old_id) || undefined
@@ -90,9 +110,10 @@ export class Appointment extends FirestoreModel<AppointmentData> {
       treatment_ids: this.treatment_ids,
       product_ids: this.product_ids,
       operator_ids: this.operator_ids,
+      personalOwnerId: this.personalOwnerId,
+      isPublic: this.isPublic,
       isPersonal: this.isPersonal,
-      discount: this.discount,
-      extra: this.extra,
+      total: this.total,
       fix_duration: this.fix_duration,
       coupon_id: this.coupon_id,
       old_id: this.old_id,

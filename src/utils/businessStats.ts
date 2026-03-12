@@ -6,8 +6,7 @@ type AppointmentLike = {
   client_id?: string
   user_id?: string
   treatment_ids?: string[]
-  discount?: number
-  extra?: number
+  total?: number
   fix_duration?: number
   coupon_id?: string
 }
@@ -52,12 +51,8 @@ export function buildCustomerMetrics(
     const clientId = String(appointment.client_id ?? appointment.user_id ?? '').trim()
     if (!clientId) continue
 
-    const treatmentTotal = (appointment.treatment_ids ?? [])
-      .map((id) => treatmentsById.get(id)?.price ?? 0)
-      .reduce((sum, value) => sum + value, 0)
-    const discount = Number(appointment.discount ?? 0)
-    const extra = Number(appointment.extra ?? 0)
-    const spend = Math.max(0, treatmentTotal + extra - discount)
+    const storedTotal = Number(appointment.total)
+    const spend = Number.isFinite(storedTotal) ? Math.max(0, storedTotal) : 0
     const minutes = computeAppointmentDurationMinutes(appointment, treatmentsById, fallbackDuration)
 
     const current = map.get(clientId) ?? {

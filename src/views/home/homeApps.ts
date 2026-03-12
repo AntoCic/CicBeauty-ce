@@ -179,6 +179,15 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     group: 'settings',
   },
   {
+    id: 'calendar-recurrences',
+    title: 'Ricorrenze',
+    to: { name: 'CalendarRecurrenceRulesView' },
+    icon: 'event_repeat',
+    iconClass: 'app-icon-night',
+    permission: defaultUserPermission.ADMIN,
+    group: 'settings',
+  },
+  {
     id: 'test-playground',
     title: 'Test Playground',
     to: { name: 'TestPlaygroundView' },

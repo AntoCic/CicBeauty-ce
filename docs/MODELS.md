@@ -7,7 +7,7 @@ Schema pensato per la migrazione dal progetto legacy e per la gestione multi-ope
 - `Client 1 -> N Appointment` tramite `Appointment.client_id` (fallback legacy `user_id`).
 - `Appointment N <-> N Treatment` tramite `Appointment.treatment_ids[]`.
 - `Appointment N <-> N Operator` tramite `Appointment.operator_ids[]` + `operator_id` primario.
-- `Appointment personale` tramite `Appointment.isPersonal = true` + `ownerOperatorId`.
+- `Appointment personale` tramite `Appointment.personalOwnerId` + `Appointment.isPublic`.
 - `Appointment N -> 1 Coupon` tramite `Appointment.coupon_id`.
 - `TypeExpense 1 -> N Treatment` tramite `Treatment.type_expense_id`.
 - `TypeExpense 1 -> N Product` tramite `Product.type_expense_id`.

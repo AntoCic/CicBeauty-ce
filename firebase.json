@@ -40,6 +40,25 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "headers": [
+      {
+        "source": "**/*.vcf",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "text/vcard; charset=utf-8"
+          },
+          {
+            "key": "Content-Disposition",
+            "value": "inline; filename=\"contatto.vcf\""
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=300"
+          }
+        ]
+      }
+    ],
     "rewrites": [
       {
         "source": "**",

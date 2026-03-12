@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { cicKitStore } from 'cic-kit'
 import { computed, ref } from 'vue'
-import { Auth } from '../../main'
+import { hasPermissionAccess } from '../../utils/permissions'
 import { AUTH_HOME_APPS, type HomeAppShortcut } from './homeApps'
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const isQrModalOpen = ref(false)
 
 function canOpenApp(app: HomeAppShortcut) {
-  return !app.permission || (Auth?.user?.hasPermission(app.permission) ?? false)
+  return hasPermissionAccess(app.permission)
 }
 
 function openQrModal() {
@@ -29,6 +29,7 @@ const SETTINGS_APP_ORDER = [
   'user-profile',
   'app-config',
   'agent-prompts',
+  'calendar-recurrences',
   'product-categories-manage',
   'treatment-categories-manage',
   'type-expenses',

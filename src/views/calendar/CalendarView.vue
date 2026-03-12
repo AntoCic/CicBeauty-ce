@@ -3,6 +3,7 @@ import { Btn, cicKitStore } from 'cic-kit'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppointmentWatchManager } from '../../composables/useAppointmentWatchManager'
+import { DEFAULT_USER_COLOR, normalizeUserColor } from '../../constants/userProfile'
 import { Auth } from '../../main'
 import { appConfigStore } from '../../stores/appConfigStore'
 import { appointmentStore } from '../../stores/appointmentStore'
@@ -10,10 +11,20 @@ import { clientStore } from '../../stores/clientStore'
 import { publicUserStore } from '../../stores/publicUser'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
+import { calendarRecurrenceStore } from '../../stores/calendarRecurrenceStore'
+import {
+  appointmentOperatorIds,
+  appointmentPersonalOwnerId,
+  canReadAppointmentForUser,
+  isPersonalAppointment,
+} from '../../utils/appointmentVisibility'
 import { addMonths, computeAppointmentDurationMinutes, startOfDay } from '../../utils/calendar'
 import {
+  RECURRENCE_LABELS,
   getCalendarSpecialBadges,
   type CalendarSpecialBadge,
+  type CalendarRecurrenceCategory,
+  type CalendarRecurrenceFrequency,
   type ClientBirthdaySource,
 } from '../../utils/calendarSpecialDays'
 import { asDate } from '../../utils/date'
@@ -32,6 +43,7 @@ type TreatmentLite = {
 type VisibleAppointment = {
   id: string
   start: Date
+  end: Date
   dayKey: string
   clientFirstName: string
   clientSurname: string
@@ -40,6 +52,7 @@ type VisibleAppointment = {
   totalPrice: number
   emojis: string[]
   isPersonal: boolean
+  operatorColor: string
 }
 
 type CalendarDayCell = {
@@ -53,15 +66,38 @@ type CalendarDayCell = {
   isSelected: boolean
   specialBadges: CalendarSpecialBadge[]
   appointments: VisibleAppointment[]
+  timeline: CalendarDayTimelineEntry[]
 }
 
 type CalendarGridDayMeta = Omit<
   CalendarDayCell,
-  'isSelected' | 'isHoliday' | 'specialBadges' | 'appointments'
+  'isSelected' | 'isHoliday' | 'specialBadges' | 'appointments' | 'timeline'
 >
+
+type CalendarInsertionGap = {
+  id: string
+  start: Date
+  end: Date
+  minutes: number
+  isLunchWindow: boolean
+}
+
+type CalendarDayTimelineEntry =
+  | {
+    key: string
+    kind: 'appointment'
+    appointment: VisibleAppointment
+  }
+  | {
+    key: string
+    kind: 'gap'
+    gap: CalendarInsertionGap
+  }
 
 const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
 const OVERFLOW_EMOJI = '\u2795'
+const CALENDAR_RECURRENCE_FALLBACK_FREQUENCY: CalendarRecurrenceFrequency = 'yearly'
+const CALENDAR_RECURRENCE_FALLBACK_CATEGORY: CalendarRecurrenceCategory = 'general'
 
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
@@ -93,7 +129,20 @@ const operators = computed(() => {
     .map((user) => ({
       id: user.id,
       label: `${user.name} ${user.surname}`.trim() || user.email || user.id,
+      color: normalizeUserColor(user.color),
     }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'it'))
+})
+
+const operatorColorById = computed(() => {
+  return new Map(
+    operators.value.map((operator) => [operator.id, operator.color]),
+  )
+})
+
+const operatorsForFilter = computed(() => {
+  return operators.value
+    .map(({ id, label }) => ({ id, label }))
     .sort((a, b) => a.label.localeCompare(b.label, 'it'))
 })
 
@@ -116,6 +165,29 @@ const clientsForCalendarSpecialDays = computed<ClientBirthdaySource[]>(() => {
     surname: client.surname,
     birthdate: client.birthdate,
   }))
+})
+
+const recurrenceRulesForCalendarSpecialDays = computed(() => {
+  return calendarRecurrenceStore.itemsActiveArray
+    .filter((rule) => rule.active !== false)
+    .map((rule) => {
+      const recurrence =
+        RECURRENCE_LABELS[rule.recurrence] ? rule.recurrence : CALENDAR_RECURRENCE_FALLBACK_FREQUENCY
+      const category =
+        rule.category === 'italian-holiday' || rule.category === 'local-holiday' || rule.category === 'general'
+          ? rule.category
+          : CALENDAR_RECURRENCE_FALLBACK_CATEGORY
+
+      return {
+        id: rule.id,
+        title: String(rule.title ?? '').trim(),
+        emoji: String(rule.emoji ?? '').trim(),
+        startsOn: String(rule.startsOn ?? '').trim(),
+        recurrence,
+        category,
+        active: rule.active,
+      }
+    })
 })
 
 const treatmentsById = computed(() => {
@@ -158,12 +230,12 @@ const activeFilters = computed(() => {
   const parts: string[] = []
   if (selectedOperatorId.value !== 'all') {
     const label =
-      operators.value.find((operator) => operator.id === selectedOperatorId.value)?.label ??
+      operatorsForFilter.value.find((operator) => operator.id === selectedOperatorId.value)?.label ??
       selectedOperatorId.value
     parts.push(`Operatore: ${label}`)
   }
   if (showOnlyMyPersonal.value) {
-    parts.push('Solo appuntamenti personali')
+    parts.push('Solo miei appuntamenti personali')
   }
   return parts
 })
@@ -216,6 +288,7 @@ const visibleAppointments = computed<VisibleAppointment[]>(() => {
   const treatmentsMap = treatmentsById.value
   const categoryEmojiMap = categoryEmojiById.value
   const fallbackDuration = defaultDurationMinutes.value
+  const colorsByOperatorId = operatorColorById.value
 
   for (const appointment of appointmentStore.itemsActiveArray) {
     const start = asDate(appointment.date_time)
@@ -223,11 +296,13 @@ const visibleAppointments = computed<VisibleAppointment[]>(() => {
 
     const startTs = start.getTime()
     if (startTs < rangeStart || startTs > rangeEnd) continue
-    if (!canReadAppointment(appointment, currentUserId)) continue
+    if (!canReadAppointmentForUser(appointment, currentUserId)) continue
+
+    const personalOwnerId = appointmentPersonalOwnerId(appointment)
+    const isPersonal = isPersonalAppointment(appointment)
     if (!operatorMatch(appointment, selectedOperator)) continue
 
-    const isPersonal = Boolean(appointment.isPersonal)
-    if (onlyPersonal && !isPersonal) continue
+    if (onlyPersonal && (!isPersonal || personalOwnerId !== currentUserId)) continue
 
     const clientId = String(appointment.client_id ?? appointment.user_id ?? '').trim()
     const client = clientId ? clientsMap.get(clientId) : undefined
@@ -242,9 +317,8 @@ const visibleAppointments = computed<VisibleAppointment[]>(() => {
       .map((item) => item.title)
       .filter(Boolean)
 
-    const totalPrice = linkedTreatments.reduce((total, treatment) => {
-      return total + (Number.isFinite(treatment.price) ? treatment.price : 0)
-    }, 0)
+    const totalPriceValue = Number(appointment.total)
+    const totalPrice = Number.isFinite(totalPriceValue) ? Math.max(0, totalPriceValue) : 0
 
     const durationMinutes = computeAppointmentDurationMinutes(
       {
@@ -258,6 +332,7 @@ const visibleAppointments = computed<VisibleAppointment[]>(() => {
     items.push({
       id: appointment.id,
       start,
+      end: new Date(start.getTime() + durationMinutes * 60000),
       dayKey: keyForDay(start),
       clientFirstName,
       clientSurname,
@@ -266,6 +341,7 @@ const visibleAppointments = computed<VisibleAppointment[]>(() => {
       totalPrice,
       emojis: buildAppointmentEmojis(linkedTreatments, categoryEmojiMap),
       isPersonal,
+      operatorColor: colorsByOperatorId.get(primaryOperatorId(appointment)) ?? DEFAULT_USER_COLOR,
     })
   }
 
@@ -277,7 +353,7 @@ const specialBadgesByDayKey = computed(() => {
   const clients = clientsForCalendarSpecialDays.value
 
   for (const day of calendarGridMeta.value) {
-    const badges = getCalendarSpecialBadges(day.date, clients)
+    const badges = getCalendarSpecialBadges(day.date, clients, recurrenceRulesForCalendarSpecialDays.value)
     if (badges.length) {
       badgesMap.set(day.key, badges)
     }
@@ -297,12 +373,14 @@ const calendarDays = computed<CalendarDayCell[]>(() => {
   const selectedKey = keyForDay(selectedDate.value)
   return calendarGridMeta.value.map((day) => {
     const specialBadges = specialBadgesByDayKey.value.get(day.key) ?? []
+    const appointments = appointmentsMap.get(day.key) ?? []
     return {
       ...day,
       isHoliday: specialBadges.some((badge) => badge.kind === 'holiday'),
       isSelected: day.key === selectedKey,
       specialBadges,
-      appointments: appointmentsMap.get(day.key) ?? [],
+      appointments,
+      timeline: buildDayTimeline(appointments),
     }
   })
 })
@@ -353,19 +431,64 @@ function buildAppointmentEmojis(linkedTreatments: TreatmentLite[], emojiByCatego
   return [firstEmoji, OVERFLOW_EMOJI]
 }
 
-function primaryOperatorId(appointment: StoreAppointment) {
-  return String((appointment.operator_ids ?? [])[0] ?? '').trim()
+function startsInLunchWindow(start: Date) {
+  const lunchStart = new Date(start)
+  lunchStart.setHours(12, 30, 0, 0)
+  const lunchEnd = new Date(start)
+  lunchEnd.setHours(15, 0, 0, 0)
+  return start >= lunchStart && start < lunchEnd
 }
 
-function canReadAppointment(appointment: StoreAppointment, currentUserId: string) {
-  const isPersonal = appointment.isPersonal ?? false
-  if (!isPersonal) return true
+function createGapBetween(start: Date, end: Date) {
+  const diffMs = end.getTime() - start.getTime()
+  const minutes = Math.floor(diffMs / 60000)
+  if (minutes < 5) return undefined
 
-  if (!currentUserId) return false
+  return {
+    id: `${start.toISOString()}-${end.toISOString()}`,
+    start,
+    end,
+    minutes,
+    isLunchWindow: startsInLunchWindow(start),
+  }
+}
 
-  const primary = primaryOperatorId(appointment)
-  if (primary) return primary === currentUserId
-  return (appointment.operator_ids ?? []).includes(currentUserId)
+function buildDayTimeline(appointments: VisibleAppointment[]) {
+  let hasLunchGapAtLeastThirty = false
+  const timeline: CalendarDayTimelineEntry[] = []
+
+  appointments.forEach((appointment, index) => {
+    timeline.push({
+      key: `appointment-${appointment.id}`,
+      kind: 'appointment',
+      appointment,
+    })
+
+    const next = appointments[index + 1]
+    if (!next) return
+
+    const gap = createGapBetween(appointment.end, next.start)
+    if (!gap) return
+    const isLunchWindow = gap.isLunchWindow && !hasLunchGapAtLeastThirty
+    if (isLunchWindow && gap.minutes >= 30) {
+      hasLunchGapAtLeastThirty = true
+    }
+
+    timeline.push({
+      key: `gap-${gap.id}`,
+      kind: 'gap',
+      gap: {
+        ...gap,
+        isLunchWindow,
+      },
+    })
+  })
+
+  return timeline
+}
+
+function primaryOperatorId(appointment: StoreAppointment) {
+  return appointmentPersonalOwnerId(appointment) || appointmentOperatorIds(appointment)[0] || ''
 }
 
 function operatorMatch(appointment: StoreAppointment, selectedOperator: 'all' | string) {
@@ -375,9 +498,9 @@ function operatorMatch(appointment: StoreAppointment, selectedOperator: 'all' | 
   const normalized = String(selected).trim()
   if (!normalized) return true
 
-  const linked = appointment.operator_ids ?? []
+  const linked = appointmentOperatorIds(appointment)
   const primary = primaryOperatorId(appointment)
-  if (appointment.isPersonal) {
+  if (isPersonalAppointment(appointment)) {
     if (primary) return primary === normalized
     return linked.includes(normalized)
   }
@@ -428,6 +551,27 @@ function openNewAppointment() {
       operatorId: selectedOperatorId.value === 'all' ? undefined : selectedOperatorId.value,
     },
   })
+}
+
+function openNewAppointmentFromSlot(slotStart: Date) {
+  router.push({
+    name: 'AppointmentEditView',
+    params: { id: 'new' },
+    query: {
+      dateTime: slotStart.toISOString(),
+      operatorId: selectedOperatorId.value === 'all' ? undefined : selectedOperatorId.value,
+    },
+  })
+}
+
+function formatHour(date: Date) {
+  return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+}
+
+function formatGapLabel(minutes: number) {
+  if (minutes === 60) return '1 ora libera'
+  if (minutes > 60 && minutes % 60 === 0) return `${minutes / 60} ore libere`
+  return `${minutes} minuti liberi`
 }
 
 function openFiltersModal() {
@@ -534,12 +678,27 @@ function applyFilters() {
             </div>
 
             <div class="calendar-day__appointments">
-              <CalendarAppointmentCard
-                v-for="appointment in day.appointments"
-                :key="appointment.id"
-                :appointment="appointment"
-                @open="openAppointment"
-              />
+              <template v-for="entry in day.timeline" :key="entry.key">
+                <CalendarAppointmentCard
+                  v-if="entry.kind === 'appointment'"
+                  :appointment="entry.appointment"
+                  @open="openAppointment"
+                />
+                <button
+                  v-else
+                  type="button"
+                  class="calendar-gap-card"
+                  :class="{ 'calendar-gap-card--lunch': entry.gap.isLunchWindow }"
+                  @click.stop="openNewAppointmentFromSlot(entry.gap.start)"
+                >
+                  <span class="calendar-gap-card__head">
+                    <strong class="calendar-gap-card__cta">+ Nuovo</strong>
+                    <span class="calendar-gap-card__time">{{ formatHour(entry.gap.start) }} - {{ formatHour(entry.gap.end) }}</span>
+                  </span>
+                  <small class="calendar-gap-card__label calendar-gap-card__label--desktop">{{ formatGapLabel(entry.gap.minutes) }}</small>
+                  <small class="calendar-gap-card__label calendar-gap-card__label--mobile">{{ entry.gap.minutes }}m</small>
+                </button>
+              </template>
             </div>
 
             <div class="calendar-day__open-space" @click.stop="openDay(day.date)"></div>
@@ -567,7 +726,7 @@ function applyFilters() {
             <label for="calendarFilterOperator" class="form-label small mb-1">Operatore</label>
             <select id="calendarFilterOperator" v-model="draftOperatorId" class="form-select">
               <option value="all">Tutti</option>
-              <option v-for="operator in operators" :key="operator.id" :value="operator.id">
+              <option v-for="operator in operatorsForFilter" :key="operator.id" :value="operator.id">
                 {{ operator.label }}
               </option>
             </select>
@@ -781,6 +940,63 @@ function applyFilters() {
   gap: 0.12rem;
 }
 
+.calendar-gap-card {
+  width: 100%;
+  border: 1px dashed rgba(25, 135, 84, 0.45);
+  background: rgba(25, 135, 84, 0.1);
+  color: #0f5132;
+  border-radius: 4px;
+  padding: 0.16rem 0.22rem;
+  text-align: left;
+  font-size: 0.54rem;
+  line-height: 1.2;
+}
+
+.calendar-gap-card--lunch {
+  border-color: rgba(184, 126, 0, 0.48);
+  background: rgba(255, 218, 124, 0.3);
+  color: #7b5200;
+}
+
+.calendar-gap-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.calendar-gap-card__cta {
+  white-space: nowrap;
+}
+
+.calendar-gap-card__label {
+  display: block;
+  opacity: 0.9;
+}
+
+.calendar-gap-card__label--mobile {
+  display: none;
+}
+
+@media (max-width: 767.98px) {
+  .calendar-gap-card__cta {
+    display: none;
+  }
+
+  .calendar-gap-card__time {
+    font-size: 6.4px;
+  }
+
+  .calendar-gap-card__label--desktop {
+    display: none;
+  }
+
+  .calendar-gap-card__label--mobile {
+    display: block;
+  }
+}
+
 .calendar-day__open-space {
   flex: 1 1 auto;
   min-height: 0.28rem;
@@ -835,6 +1051,11 @@ function applyFilters() {
     padding: 0.16rem 0.24rem;
     font-size: 0.56rem;
   }
+
+  .calendar-gap-card {
+    padding: 0.2rem 0.27rem;
+    font-size: 0.6rem;
+  }
 }
 
 @media (min-width: 992px) {
@@ -845,6 +1066,11 @@ function applyFilters() {
 
   .calendar-day-special {
     font-size: 0.62rem;
+  }
+
+  .calendar-gap-card {
+    padding: 0.24rem 0.3rem;
+    font-size: 0.66rem;
   }
 }
 </style>

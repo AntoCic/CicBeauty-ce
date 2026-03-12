@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { DEFAULT_USER_COLOR, PERSONAL_APPOINTMENT_COLOR, normalizeUserColor } from '../../../constants/userProfile'
 
 type CalendarAppointmentCardValue = {
   id: string
@@ -11,6 +12,7 @@ type CalendarAppointmentCardValue = {
   totalPrice: number
   emojis: string[]
   isPersonal: boolean
+  operatorColor: string
 }
 
 const props = defineProps<{
@@ -39,7 +41,8 @@ const fullName = computed(() => {
   return `${firstName} ${surname}`.trim() || firstName || 'Cliente'
 })
 
-const emojiLabel = computed(() => props.appointment.emojis.join(' '))
+const emojiLabelMobile = computed(() => props.appointment.emojis.join(''))
+const emojiLabelDesktop = computed(() => props.appointment.emojis.join(' '))
 
 const treatmentLabelTablet = computed(() => {
   const names = props.appointment.treatmentNames.filter(Boolean)
@@ -58,10 +61,56 @@ const desktopMeta = computed(() => {
   if (Number.isFinite(props.appointment.durationMinutes) && props.appointment.durationMinutes > 0) {
     parts.push(`${props.appointment.durationMinutes} min`)
   }
-  if (Number.isFinite(props.appointment.totalPrice) && props.appointment.totalPrice > 0) {
+  if (!props.appointment.isPersonal && Number.isFinite(props.appointment.totalPrice) && props.appointment.totalPrice >= 0) {
     parts.push(currencyFormatter.format(props.appointment.totalPrice))
   }
   return parts.join(' | ')
+})
+
+function hexToRgb(value: string) {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  const match = /^#([0-9a-f]{6})$/.exec(normalized)
+  if (!match) return undefined
+  const hex = match[1]
+  if (!hex) return undefined
+  return {
+    r: Number.parseInt(hex.slice(0, 2), 16),
+    g: Number.parseInt(hex.slice(2, 4), 16),
+    b: Number.parseInt(hex.slice(4, 6), 16),
+  }
+}
+
+function rgbaFromHex(value: string, alpha: number, fallback: string) {
+  const rgb = hexToRgb(value)
+  if (!rgb) return fallback
+  const safeAlpha = Math.max(0, Math.min(1, alpha))
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${safeAlpha})`
+}
+
+function isDarkColor(value: string) {
+  const rgb = hexToRgb(value)
+  if (!rgb) return false
+  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255
+  return luminance < 0.53
+}
+
+const normalizedOperatorColor = computed(() => normalizeUserColor(props.appointment.operatorColor ?? DEFAULT_USER_COLOR))
+
+const cardStyle = computed(() => {
+  if (props.appointment.isPersonal) {
+    return {
+      background: rgbaFromHex(PERSONAL_APPOINTMENT_COLOR, 0.2, 'rgba(8, 92, 140, 0.2)'),
+      borderColor: rgbaFromHex(PERSONAL_APPOINTMENT_COLOR, 0.48, 'rgba(8, 92, 140, 0.48)'),
+      color: '#083a5f',
+    }
+  }
+
+  const baseColor = normalizedOperatorColor.value
+  return {
+    background: rgbaFromHex(baseColor, 0.18, 'rgba(232, 179, 190, 0.34)'),
+    borderColor: rgbaFromHex(baseColor, 0.46, 'rgba(84, 44, 58, 0.36)'),
+    color: isDarkColor(baseColor) ? '#f7fbff' : '#2f2026',
+  }
 })
 
 function openAppointment() {
@@ -74,11 +123,13 @@ function openAppointment() {
     type="button"
     class="calendar-appointment-card"
     :class="{ 'calendar-appointment-card--personal': appointment.isPersonal }"
+    :style="cardStyle"
     @click.stop="openAppointment"
   >
     <span class="calendar-appointment-card__top">
       <span class="calendar-appointment-card__hour">{{ hourLabel }}</span>
-      <span v-if="emojiLabel" class="calendar-appointment-card__emoji">{{ emojiLabel }}</span>
+      <span v-if="emojiLabelMobile" class="calendar-appointment-card__emoji calendar-appointment-card__emoji--mobile">{{ emojiLabelMobile }}</span>
+      <span v-if="emojiLabelDesktop" class="calendar-appointment-card__emoji calendar-appointment-card__emoji--desktop">{{ emojiLabelDesktop }}</span>
     </span>
 
     <span class="calendar-appointment-card__mobile">{{ mobileName }}</span>
@@ -91,7 +142,7 @@ function openAppointment() {
     <span class="calendar-appointment-card__desktop">
       <span class="d-block text-truncate">{{ fullName }}</span>
       <span class="d-block text-truncate">{{ treatmentLabelDesktop }}</span>
-      <span v-if="desktopMeta" class="d-block text-muted text-truncate">{{ desktopMeta }}</span>
+      <span v-if="desktopMeta" class="calendar-appointment-card__meta d-block text-truncate">{{ desktopMeta }}</span>
     </span>
   </button>
 </template>
@@ -99,20 +150,13 @@ function openAppointment() {
 <style scoped lang="scss">
 .calendar-appointment-card {
   width: 100%;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 4px;
   padding: 0.16rem 0.22rem;
-  background: rgba(22, 163, 74, 0.11);
-  color: #155c34;
   text-align: left;
   font-size: 0.56rem;
   line-height: 1.18;
   display: block;
-}
-
-.calendar-appointment-card--personal {
-  background: rgba(142, 68, 173, 0.16);
-  color: #5e2a73;
 }
 
 .calendar-appointment-card__top {
@@ -136,8 +180,12 @@ function openAppointment() {
   overflow: hidden;
   text-overflow: clip;
   text-align: right;
-  font-size: 0.67rem;
+  font-size: 0.52rem;
   line-height: 1;
+}
+
+.calendar-appointment-card__emoji--desktop {
+  display: none;
 }
 
 .calendar-appointment-card__mobile {
@@ -145,6 +193,10 @@ function openAppointment() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.calendar-appointment-card__meta {
+  opacity: 0.82;
 }
 
 .calendar-appointment-card__tablet,
@@ -160,6 +212,18 @@ function openAppointment() {
 
   .calendar-appointment-card__mobile {
     display: none;
+  }
+
+  .calendar-appointment-card__emoji {
+    font-size: 0.67rem;
+  }
+
+  .calendar-appointment-card__emoji--mobile {
+    display: none;
+  }
+
+  .calendar-appointment-card__emoji--desktop {
+    display: inline;
   }
 
   .calendar-appointment-card__tablet {

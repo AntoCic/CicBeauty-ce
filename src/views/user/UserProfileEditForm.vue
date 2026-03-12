@@ -1,13 +1,24 @@
 <script setup lang="ts">
 import { Btn, FieldPhoneNumber, _Auth, isPhoneNumberValid, toast, type PhoneNumber } from 'cic-kit'
 import { computed, reactive, ref, watch } from 'vue'
+import {
+  DEFAULT_USER_COLOR,
+  DEFAULT_PUBLIC_USER_KEYS,
+  USER_COLOR_PALETTE,
+  normalizePublicUserKeys,
+  normalizeUserColor,
+} from '../../constants/userProfile'
 
 type ProfileForm = {
   name: string
   surname: string
   email: string
   phoneNumber: PhoneNumber
+  color: string
 }
+
+const userColorPalette = [...USER_COLOR_PALETTE]
+const publicUserKeysForSave = [...DEFAULT_PUBLIC_USER_KEYS]
 
 const isSaving = ref(false)
 const initialSnapshot = ref('')
@@ -17,6 +28,7 @@ const form = reactive<ProfileForm>({
   surname: '',
   email: '',
   phoneNumber: ['+39', ''],
+  color: userColorPalette[0] ?? DEFAULT_USER_COLOR,
 })
 
 const errors = reactive({
@@ -24,6 +36,7 @@ const errors = reactive({
   surname: '',
   email: '',
   phoneNumber: '',
+  color: '',
 })
 
 function clearErrors() {
@@ -31,6 +44,7 @@ function clearErrors() {
   errors.surname = ''
   errors.email = ''
   errors.phoneNumber = ''
+  errors.color = ''
 }
 
 function normalizePhoneNumber(phoneNumber?: PhoneNumber | null): PhoneNumber {
@@ -45,15 +59,17 @@ function currentSnapshot() {
     surname: form.surname.trim(),
     email: form.email.trim().toLowerCase(),
     phoneNumber: [form.phoneNumber[0].trim(), form.phoneNumber[1].trim()],
+    color: normalizeUserColor(form.color),
   })
 }
 
 function resetFromUser() {
-  const user = _Auth?.user
-  form.name = user?.name ?? ''
-  form.surname = user?.surname ?? ''
-  form.email = user?.email ?? ''
-  form.phoneNumber = normalizePhoneNumber(user?.phoneNumber)
+  const user = _Auth?.user as { [key: string]: unknown } | undefined
+  form.name = String(user?.name ?? '')
+  form.surname = String(user?.surname ?? '')
+  form.email = String(user?.email ?? '')
+  form.phoneNumber = normalizePhoneNumber(user?.phoneNumber as PhoneNumber | undefined)
+  form.color = normalizeUserColor(user?.color)
   initialSnapshot.value = currentSnapshot()
   clearErrors()
 }
@@ -64,7 +80,13 @@ const emailTrimmed = computed(() => form.email.trim())
 const phonePrefixTrimmed = computed(() => form.phoneNumber[0].trim())
 const phoneNumberTrimmed = computed(() => form.phoneNumber[1].trim())
 const hasPhoneValue = computed(() => phoneNumberTrimmed.value.length > 0)
+const selectedColor = computed(() => normalizeUserColor(form.color))
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function isAllowedColor(value: unknown) {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  return userColorPalette.some((color) => color.toLowerCase() === normalized)
+}
 
 const canSubmit = computed(() => {
   const phoneCandidate: PhoneNumber = [phonePrefixTrimmed.value || '+39', phoneNumberTrimmed.value]
@@ -75,6 +97,7 @@ const canSubmit = computed(() => {
     Boolean(surnameTrimmed.value) &&
     emailRegex.test(emailTrimmed.value) &&
     phoneValid &&
+    isAllowedColor(selectedColor.value) &&
     !isSaving.value &&
     currentSnapshot() !== initialSnapshot.value
   )
@@ -107,6 +130,11 @@ function validate() {
     }
   }
 
+  if (!isAllowedColor(selectedColor.value)) {
+    errors.color = 'Seleziona un colore valido'
+    isValid = false
+  }
+
   return isValid
 }
 
@@ -124,11 +152,15 @@ async function onSubmit() {
     name: string
     surname: string
     email: string
+    color: string
+    publicKeys: string[]
     phoneNumber?: PhoneNumber
   } = {
     name: nameTrimmed.value,
     surname: surnameTrimmed.value,
     email: emailTrimmed.value,
+    color: selectedColor.value,
+    publicKeys: normalizePublicUserKeys(publicUserKeysForSave),
   }
 
   if (hasPhoneValue.value) {
@@ -189,6 +221,27 @@ watch(
         <small v-if="errors.phoneNumber" class="text-danger d-block mt-1">{{ errors.phoneNumber }}</small>
       </div>
 
+      <div class="col-12">
+        <label class="form-label d-block mb-2">Colore agenda operatore</label>
+        <div class="profile-color-grid" role="radiogroup" aria-label="Colori agenda operatore">
+          <button
+            v-for="color in userColorPalette"
+            :key="color"
+            type="button"
+            class="profile-color-chip"
+            :class="{ 'profile-color-chip--active': selectedColor === color }"
+            :aria-label="`Seleziona colore ${color}`"
+            :aria-pressed="selectedColor === color"
+            :style="{ '--chip-color': color }"
+            @click="form.color = color"
+          />
+        </div>
+        <small class="text-muted d-block mt-1">
+          Il colore viene usato sugli appuntamenti in cui sei operatore principale.
+        </small>
+        <small v-if="errors.color" class="text-danger d-block mt-1">{{ errors.color }}</small>
+      </div>
+
       <div class="col-12 d-flex justify-content-end">
         <Btn type="submit" color="primary" icon="save" :loading="isSaving" :disabled="!canSubmit">
           Salva modifiche
@@ -205,5 +258,28 @@ watch(
 
 .custom-profile-form :deep(.ck-phone__label) {
   font-weight: 600;
+}
+
+.profile-color-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.profile-color-chip {
+  --chip-color: #e8b3be;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(61, 35, 44, 0.28);
+  background: var(--chip-color);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
+}
+
+.profile-color-chip--active {
+  transform: scale(1.04);
+  box-shadow:
+    0 0 0 2px rgba(61, 35, 44, 0.56),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.48);
 }
 </style>

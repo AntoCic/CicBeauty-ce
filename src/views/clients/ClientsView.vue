@@ -88,18 +88,20 @@ function appointmentMiniLabel(appointment?: { date_time?: unknown }) {
       title="Clienti"
       :to="{ name: 'home' }"
     >
-      <input
-        v-model="search"
-        class="app-header__search"
-        type="search"
-        placeholder="Cerca cliente..."
-        aria-label="Cerca cliente"
-      />
-      <Btn
-        icon="add"
-        variant="ghost"
-        @click="openCreateClient"
-      />
+      <div class="app-header__tools">
+        <input
+          v-model="search"
+          class="app-header__search"
+          type="search"
+          placeholder="Cerca cliente..."
+          aria-label="Cerca cliente"
+        />
+        <Btn
+          icon="add"
+          variant="ghost"
+          @click="openCreateClient"
+        />
+      </div>
     </HeaderApp>
 
     <div class="px-2 pb-4">

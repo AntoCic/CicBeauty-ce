@@ -29,7 +29,9 @@ type AppointmentLike = {
   operator_id?: unknown;
   operator_ids?: unknown;
   ownerOperatorId?: unknown;
+  personalOwnerId?: unknown;
   isPersonal?: unknown;
+  isPublic?: unknown;
   custom_duration_minutes?: unknown;
 };
 
@@ -78,10 +80,13 @@ export const availabilityAgent = onCall<AvailabilityAgentRequest>(
     const appointments = snapshot.docs
       .map((doc) => doc.data() as AppointmentLike)
       .map((dataItem) => normalizeAppointment(dataItem))
-      .filter((item): item is { start: Date; end: Date; isPersonal: boolean; ownerOperatorId: string; operatorIds: string[] } => !!item)
+      .filter((item): item is { start: Date; end: Date; isPersonal: boolean; isPublic: boolean; ownerOperatorId: string; operatorIds: string[] } => !!item)
       .filter((item) => {
         if (item.isPersonal) {
-          return item.ownerOperatorId === uid;
+          if (item.ownerOperatorId === uid) return true;
+          if (!item.isPublic) return false;
+          if (!item.operatorIds.length) return true;
+          return item.operatorIds.includes(uid);
         }
         if (!item.operatorIds.length) {
           return true;
@@ -201,14 +206,15 @@ function normalizeAppointment(data: AppointmentLike) {
   const customDuration = Number(data.custom_duration_minutes ?? 0);
   const fallbackDuration = Number.isFinite(customDuration) && customDuration > 0 ? customDuration : 60;
   const end = normalizeDate(data.end_time) ?? new Date(start.getTime() + fallbackDuration * MINUTE_MS);
-  const isPersonal = Boolean(data.isPersonal);
-  const ownerOperatorId = normalizeString(data.ownerOperatorId);
+  const ownerOperatorId = normalizeString(data.personalOwnerId ?? data.ownerOperatorId);
+  const isPersonal = Boolean(ownerOperatorId || data.isPersonal);
+  const isPublic = isPersonal ? Boolean(data.isPublic) : true;
   const operatorIds = [
     normalizeString(data.operator_id),
     ...(Array.isArray(data.operator_ids) ? data.operator_ids.map((value) => normalizeString(value)) : []),
   ].filter(Boolean);
 
-  return { start, end, isPersonal, ownerOperatorId, operatorIds };
+  return { start, end, isPersonal, isPublic, ownerOperatorId, operatorIds };
 }
 
 function buildSlots(args: {

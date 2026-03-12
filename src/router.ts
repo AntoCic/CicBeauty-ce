@@ -1,6 +1,6 @@
 // router.ts
 
-import { createWebHistory, type RouteRecordRaw } from 'vue-router';
+import { createWebHistory, type RouteLocationNormalizedLoaded, type RouteRecordRaw } from 'vue-router';
 import { defaultUserPermission, initRouter } from 'cic-kit';
 import { UserPermission } from './enums/UserPermission';
 import ProductsView from './views/products/ProductsView.vue';
@@ -32,6 +32,7 @@ import TestPlaygroundView from './views/tools/TestPlaygroundView.vue';
 import CalendarView from './views/calendar/CalendarView.vue';
 import CalendarDayView from './views/calendar/CalendarDayView.vue';
 import AppointmentEditView from './views/calendar/AppointmentEditView.vue';
+import CalendarRecurrenceRulesView from './views/calendar/CalendarRecurrenceRulesView.vue';
 import ClientsView from './views/clients/ClientsView.vue';
 import ClientEditView from './views/clients/ClientEditView.vue';
 import ExpensesView from './views/expenses/ExpensesView.vue';
@@ -149,12 +150,58 @@ export const routes: RouteRecordRaw[] = [
   { path: '/announcements', name: 'AnnouncementsView', component: AnnouncementsView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
   { path: '/settings/app-config', name: 'AppConfigView', component: AppConfigView, meta: { loginStatus: true, permission: defaultUserPermission.SUPERADMIN } },
   { path: '/settings/agent-prompts', name: 'AgentPromptsView', component: AgentPromptsView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
+  { path: '/settings/calendar-recurrences', name: 'CalendarRecurrenceRulesView', component: CalendarRecurrenceRulesView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
   { path: '/settings/catalog-backup', name: 'CatalogBackupView', component: CatalogBackupView, meta: { loginStatus: true, permission: defaultUserPermission.SUPERADMIN } },
-  { path: '/ai/beauty-chat', name: 'AiBeautyChatView', component: AiBeautyChatView },
-  { path: '/legal/privacy', name: 'PrivacyPolicyView', component: PrivacyPolicyView },
-  { path: '/legal/cookie', name: 'CookiePolicyView', component: CookiePolicyView },
-  { path: '/legal/terms', name: 'TermsConditionsView', component: TermsConditionsView },
-  { path: '/legal/ai-transparency', name: 'AiTransparencyView', component: AiTransparencyView },
+  {
+    path: '/ai/beauty-chat',
+    name: 'AiBeautyChatView',
+    component: AiBeautyChatView,
+    meta: {
+      title: 'Beauty AI Chat | CNC Beauty',
+      description: 'Assistente AI interno CNC Beauty per supporto operativo e consultazione rapida.',
+      robots: 'noindex,nofollow',
+    },
+  },
+  {
+    path: '/legal/privacy',
+    name: 'PrivacyPolicyView',
+    component: PrivacyPolicyView,
+    meta: {
+      title: 'Privacy Policy | CNC Beauty',
+      description: 'Informativa privacy di CNC Beauty su trattamento dati, basi giuridiche e diritti degli interessati.',
+      robots: 'index,follow',
+    },
+  },
+  {
+    path: '/legal/cookie',
+    name: 'CookiePolicyView',
+    component: CookiePolicyView,
+    meta: {
+      title: 'Cookie Policy | CNC Beauty',
+      description: 'Cookie Policy CNC Beauty: finalita, categorie di cookie e gestione del consenso analytics.',
+      robots: 'index,follow',
+    },
+  },
+  {
+    path: '/legal/terms',
+    name: 'TermsConditionsView',
+    component: TermsConditionsView,
+    meta: {
+      title: 'Termini e Condizioni | CNC Beauty',
+      description: 'Termini e condizioni d\'uso del sito CNC Beauty per servizi informativi e catalogo.',
+      robots: 'index,follow',
+    },
+  },
+  {
+    path: '/legal/ai-transparency',
+    name: 'AiTransparencyView',
+    component: AiTransparencyView,
+    meta: {
+      title: 'Trasparenza AI | CNC Beauty',
+      description: 'Trasparenza AI CNC Beauty: provider, modello, limiti e contatti privacy collegati alle funzioni AI.',
+      robots: 'index,follow',
+    },
+  },
   { path: '/tools/pdf-placement-demo', name: 'PdfPlacementDemoView', component: PdfPlacementDemoView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
   { path: '/tools/test-playground', name: 'TestPlaygroundView', component: TestPlaygroundView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
   { path: '/products/categories/manage', name: 'ProductCategoriesManageView', component: ProductCategoriesManageView, meta: { loginStatus: true } },
@@ -175,6 +222,37 @@ export const router = initRouter({
 const DEFAULT_PUBLIC_TITLE = 'CNC Beauty'
 const DEFAULT_PUBLIC_DESCRIPTION = 'Centro estetico CNC Beauty: trattamenti professionali e prodotti selezionati.'
 
+function ensureNamedMetaTag(name: string): HTMLMetaElement | null {
+  if (typeof document === 'undefined') return null
+  let metaTag = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null
+  if (!metaTag) {
+    metaTag = document.createElement('meta')
+    metaTag.setAttribute('name', name)
+    document.head.appendChild(metaTag)
+  }
+  return metaTag
+}
+
+function ensureCanonicalLinkTag(): HTMLLinkElement | null {
+  if (typeof document === 'undefined') return null
+  let linkTag = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null
+  if (!linkTag) {
+    linkTag = document.createElement('link')
+    linkTag.setAttribute('rel', 'canonical')
+    document.head.appendChild(linkTag)
+  }
+  return linkTag
+}
+
+function resolveRobotsMeta(to: RouteLocationNormalizedLoaded): string {
+  const explicitRobots = String(to.meta.robots ?? '').trim()
+  if (explicitRobots) {
+    return explicitRobots
+  }
+
+  return to.meta.publicRoute ? 'index,follow' : 'noindex,nofollow'
+}
+
 router.afterEach((to) => {
   if (typeof document === 'undefined') return
 
@@ -182,13 +260,22 @@ router.afterEach((to) => {
   document.title = routeTitle || DEFAULT_PUBLIC_TITLE
 
   const routeDescription = String(to.meta.description ?? '').trim()
-  let descriptionTag = document.querySelector('meta[name="description"]')
-  if (!descriptionTag) {
-    descriptionTag = document.createElement('meta')
-    descriptionTag.setAttribute('name', 'description')
-    document.head.appendChild(descriptionTag)
+  const descriptionTag = ensureNamedMetaTag('description')
+  if (descriptionTag) {
+    descriptionTag.setAttribute('content', routeDescription || DEFAULT_PUBLIC_DESCRIPTION)
   }
-  descriptionTag.setAttribute('content', routeDescription || DEFAULT_PUBLIC_DESCRIPTION)
+
+  const robotsTag = ensureNamedMetaTag('robots')
+  if (robotsTag) {
+    robotsTag.setAttribute('content', resolveRobotsMeta(to))
+  }
+
+  if (typeof window !== 'undefined') {
+    const canonicalTag = ensureCanonicalLinkTag()
+    if (canonicalTag) {
+      canonicalTag.setAttribute('href', `${window.location.origin}${to.path}`)
+    }
+  }
 })
 
 export default router
