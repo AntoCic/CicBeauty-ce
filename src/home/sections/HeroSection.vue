@@ -73,10 +73,10 @@ const actionMotion = computed(() => {
           :initial="{ opacity: 0, y: 14 }"
           :visible-once="actionMotion"
         >
-          <RouterLink class="home-btn home-btn--primary" :to="{ name: 'TreatmentCategoriesView' }">
+          <RouterLink class="home-btn home-btn--primary home-btn--hero-attention" :to="{ name: 'TreatmentCategoriesView' }">
             {{ content.primaryCtaLabel }}
           </RouterLink>
-          <RouterLink class="home-btn home-btn--ghost" :to="{ name: 'ProductCategoriesView' }">
+          <RouterLink class="home-btn home-btn--ghost home-btn--hero-attention home-btn--hero-attention-alt" :to="{ name: 'ProductCategoriesView' }">
             {{ content.secondaryCtaLabel }}
           </RouterLink>
           <a class="home-inline-link" :href="content.inlineCtaHref">{{ content.inlineCtaLabel }}</a>

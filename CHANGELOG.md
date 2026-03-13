@@ -1,3 +1,9 @@
+## v0.0.43 - 2026-03-13
+
+test qr online
+
+---
+
 ## v0.0.42 - 2026-03-12
 
 calendar test

@@ -13,7 +13,7 @@ import {
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { productCategoryDefaults } from '../../constants/categoryDefaults'
 import { productCategoryStore } from '../../stores/productCategoryStore'
 import { Auth } from '../../main'
@@ -36,6 +36,7 @@ const deletingIds = ref<Record<string, boolean>>({})
 const removingImageIds = ref<Record<string, boolean>>({})
 const fileValue = ref<FieldFileValue>([])
 const editingCategoryId = ref('')
+const pageRootRef = ref<HTMLElement | null>(null)
 
 const editingCategory = computed(() =>
   editingCategoryId.value ? productCategoryStore.findItemsById(editingCategoryId.value) : undefined,
@@ -95,12 +96,23 @@ function goCreateMode() {
   resetFileSelection()
 }
 
+async function scrollToEditorTop() {
+  await nextTick()
+  const container = pageRootRef.value
+  if (container) {
+    container.scrollTo({ top: 0, behavior: 'smooth' })
+    return
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 function goEditMode(categoryId: string) {
   const normalized = String(categoryId ?? '').trim()
   if (!normalized) return
   editingCategoryId.value = normalized
   formKey.value += 1
   resetFileSelection()
+  void scrollToEditorTop()
 }
 
 function imageRemovingKey(categoryId: string, index: number) {
@@ -262,7 +274,7 @@ async function removeCategoryImage(category: (typeof productCategoryStore.itemsA
 </script>
 
 <template>
-  <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
+  <div ref="pageRootRef" class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
     <p v-if="!canManage" class="text-muted small mt-3">
       Questa sezione e riservata ad amministratori e super amministratori.
     </p>

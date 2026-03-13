@@ -70,6 +70,13 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
   },
   {
+    id: 'sepa-transfer-qr',
+    title: 'QR Bonifico',
+    to: { name: 'SepaTransferQrView' },
+    icon: 'qr_code_2',
+    iconClass: 'app-icon-sky',
+  },
+  {
     id: 'calendar',
     title: 'Calendario',
     to: { name: 'CalendarView' },

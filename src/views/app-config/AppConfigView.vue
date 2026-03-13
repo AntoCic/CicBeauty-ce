@@ -59,6 +59,9 @@ const schema = toTypedSchema(
     officeAddress: yup.string().trim().required("Campo obbligatorio"),
     publicPhone: yup.string().trim().required("Campo obbligatorio"),
     privacyEmail: yup.string().trim().email("Email non valida").required("Campo obbligatorio"),
+    sepaBeneficiaryName: yup.string().trim().default(""),
+    sepaBeneficiaryIban: yup.string().trim().default(""),
+    sepaBeneficiaryBic: yup.string().trim().default(""),
     pec: yup.string().trim().default(""),
     aiModel: yup.string().trim().required("Campo obbligatorio"),
     aiProvider: yup.string().trim().required("Campo obbligatorio"),
@@ -109,6 +112,9 @@ const initialValues = computed<AppConfigForm>(() => ({
   officeAddress: currentConfigData.value.officeAddress,
   publicPhone: currentConfigData.value.publicPhone,
   privacyEmail: currentConfigData.value.privacyEmail,
+  sepaBeneficiaryName: currentConfigData.value.sepaBeneficiaryName,
+  sepaBeneficiaryIban: currentConfigData.value.sepaBeneficiaryIban,
+  sepaBeneficiaryBic: currentConfigData.value.sepaBeneficiaryBic,
   pec: currentConfigData.value.pec,
   aiModel: currentConfigData.value.aiModel,
   aiProvider: currentConfigData.value.aiProvider,
@@ -158,6 +164,9 @@ async function onSubmit(values: Record<string, unknown>) {
     officeAddress: String(values.officeAddress ?? "").trim(),
     publicPhone: String(values.publicPhone ?? "").trim(),
     privacyEmail: String(values.privacyEmail ?? "").trim(),
+    sepaBeneficiaryName: String(values.sepaBeneficiaryName ?? "").trim(),
+    sepaBeneficiaryIban: String(values.sepaBeneficiaryIban ?? "").trim(),
+    sepaBeneficiaryBic: String(values.sepaBeneficiaryBic ?? "").trim(),
     pec: String(values.pec ?? "").trim(),
     aiModel: String(values.aiModel ?? "").trim(),
     aiProvider: String(values.aiProvider ?? "").trim(),
@@ -416,6 +425,63 @@ function resetFieldToDefault(field: AppConfigFieldKey, setFieldValue: (field: st
             </div>
             <Field name="pec" class="form-control" />
             <ErrorMessage name="pec" class="text-danger small" />
+          </div>
+        </div>
+      </section>
+
+      <section class="config-section">
+        <h2 class="h6 mb-3">Bonifico SEPA (EPC QR)</h2>
+        <p class="text-muted small mb-3">
+          Configura i dati del beneficiario usati nella pagina QR bonifico.
+        </p>
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <div class="field-title-row">
+              <label class="form-label mb-0">Nome beneficiario</label>
+              <Btn
+                v-if="hasDefaultForField('sepaBeneficiaryName')"
+                type="button"
+                color="secondary"
+                class="btn-sm"
+                @click="resetFieldToDefault('sepaBeneficiaryName', setFieldValue)"
+              >
+                Default
+              </Btn>
+            </div>
+            <Field name="sepaBeneficiaryName" class="form-control" placeholder="Es. CNC Beauty Srl" />
+            <ErrorMessage name="sepaBeneficiaryName" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="field-title-row">
+              <label class="form-label mb-0">IBAN beneficiario</label>
+              <Btn
+                v-if="hasDefaultForField('sepaBeneficiaryIban')"
+                type="button"
+                color="secondary"
+                class="btn-sm"
+                @click="resetFieldToDefault('sepaBeneficiaryIban', setFieldValue)"
+              >
+                Default
+              </Btn>
+            </div>
+            <Field name="sepaBeneficiaryIban" class="form-control" placeholder="IT00A0000000000000000000000" />
+            <ErrorMessage name="sepaBeneficiaryIban" class="text-danger small" />
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="field-title-row">
+              <label class="form-label mb-0">BIC/SWIFT (opzionale)</label>
+              <Btn
+                v-if="hasDefaultForField('sepaBeneficiaryBic')"
+                type="button"
+                color="secondary"
+                class="btn-sm"
+                @click="resetFieldToDefault('sepaBeneficiaryBic', setFieldValue)"
+              >
+                Default
+              </Btn>
+            </div>
+            <Field name="sepaBeneficiaryBic" class="form-control" placeholder="AAAAIT00XXX" />
+            <ErrorMessage name="sepaBeneficiaryBic" class="text-danger small" />
           </div>
         </div>
       </section>

@@ -192,6 +192,33 @@
   background: rgba(255, 255, 255, 0.94);
 }
 
+.home-btn--hero-attention {
+  animation: homeCtaPulse 2.2s ease-in-out infinite;
+}
+
+.home-btn--hero-attention-alt {
+  animation-delay: 1s;
+}
+
+@keyframes homeCtaPulse {
+  0%,
+  44%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(145, 80, 99, 0);
+    filter: saturate(1);
+  }
+
+  58% {
+    box-shadow: 0 8px 20px rgba(145, 80, 99, 0.2);
+    filter: saturate(1.06);
+  }
+
+  74% {
+    box-shadow: 0 4px 12px rgba(145, 80, 99, 0.12);
+    filter: saturate(1.03);
+  }
+}
+
 .home-inline-link {
   display: inline-flex;
   align-items: center;
@@ -1007,5 +1034,9 @@
   .home-service-card:focus-visible,
   .home-service-card.is-active {
     transform: none;
+  }
+
+  .home-btn--hero-attention {
+    animation: none !important;
   }
 }

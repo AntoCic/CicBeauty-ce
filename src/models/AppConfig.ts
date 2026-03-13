@@ -14,6 +14,9 @@ export type AppConfigFields = {
   officeAddress: string
   publicPhone: string
   privacyEmail: string
+  sepaBeneficiaryName: string
+  sepaBeneficiaryIban: string
+  sepaBeneficiaryBic: string
   pec: string
   aiModel: string
   aiProvider: string
@@ -56,6 +59,9 @@ export const APP_CONFIG_DEFAULTS: AppConfigFields = {
   officeAddress: 'Via Enrico de Nicola, 16, 92019 Sciacca AG',
   publicPhone: '+39 329 709 4859',
   privacyEmail: 'carla.ciancimino99@gmail.com',
+  sepaBeneficiaryName: '',
+  sepaBeneficiaryIban: '',
+  sepaBeneficiaryBic: '',
   pec: '',
   aiModel: 'gemini-2.5-flash-lite',
   aiProvider: 'Google Gemini API',
@@ -203,6 +209,9 @@ export class AppConfig extends FirestoreModel<AppConfigData> {
   officeAddress: string
   publicPhone: string
   privacyEmail: string
+  sepaBeneficiaryName: string
+  sepaBeneficiaryIban: string
+  sepaBeneficiaryBic: string
   pec: string
   aiModel: string
   aiProvider: string
@@ -241,6 +250,9 @@ export class AppConfig extends FirestoreModel<AppConfigData> {
     this.officeAddress = data.officeAddress ?? APP_CONFIG_DEFAULTS.officeAddress
     this.publicPhone = data.publicPhone ?? APP_CONFIG_DEFAULTS.publicPhone
     this.privacyEmail = data.privacyEmail ?? APP_CONFIG_DEFAULTS.privacyEmail
+    this.sepaBeneficiaryName = data.sepaBeneficiaryName ?? APP_CONFIG_DEFAULTS.sepaBeneficiaryName
+    this.sepaBeneficiaryIban = data.sepaBeneficiaryIban ?? APP_CONFIG_DEFAULTS.sepaBeneficiaryIban
+    this.sepaBeneficiaryBic = data.sepaBeneficiaryBic ?? APP_CONFIG_DEFAULTS.sepaBeneficiaryBic
     this.pec = data.pec ?? APP_CONFIG_DEFAULTS.pec
     this.aiModel = data.aiModel ?? APP_CONFIG_DEFAULTS.aiModel
     this.aiProvider = data.aiProvider ?? APP_CONFIG_DEFAULTS.aiProvider
@@ -285,6 +297,9 @@ export class AppConfig extends FirestoreModel<AppConfigData> {
       officeAddress: this.officeAddress,
       publicPhone: this.publicPhone,
       privacyEmail: this.privacyEmail,
+      sepaBeneficiaryName: this.sepaBeneficiaryName,
+      sepaBeneficiaryIban: this.sepaBeneficiaryIban,
+      sepaBeneficiaryBic: this.sepaBeneficiaryBic,
       pec: this.pec,
       aiModel: this.aiModel,
       aiProvider: this.aiProvider,
