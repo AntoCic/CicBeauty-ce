@@ -37,7 +37,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'ClientsView' },
     icon: 'groups',
     iconClass: 'app-icon-ocean',
-    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
+    permission: UserPermission.OPERATORE,
   },
   {
     id: 'products-manage',
@@ -83,7 +83,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'CalendarView' },
     icon: 'calendar_month',
     iconClass: 'app-icon-rose',
-    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
+    permission: UserPermission.OPERATORE,
   },
   {
     id: 'stats',

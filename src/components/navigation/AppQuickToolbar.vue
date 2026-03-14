@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { defaultUserPermission } from 'cic-kit'
 import { computed } from 'vue'
 import { RouterLink, useRoute, type RouteLocationRaw } from 'vue-router'
 import { UserPermission } from '../../enums/UserPermission'
@@ -15,7 +14,7 @@ type QuickNavItem = {
 }
 
 const route = useRoute()
-const betaOperatorPermission: AppPermissionInput = [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES]
+const operatorPermission: AppPermissionInput = UserPermission.OPERATORE
 
 const todayIsoDate = computed(() => {
   const now = new Date()
@@ -31,14 +30,14 @@ const quickNavItems = computed<QuickNavItem[]>(() => [
     label: 'Clienti',
     icon: 'groups',
     to: { name: 'ClientsView' },
-    permission: betaOperatorPermission,
+    permission: operatorPermission,
   },
   {
     id: 'today-appointments',
     label: 'Oggi',
     icon: 'today',
     to: { name: 'CalendarDayView', query: { date: todayIsoDate.value } },
-    permission: betaOperatorPermission,
+    permission: operatorPermission,
   },
   {
     id: 'home',
@@ -52,14 +51,14 @@ const quickNavItems = computed<QuickNavItem[]>(() => [
     label: 'Agenda',
     icon: 'calendar_month',
     to: { name: 'CalendarView' },
-    permission: betaOperatorPermission,
+    permission: operatorPermission,
   },
   {
     id: 'add-appointment',
     label: 'Nuovo',
     icon: 'add_circle',
     to: { name: 'AppointmentEditView', params: { id: 'new' }, query: { date: todayIsoDate.value } },
-    permission: betaOperatorPermission,
+    permission: operatorPermission,
   },
 ])
 
@@ -111,7 +110,7 @@ function isItemActive(item: QuickNavItem) {
           class="quick-toolbar__link quick-toolbar__link--disabled"
           :class="{ 'quick-toolbar__link--center': item.center }"
           :aria-label="`${item.label} disabilitato`"
-          :title="`${item.label}: richiede permessi beta`"
+          :title="`${item.label}: richiede permesso operatore`"
           disabled
         >
           <span class="material-symbols-outlined quick-toolbar__icon" aria-hidden="true">{{ item.icon }}</span>
