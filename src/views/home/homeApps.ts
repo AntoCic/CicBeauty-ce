@@ -201,7 +201,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'WhatsAppTemplatesView' },
     icon: 'chat',
     iconClass: 'app-icon-calm',
-    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
+    permission: defaultUserPermission.ADMIN,
     group: 'settings',
   },
   {

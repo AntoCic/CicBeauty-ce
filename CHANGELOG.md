@@ -1,3 +1,9 @@
+## v0.0.46 - 2026-03-14
+
+fix permission
+
+---
+
 ## v0.0.45 - 2026-03-14
 
 whatsapp old version

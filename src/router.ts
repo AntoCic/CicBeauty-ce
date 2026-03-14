@@ -155,7 +155,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/settings/agent-prompts', name: 'AgentPromptsView', component: AgentPromptsView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
   { path: '/settings/calendar-recurrences', name: 'CalendarRecurrenceRulesView', component: CalendarRecurrenceRulesView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
   { path: '/settings/catalog-backup', name: 'CatalogBackupView', component: CatalogBackupView, meta: { loginStatus: true, permission: defaultUserPermission.SUPERADMIN } },
-  { path: '/settings/whatsapp-templates', name: 'WhatsAppTemplatesView', component: WhatsAppTemplatesView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  { path: '/settings/whatsapp-templates', name: 'WhatsAppTemplatesView', component: WhatsAppTemplatesView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
   {
     path: '/ai/beauty-chat',
     name: 'AiBeautyChatView',

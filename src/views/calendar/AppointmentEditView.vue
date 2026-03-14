@@ -674,10 +674,6 @@ function onCancelEdit() {
   isEditMode.value = false
 }
 
-function openWhatsAppTemplates() {
-  void router.push({ name: 'WhatsAppTemplatesView' })
-}
-
 async function loadItem() {
   aiSuggestions.value = []
   aiClientContext.value = undefined
@@ -893,19 +889,7 @@ watch(() => route.params.id, loadItem)
 
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp :title="isCreateMode ? 'Nuovo appuntamento' : 'Appuntamento'" :to="{ name: 'CalendarView' }">
-      <div class="app-header__tools">
-        <button
-          type="button"
-          class="wa-template-shortcut"
-          aria-label="Gestisci template WhatsApp"
-          title="Template WhatsApp"
-          @click="openWhatsAppTemplates"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">chat</span>
-        </button>
-      </div>
-    </HeaderApp>
+    <HeaderApp :title="isCreateMode ? 'Nuovo appuntamento' : 'Appuntamento'" :to="{ name: 'CalendarView' }" />
 
     <div class="edit-wrapper mx-auto py-3">
       <p v-if="isLoading" class="text-muted small mt-3">Caricamento...</p>
@@ -1270,10 +1254,7 @@ watch(() => route.params.id, loadItem)
 
         <div v-if="!values.isPersonal" class="whatsapp-automation-box mt-3">
           <div class="whatsapp-automation-box__content">
-            <div>
-              <p class="whatsapp-automation-box__title mb-1">{{ saveWhatsAppLabel }}</p>
-              <small class="text-muted">Se attivo, apre WhatsApp dopo salvataggio riuscito.</small>
-            </div>
+            <p class="whatsapp-automation-box__title mb-0">{{ saveWhatsAppLabel }}</p>
 
             <label class="whatsapp-toggle" for="appointment-send-whatsapp-on-save">
               <input
@@ -1291,10 +1272,6 @@ watch(() => route.params.id, loadItem)
               </span>
             </label>
           </div>
-
-          <button type="button" class="whatsapp-automation-box__link" @click="openWhatsAppTemplates">
-            Modifica template messaggi
-          </button>
         </div>
 
         <div class="d-flex gap-2 mt-4 flex-wrap">
@@ -1440,50 +1417,28 @@ watch(() => route.params.id, loadItem)
   max-width: 760px;
 }
 
-.wa-template-shortcut {
-  width: 34px;
-  height: 34px;
-  border: 1px solid rgba(84, 44, 58, 0.32);
-  background: rgba(255, 255, 255, 0.72);
-  border-radius: 8px;
-  color: #4b2935;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
 .whatsapp-automation-box {
   border: 1px solid rgba(37, 126, 62, 0.28);
-  border-radius: 0.75rem;
+  border-radius: 0.6rem;
   background:
     radial-gradient(circle at 14% 12%, rgba(37, 211, 102, 0.2) 0%, transparent 58%),
     linear-gradient(165deg, rgba(255, 255, 255, 0.92) 0%, rgba(243, 252, 246, 0.9) 100%);
-  padding: 0.7rem;
+  padding: 0.45rem 0.5rem;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .whatsapp-automation-box__content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  gap: 0.55rem;
 }
 
 .whatsapp-automation-box__title {
-  font-size: 0.84rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: #1b5f2f;
-}
-
-.whatsapp-automation-box__link {
-  margin-top: 0.45rem;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  color: #1d743a;
-  font-size: 0.74rem;
-  text-decoration: underline;
 }
 
 .whatsapp-toggle {

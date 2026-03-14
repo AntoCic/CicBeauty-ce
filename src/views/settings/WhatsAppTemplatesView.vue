@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, toast, useChangeHeader, useStoreWatch } from 'cic-kit'
+import { Btn, cicKitStore, defaultUserPermission, toast, useChangeHeader, useStoreWatch } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -17,12 +17,12 @@ import {
   replaceWhatsAppPlaceholders,
   type WhatsAppTemplateVariables,
 } from '../../utils/whatsapp'
-import { hasBetaFeaturesAccess, hasOperatorAccess } from '../../utils/permissions'
+import { hasPermissionAccess } from '../../utils/permissions'
 
 useChangeHeader('Template WhatsApp', { name: 'CalendarView' })
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
-const canManage = computed(() => hasOperatorAccess() && hasBetaFeaturesAccess())
+const canManage = computed(() => hasPermissionAccess(defaultUserPermission.ADMIN))
 useStoreWatch(canManage.value ? [{ store: whatsAppTemplateStore }] : [])
 
 const templateSections = [
@@ -93,7 +93,7 @@ const previewVariables: WhatsAppTemplateVariables = {
   '[DATA]': '16/03/2026',
   '[ORA]': '15:30',
   '[DURATA]': '1h 15m',
-  '[PREZZO]': '€65,00',
+  '[PREZZO]': '\u20AC65,00',
   '[TRATTAMENTI]': 'Pulizia viso, Laminazione sopracciglia',
   '[INDIRIZZO]': 'Via Enrico de Nicola, 16',
 }
@@ -192,7 +192,7 @@ async function onSubmit(values: Record<string, unknown>) {
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
     <p v-if="!canManage" class="text-muted small mt-3">
-      Sezione disponibile solo per utenti operatore con beta features attive.
+      Sezione disponibile solo per utenti admin.
     </p>
 
     <Form
