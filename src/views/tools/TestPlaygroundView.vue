@@ -4,6 +4,11 @@ import { Timestamp } from 'firebase/firestore'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AiPromptLauncherCard from '../../components/ai/AiPromptLauncherCard.vue'
+import {
+  callListWhatsAppInboundMessages,
+  type WhatsAppInboundMessageItem,
+} from '../../call/callListWhatsAppInboundMessages'
+import { callSendWhatsAppTestMessage } from '../../call/callSendWhatsAppTestMessage'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { Auth } from '../../main'
 import { appointmentStore } from '../../stores/appointmentStore'
@@ -19,6 +24,10 @@ const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const runningAction = ref('')
 const actionLog = ref<string[]>([])
+const whatsappTestRecipient = '+393295436315'
+const whatsappTestText = 'sono un test'
+const whatsappInboundMessages = ref<WhatsAppInboundMessageItem[]>([])
+const whatsappInboundFetchedAt = ref('')
 
 const femaleNames = ['Giulia', 'Martina', 'Elisa', 'Francesca', 'Sara', 'Alessia', 'Marta']
 const maleNames = ['Luca', 'Marco', 'Andrea', 'Davide', 'Matteo', 'Simone', 'Gabriele']
@@ -322,6 +331,20 @@ function pushLog(message: string) {
 function actionErrorMessage(error: unknown) {
   if (error instanceof Error && normalizeString(error.message)) return error.message
   return 'Errore inatteso'
+}
+
+function formatDateTime(value: string | undefined) {
+  const normalized = normalizeString(value)
+  if (!normalized) return '-'
+  const date = new Date(normalized)
+  if (Number.isNaN(date.getTime())) return normalized
+  return date.toLocaleString('it-IT', { hour12: false })
+}
+
+function inboundSenderLabel(item: WhatsAppInboundMessageItem) {
+  const name = normalizeString(item.fromName)
+  const from = normalizeString(item.from)
+  return name ? `${name} (${from})` : from || 'mittente sconosciuto'
 }
 
 async function runAction(actionId: string, label: string, callback: () => Promise<void>) {
@@ -941,6 +964,27 @@ async function onGenerateAppointmentsByCheckedMonthsFromForm() {
     pushLog(`Form mesi check: creati ${totalCreated} appuntamenti`)
   })
 }
+
+async function onSendWhatsAppTestMessage() {
+  await runAction('whatsapp-test-message', 'Invio test WhatsApp', async () => {
+    const response = await callSendWhatsAppTestMessage()
+    console.info('WhatsApp test response', response)
+    toast.success(`WhatsApp OK (${response.status}) - ${response.recipient}`)
+    pushLog(
+      `WhatsApp OK status=${response.status}, to=${response.recipient}, id=${response.messageId || 'messageId assente'}`,
+    )
+  })
+}
+
+async function onLoadWhatsAppInboundMessages() {
+  await runAction('whatsapp-inbound-load', 'Lettura inbox WhatsApp', async () => {
+    const response = await callListWhatsAppInboundMessages({ limit: 30 })
+    whatsappInboundMessages.value = response.items
+    whatsappInboundFetchedAt.value = new Date().toISOString()
+    toast.success(`Messaggi inbound caricati: ${response.count}`)
+    pushLog(`WhatsApp inbound caricati (${response.count})`)
+  })
+}
 </script>
 
 <template>
@@ -1334,6 +1378,52 @@ async function onGenerateAppointmentsByCheckedMonthsFromForm() {
               </Btn>
             </div>
           </form>
+        </div>
+      </section>
+
+      <section class="card border-0 shadow-sm p-3 p-md-4 mt-3">
+        <h2 class="h6 text-uppercase mb-1">WhatsApp Test</h2>
+        <p class="small text-muted mb-3">
+          Invia al click il testo "<strong>{{ whatsappTestText }}</strong>" al numero
+          <strong>{{ whatsappTestRecipient }}</strong> tramite Cloud Function.
+        </p>
+        <div class="playground-actions">
+          <Btn
+            type="button"
+            color="dark"
+            icon="chat"
+            :loading="isActionBusy('whatsapp-test-message')"
+            :disabled="isActionDisabled('whatsapp-test-message')"
+            @click="onSendWhatsAppTestMessage"
+          >
+            Invia test WhatsApp
+          </Btn>
+          <Btn
+            type="button"
+            color="dark"
+            icon="inbox"
+            :loading="isActionBusy('whatsapp-inbound-load')"
+            :disabled="isActionDisabled('whatsapp-inbound-load')"
+            @click="onLoadWhatsAppInboundMessages"
+          >
+            Aggiorna messaggi ricevuti
+          </Btn>
+        </div>
+        <p class="small text-muted mb-2 mt-3">
+          Ultimo aggiornamento inbox: {{ formatDateTime(whatsappInboundFetchedAt) }}
+        </p>
+        <p v-if="!whatsappInboundMessages.length" class="small text-muted mb-0">
+          Nessun messaggio inbound disponibile.
+        </p>
+        <div v-else class="playground-log">
+          <div v-for="item in whatsappInboundMessages" :key="item.id" class="playground-log__row">
+            <strong>{{ inboundSenderLabel(item) }}</strong> |
+            <span>tipo {{ item.type }}</span> |
+            <span>{{ formatDateTime(item.receivedAt || item.timestamp) }}</span>
+            <div v-if="item.textPreview" class="small text-muted">
+              {{ item.textPreview }}
+            </div>
+          </div>
         </div>
       </section>
 

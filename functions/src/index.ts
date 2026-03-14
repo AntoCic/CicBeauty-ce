@@ -6,6 +6,11 @@ import { publishProjectMessage, relayProjectMessage } from './agents/projectMess
 import { availabilityAgent } from './agents/availabilityAgent.js';
 import { syncAppointmentGoogleCalendar, syncGoogleCalendarAcl } from './agents/googleCalendarSync.js';
 import { legacyTreatmentMapper } from './agents/legacyTreatmentMapper.js';
+import { sendWhatsAppTestMessage } from './agents/sendWhatsAppTestMessage.js';
+import {
+  listWhatsAppInboundMessages,
+  whatsAppInboundWebhook,
+} from './agents/whatsAppInboundWebhook.js';
 import { REGION } from './config/runtime.js';
 
 const { sendUserPush, syncPublicUser } = cicInit({
@@ -25,4 +30,7 @@ export {
   syncAppointmentGoogleCalendar,
   syncGoogleCalendarAcl,
   legacyTreatmentMapper,
+  sendWhatsAppTestMessage,
+  whatsAppInboundWebhook,
+  listWhatsAppInboundMessages,
 };

@@ -251,6 +251,13 @@ function formatHour(date: Date) {
   return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
 }
 
+function dayKey(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function formatCurrency(value: number) {
   return currencyFormatter.format(normalizeMoney(value))
 }
@@ -309,11 +316,34 @@ function createFromSlot(slotStart: Date) {
   })
 }
 
+function createFromSelectedDay() {
+  router.push({
+    name: 'AppointmentEditView',
+    params: { id: 'new' },
+    query: {
+      date: dayKey(selectedDate.value),
+      operatorId: selectedOperatorId.value || undefined,
+    },
+  })
+}
+
 </script>
 
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp title="Dettaglio giorno" :to="{ name: 'CalendarView' }" />
+    <HeaderApp title="Dettaglio giorno" :to="{ name: 'CalendarView' }">
+      <div class="app-header__tools">
+        <button
+          type="button"
+          class="day-header-create-btn"
+          aria-label="Aggiungi appuntamento nel giorno selezionato"
+          title="Nuovo appuntamento"
+          @click="createFromSelectedDay"
+        >
+          <span class="material-symbols-outlined day-header-create-btn__icon" aria-hidden="true">event_available</span>
+        </button>
+      </div>
+    </HeaderApp>
 
     <div class="px-2 pb-4">
       <div class="card border-0 shadow-sm p-3 mb-2">
@@ -389,6 +419,25 @@ function createFromSlot(slotStart: Date) {
   padding: 0.65rem;
   cursor: pointer;
   background: #fff;
+}
+
+.day-header-create-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(84, 44, 58, 0.32);
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+  color: #4b2935;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.day-header-create-btn__icon {
+  font-size: 1.2rem;
+  line-height: 1;
 }
 
 .appointment-edit-btn {

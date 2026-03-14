@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Dati bonifico CNC Beauty</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f8f5ef;
+        --card: #ffffff;
+        --ink: #201a12;
+        --muted: #736455;
+        --line: #e6ddd1;
+        --brand: #7a4f16;
+        --brand-2: #b27a2e;
+        font-family: "Segoe UI", Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100svh;
+        display: grid;
+        place-items: center;
+        padding: 1.2rem;
+        background:
+          radial-gradient(1200px 500px at 10% -10%, #fff6e8 0%, transparent 60%),
+          radial-gradient(900px 450px at 110% 110%, #f1dfc2 0%, transparent 60%),
+          var(--bg);
+        color: var(--ink);
+      }
+
+      .card {
+        width: min(100%, 34rem);
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: 0 10px 30px rgba(56, 34, 12, 0.08);
+        padding: 1rem;
+      }
+
+      h1 {
+        margin: 0 0 0.35rem;
+        font-size: 1.15rem;
+      }
+
+      .sub {
+        margin: 0 0 1rem;
+        color: var(--muted);
+        font-size: 0.93rem;
+        line-height: 1.4;
+      }
+
+      .row {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 0.72rem;
+        margin: 0.6rem 0;
+        background: #fffdfa;
+      }
+
+      .label {
+        margin: 0 0 0.22rem;
+        color: var(--muted);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .value {
+        margin: 0;
+        font-size: 1rem;
+        line-height: 1.35;
+        word-break: break-word;
+      }
+
+      .value--iban {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        letter-spacing: 0.02em;
+      }
+
+      .row-actions {
+        margin-top: 0.56rem;
+      }
+
+      button {
+        border: 0;
+        border-radius: 9px;
+        padding: 0.56rem 0.78rem;
+        font-size: 0.88rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .copy-btn {
+        background: #f4ebe0;
+        color: #5a3b13;
+      }
+
+      .copy-btn:hover {
+        background: #eee0cf;
+      }
+
+      .copy-all {
+        margin-top: 0.8rem;
+        width: 100%;
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        color: #fff;
+      }
+
+      .status {
+        min-height: 1.2rem;
+        margin: 0.62rem 0 0;
+        color: #166534;
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Dati per bonifico</h1>
+      <p class="sub">Tocca il pulsante per copiare subito il valore che ti serve.</p>
+
+      <section class="row">
+        <p class="label">Beneficiario</p>
+        <p id="beneficiario" class="value">Carla Ciancimino</p>
+        <div class="row-actions">
+          <button type="button" class="copy-btn" data-copy-id="beneficiario">Copia beneficiario</button>
+        </div>
+      </section>
+
+      <section class="row">
+        <p class="label">IBAN</p>
+        <p id="iban" class="value value--iban">IT81K0306234210000003147769</p>
+        <div class="row-actions">
+          <button type="button" class="copy-btn" data-copy-id="iban">Copia IBAN</button>
+        </div>
+      </section>
+
+      <section class="row">
+        <p class="label">Causale</p>
+        <p id="causale" class="value">Acquisto CNC Beauty</p>
+        <div class="row-actions">
+          <button type="button" class="copy-btn" data-copy-id="causale">Copia causale</button>
+        </div>
+      </section>
+
+      <button type="button" id="copyAll" class="copy-all">Copia tutto</button>
+      <p id="status" class="status" aria-live="polite"></p>
+    </main>
+
+    <script>
+      (function () {
+        var statusEl = document.getElementById("status");
+
+        function setStatus(message, isError) {
+          if (!statusEl) return;
+          statusEl.textContent = message || "";
+          statusEl.style.color = isError ? "#9f1f31" : "#166534";
+        }
+
+        async function copyText(text, successMessage) {
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(text);
+            } else {
+              var area = document.createElement("textarea");
+              area.value = text;
+              area.setAttribute("readonly", "");
+              area.style.position = "fixed";
+              area.style.opacity = "0";
+              document.body.appendChild(area);
+              area.select();
+              document.execCommand("copy");
+              document.body.removeChild(area);
+            }
+            setStatus(successMessage || "Copiato.");
+          } catch (_error) {
+            setStatus("Copia non riuscita. Riprova.", true);
+          }
+        }
+
+        document.querySelectorAll("[data-copy-id]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var id = btn.getAttribute("data-copy-id");
+            var el = id ? document.getElementById(id) : null;
+            if (!el) return;
+            copyText((el.textContent || "").trim(), "Copiato: " + (el.textContent || "").trim());
+          });
+        });
+
+        var copyAll = document.getElementById("copyAll");
+        if (copyAll) {
+          copyAll.addEventListener("click", function () {
+            var text = [
+              "Beneficiario: Carla Ciancimino",
+              "IBAN: IT81K0306234210000003147769",
+              "Causale: Acquisto CNC Beauty",
+            ].join("\n");
+            copyText(text, "Copiati tutti i dati del bonifico.");
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

@@ -30,9 +30,9 @@ ensure_npm_ci() {
 
   if [ "$should_install" = "true" ]; then
     if [ "$workspace" = "/workspace" ]; then
-      npm ci --no-audit --no-fund
+      npm ci --no-audit --no-fund --prefer-offline --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --fetch-timeout=120000
     else
-      npm ci --prefix "$workspace" --no-audit --no-fund
+      npm ci --prefix "$workspace" --no-audit --no-fund --prefer-offline --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --fetch-timeout=120000
     fi
 
     if [ -n "$current_hash" ]; then

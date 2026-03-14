@@ -1,8 +1,15 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { google } from 'googleapis';
+import { createHash } from 'node:crypto';
 import { db } from '../config/firebaseAdmin.js';
 import { REGION } from '../config/runtime.js';
+import {
+  GOOGLE_SERVICE_ACCOUNT_EMAIL,
+  GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
+  HUBCORTEX_API_KEY,
+} from '../config/secret.js';
+import { hub } from '../utils/hub.js';
 
 type AppointmentData = {
   date_time?: unknown;
@@ -36,80 +43,115 @@ const CALENDAR_ACL_ROLE_SET = new Set<CalendarAclRole>([
 ]);
 const DEFAULT_CALENDAR_ACL_ROLE: CalendarAclRole = 'writer';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CALENDAR_EVENT_ID_REGEX = /^[a-v0-9]{5,1024}$/;
+const GOOGLE_CALENDAR_RUNTIME_SECRETS = [
+  GOOGLE_SERVICE_ACCOUNT_EMAIL,
+  GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
+  HUBCORTEX_API_KEY,
+];
 
 export const syncAppointmentGoogleCalendar = onDocumentWritten(
   {
     region: REGION,
     document: 'appointments/{appointmentId}',
+    secrets: GOOGLE_CALENDAR_RUNTIME_SECRETS,
   },
   async (event) => {
-    const appConfig = await db.collection('appConfig').doc('main').get();
-    const config = (appConfig.data() ?? {}) as Record<string, unknown>;
-    const syncEnabled = Boolean(config.googleCalendarSyncEnabled);
-    const calendarId = normalizeString(config.googleCalendarId);
-    const timeZone = normalizeString(config.businessTimezone) || 'Europe/Rome';
-    if (!syncEnabled || !calendarId) {
-      return;
-    }
-
-    const calendar = getCalendarClient();
-    if (!calendar) {
-      console.warn('Google Calendar sync skipped: missing service account env vars.');
-      return;
-    }
-
-    const appointmentId = normalizeString(event.params.appointmentId);
-    if (!appointmentId) return;
-    const eventId = buildEventId(appointmentId);
-
-    const afterData = event.data?.after?.data() as AppointmentData | undefined;
-    if (!afterData) {
-      await safeDeleteEvent(calendar, calendarId, eventId);
-      return;
-    }
-
-    const start = toDate(afterData.date_time);
-    if (!start) {
-      console.warn(`Google Calendar sync skipped: invalid start date for ${appointmentId}`);
-      return;
-    }
-
-    const defaultDuration = Number(config.defaultAppointmentDurationMinutes ?? 60);
-    const end =
-      toDate(afterData.end_time) ??
-      new Date(
-        start.getTime() +
-          resolveDurationMinutes(afterData, defaultDuration) * MINUTE_MS,
-      );
-
-    const summary = await buildSummary(afterData);
-    const description = buildDescription(afterData);
-
-    const requestBody = {
-      summary,
-      description,
-      start: { dateTime: start.toISOString(), timeZone },
-      end: { dateTime: end.toISOString(), timeZone },
-    };
+    const appointmentId = normalizeString(event.params.appointmentId) || 'unknown';
 
     try {
-      await calendar.events.update({
-        calendarId,
-        eventId,
-        requestBody,
+      const appConfig = await db.collection('appConfig').doc('main').get();
+      const config = (appConfig.data() ?? {}) as Record<string, unknown>;
+      const syncEnabled = Boolean(config.googleCalendarSyncEnabled);
+      const calendarId = normalizeString(config.googleCalendarId);
+      const timeZone = normalizeString(config.businessTimezone) || 'Europe/Rome';
+      if (!syncEnabled || !calendarId) {
+        await hub.warning({
+          message: `:warning: Google Calendar sync saltata per appointment ${appointmentId}. syncEnabled=${syncEnabled}, calendarId=${calendarId || '(vuoto)'}.`,
+        });
+        return;
+      }
+
+      const calendar = getCalendarClient();
+      if (!calendar) {
+        const message =
+          ':warning: Google Calendar sync saltata: secret mancanti GOOGLE_SERVICE_ACCOUNT_EMAIL/GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.';
+        console.warn(message);
+        await hub.error({
+          message,
+        });
+        return;
+      }
+
+      const eventId = buildEventId(appointmentId);
+      const afterData = event.data?.after?.data() as AppointmentData | undefined;
+      if (!afterData) {
+        await safeDeleteEvent(calendar, calendarId, eventId);
+        await hub.info({
+          message: `:wastebasket: Evento Google Calendar eliminato (${eventId}) per appointment ${appointmentId}.`,
+        });
+        return;
+      }
+
+      const start = toDate(afterData.date_time);
+      if (!start) {
+        const message =
+          `:warning: Google Calendar sync saltata per appointment ${appointmentId}: ` +
+          `campo date_time non valido (${describeDateValue(afterData.date_time)}).`;
+        console.warn(message);
+        await hub.warning({ message });
+        return;
+      }
+
+      const defaultDuration = Number(config.defaultAppointmentDurationMinutes ?? 60);
+      const end =
+        toDate(afterData.end_time) ??
+        new Date(
+          start.getTime() +
+            resolveDurationMinutes(afterData, defaultDuration) * MINUTE_MS,
+        );
+
+      const summary = await buildSummary(afterData);
+      const description = buildDescription(afterData);
+
+      const requestBody = {
+        summary,
+        description,
+        start: { dateTime: start.toISOString(), timeZone },
+        end: { dateTime: end.toISOString(), timeZone },
+      };
+
+      let operation: 'update' | 'insert' = 'update';
+      try {
+        await calendar.events.update({
+          calendarId,
+          eventId,
+          requestBody,
+        });
+      } catch (error) {
+        const status = readErrorStatus(error);
+        if (status !== 404) {
+          throw error;
+        }
+        operation = 'insert';
+        await calendar.events.insert({
+          calendarId,
+          requestBody: {
+            id: eventId,
+            ...requestBody,
+          },
+        });
+      }
+
+      await hub.info({
+        message: `:white_check_mark: Google Calendar sync ok (${operation}) appointment ${appointmentId}, eventId ${eventId}, calendar ${calendarId}.`,
       });
     } catch (error) {
-      const status = readErrorStatus(error);
-      if (status !== 404) {
-        throw error;
-      }
-      await calendar.events.insert({
-        calendarId,
-        requestBody: {
-          id: eventId,
-          ...requestBody,
-        },
+      const details = formatErrorDetails(error);
+      await hub.error({
+        message: `:x: Google Calendar sync errore su appointment ${appointmentId}. ${details}`,
       });
+      throw error;
     }
   },
 );
@@ -118,46 +160,72 @@ export const syncGoogleCalendarAcl = onDocumentWritten(
   {
     region: REGION,
     document: 'appConfig/main',
+    secrets: GOOGLE_CALENDAR_RUNTIME_SECRETS,
   },
   async (event) => {
-    const afterConfig = (event.data?.after?.data() ?? {}) as AppConfigGoogleData;
-    const beforeConfig = (event.data?.before?.data() ?? {}) as AppConfigGoogleData;
-    if (buildAclSignature(beforeConfig) === buildAclSignature(afterConfig)) {
-      return;
+    try {
+      const afterConfig = (event.data?.after?.data() ?? {}) as AppConfigGoogleData;
+      const beforeConfig = (event.data?.before?.data() ?? {}) as AppConfigGoogleData;
+      if (buildAclSignature(beforeConfig) === buildAclSignature(afterConfig)) {
+        return;
+      }
+
+      const calendarId = normalizeString(afterConfig.googleCalendarId);
+      if (!calendarId) {
+        await hub.warning({
+          message: ':warning: Google Calendar ACL sync saltata: googleCalendarId vuoto.',
+        });
+        return;
+      }
+
+      const calendar = getCalendarClient();
+      if (!calendar) {
+        const message =
+          ':warning: Google Calendar ACL sync saltata: secret mancanti GOOGLE_SERVICE_ACCOUNT_EMAIL/GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.';
+        console.warn(message);
+        await hub.error({
+          message,
+        });
+        return;
+      }
+
+      const desiredRole = normalizeAclRole(afterConfig.googleCalendarAccessRole);
+      const desiredEmails = parseAclEmails(afterConfig.googleCalendarAllowedEmailsCsv);
+      const protectedEmails = getProtectedAclEmails();
+
+      const result = await reconcileCalendarAcl({
+        calendar,
+        calendarId,
+        desiredEmails,
+        desiredRole,
+        protectedEmails,
+      });
+
+      const message =
+        `:white_check_mark: Google Calendar ACL sync ok su ${calendarId}. ` +
+        `desired=${desiredEmails.length}, inserted=${result.inserted}, ` +
+        `updated=${result.updated}, deleted=${result.deleted}.`;
+      console.info(message);
+      await hub.info({ message });
+    } catch (error) {
+      const details = formatErrorDetails(error);
+      await hub.error({
+        message: `:x: Google Calendar ACL sync errore. ${details}`,
+      });
+      throw error;
     }
-
-    const calendarId = normalizeString(afterConfig.googleCalendarId);
-    if (!calendarId) {
-      return;
-    }
-
-    const calendar = getCalendarClient();
-    if (!calendar) {
-      console.warn('Google Calendar ACL sync skipped: missing service account env vars.');
-      return;
-    }
-
-    const desiredRole = normalizeAclRole(afterConfig.googleCalendarAccessRole);
-    const desiredEmails = parseAclEmails(afterConfig.googleCalendarAllowedEmailsCsv);
-    const protectedEmails = getProtectedAclEmails();
-
-    const result = await reconcileCalendarAcl({
-      calendar,
-      calendarId,
-      desiredEmails,
-      desiredRole,
-      protectedEmails,
-    });
-
-    console.info(
-      `Google Calendar ACL synced for ${calendarId}: desired=${desiredEmails.length}, inserted=${result.inserted}, updated=${result.updated}, deleted=${result.deleted}`,
-    );
   },
 );
 
 function getCalendarClient() {
-  const clientEmail = normalizeString(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
-  const privateKeyRaw = normalizeString(process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY);
+  const clientEmail = readSecretValue(
+    () => GOOGLE_SERVICE_ACCOUNT_EMAIL.value(),
+    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+  );
+  const privateKeyRaw = readSecretValue(
+    () => GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.value(),
+    process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
+  );
   const subject = normalizeString(process.env.GOOGLE_CALENDAR_IMPERSONATED_USER);
   if (!clientEmail || !privateKeyRaw) return null;
 
@@ -176,19 +244,82 @@ function normalizeString(value: unknown) {
   return String(value ?? '').trim();
 }
 
+function readSecretValue(secretGetter: () => string, fallbackEnv: string | undefined) {
+  try {
+    const direct = normalizeString(secretGetter());
+    if (direct) return direct;
+  } catch {
+    // fall back to env vars when secret is not available in local runtimes
+  }
+  return normalizeString(fallbackEnv);
+}
+
 function toDate(value: unknown) {
   if (!value) return undefined;
   if (value instanceof Date) return value;
   if (value instanceof Timestamp) return value.toDate();
+
+  if (typeof value === 'object' && value) {
+    const valueAsObject = value as Record<string, unknown>;
+
+    const toDateFn = valueAsObject.toDate;
+    if (typeof toDateFn === 'function') {
+      try {
+        const date = toDateFn.call(valueAsObject) as Date;
+        if (date instanceof Date && !Number.isNaN(date.getTime())) {
+          return date;
+        }
+      } catch {
+        // continue with other parsing strategies
+      }
+    }
+
+    const milliseconds = Number(
+      valueAsObject._milliseconds ??
+      valueAsObject.milliseconds ??
+      valueAsObject.millis ??
+      Number.NaN,
+    );
+    if (Number.isFinite(milliseconds)) {
+      const date = new Date(milliseconds);
+      if (!Number.isNaN(date.getTime())) return date;
+    }
+
+    const seconds = Number(
+      valueAsObject._seconds ??
+      valueAsObject.seconds ??
+      Number.NaN,
+    );
+    const nanoseconds = Number(
+      valueAsObject._nanoseconds ??
+      valueAsObject.nanoseconds ??
+      valueAsObject.nanos ??
+      0,
+    );
+    if (Number.isFinite(seconds) && Number.isFinite(nanoseconds)) {
+      const date = new Date(seconds * 1000 + Math.floor(nanoseconds / 1_000_000));
+      if (!Number.isNaN(date.getTime())) return date;
+    }
+  }
+
   if (typeof value === 'string' || typeof value === 'number') {
     const next = new Date(value);
     return Number.isNaN(next.getTime()) ? undefined : next;
   }
-  if (typeof value === 'object' && value && 'toDate' in value) {
-    const date = (value as { toDate: () => Date }).toDate();
-    return Number.isNaN(date.getTime()) ? undefined : date;
-  }
   return undefined;
+}
+
+function describeDateValue(value: unknown) {
+  if (value == null) return 'null/undefined';
+  if (value instanceof Date) return `Date(${value.toISOString()})`;
+  if (value instanceof Timestamp) return 'firebase-admin Timestamp';
+  if (typeof value === 'string') return `string(${value.slice(0, 64)})`;
+  if (typeof value === 'number') return `number(${value})`;
+  if (typeof value === 'object') {
+    const keys = Object.keys(value as Record<string, unknown>).slice(0, 8).join(',');
+    return `object(keys=${keys || 'none'})`;
+  }
+  return typeof value;
 }
 
 function resolveDurationMinutes(data: AppointmentData, fallback: number) {
@@ -202,11 +333,26 @@ function resolveDurationMinutes(data: AppointmentData, fallback: number) {
 }
 
 function buildEventId(appointmentId: string) {
-  const normalized = appointmentId
+  const legacyNormalized = appointmentId
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '')
     .slice(0, 900);
-  return `cb${normalized || 'appointment'}`;
+  const legacyEventId = `cb${legacyNormalized || 'appointment'}`;
+  if (isValidCalendarEventId(legacyEventId)) {
+    return legacyEventId;
+  }
+
+  // Google Calendar event.id accetta solo [a-v0-9].
+  // Usiamo un hash deterministicamente stabile e sempre valido.
+  const stableHash = createHash('sha1')
+    .update(appointmentId || 'appointment')
+    .digest('hex')
+    .slice(0, 64);
+  return `cb${stableHash}`;
+}
+
+function isValidCalendarEventId(value: string) {
+  return CALENDAR_EVENT_ID_REGEX.test(normalizeString(value));
 }
 
 function readErrorStatus(error: unknown) {
@@ -313,10 +459,33 @@ function buildAclSignature(config: AppConfigGoogleData) {
 function getProtectedAclEmails() {
   return new Set(
     [
-      normalizeEmail(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL),
+      normalizeEmail(
+        readSecretValue(
+          () => GOOGLE_SERVICE_ACCOUNT_EMAIL.value(),
+          process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        ),
+      ),
       normalizeEmail(process.env.GOOGLE_CALENDAR_IMPERSONATED_USER),
     ].filter(Boolean),
   );
+}
+
+function formatErrorDetails(error: unknown) {
+  if (!error) return 'Errore sconosciuto.';
+  if (error instanceof Error) {
+    const message = normalizeString(error.message);
+    if (message) return message;
+    return error.name || 'Errore sconosciuto.';
+  }
+  if (typeof error === 'string') {
+    return normalizeString(error) || 'Errore sconosciuto.';
+  }
+  try {
+    const serialized = JSON.stringify(error);
+    return normalizeString(serialized) || 'Errore sconosciuto.';
+  } catch {
+    return 'Errore sconosciuto.';
+  }
 }
 
 async function listUserAclRules(calendar: CalendarClient, calendarId: string) {

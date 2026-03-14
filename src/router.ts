@@ -144,7 +144,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/clients', name: 'ClientsView', component: ClientsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/clients/:id', name: 'ClientEditView', component: ClientEditView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/expenses', name: 'ExpensesView', component: ExpensesView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
-  { path: '/payments/sepa-qr', name: 'SepaTransferQrView', component: SepaTransferQrView, meta: { loginStatus: true } },
+  { path: '/payments/sepa-qr', name: 'SepaTransferQrView', component: SepaTransferQrView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
   { path: '/coupons', name: 'CouponsView', component: CouponsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/stats', name: 'StatsView', component: StatsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/relations', name: 'RelationsView', component: RelationsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },

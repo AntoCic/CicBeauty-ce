@@ -75,6 +75,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'SepaTransferQrView' },
     icon: 'qr_code_2',
     iconClass: 'app-icon-sky',
+    permission: defaultUserPermission.BETA_FEATURES,
   },
   {
     id: 'calendar',

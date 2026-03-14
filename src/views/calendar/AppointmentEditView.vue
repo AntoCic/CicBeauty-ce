@@ -20,7 +20,7 @@ import { treatmentStore } from '../../stores/treatmentStore'
 import { appointmentPersonalOwnerId, isPersonalAppointment } from '../../utils/appointmentVisibility'
 import { computeAppointmentDurationMinutes, fromDateTimeLocalValue, toDateTimeLocalValue } from '../../utils/calendar'
 import { asDate } from '../../utils/date'
-import { hasAiAndOperatorAccess } from '../../utils/permissions'
+import { hasAiAndOperatorAccess, hasBetaFeaturesAccess } from '../../utils/permissions'
 import ClientPersonCard from '../clients/components/ClientPersonCard.vue'
 import AppointmentDetailsCard from './components/AppointmentDetailsCard.vue'
 import AppointmentOperatorCard from './components/AppointmentOperatorCard.vue'
@@ -45,6 +45,7 @@ const route = useRoute()
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const canUseAvailabilityAi = computed(() => hasAiAndOperatorAccess())
+const canUseAvailabilityAgent = computed(() => canUseAvailabilityAi.value && hasBetaFeaturesAccess())
 
 const current = ref<Appointment | undefined>(undefined)
 const isLoading = ref(false)
@@ -128,6 +129,7 @@ const initialValues = computed<AppointmentForm>(() => {
     coupon_id: String(current.value?.coupon_id ?? ''),
   }
 })
+const shouldOpenNotesAccordion = computed(() => hasMeaningfulNote(initialValues.value.notes))
 
 const treatmentsById = computed(() => new Map(treatmentStore.itemsActiveArray.map((item) => [item.id, item])))
 const clientsById = computed(() => new Map(clientStore.itemsActiveArray.map((item) => [item.id, item])))
@@ -268,6 +270,19 @@ function normalizeNoteForSave(value: unknown) {
   const normalized = normalizeString(value)
   if (!normalized || normalized === EMPTY_NOTE_HTML) return ''
   return normalized
+}
+
+function hasMeaningfulNote(value: unknown) {
+  const normalized = normalizeString(value)
+  if (!normalized || normalized === EMPTY_NOTE_HTML || normalized === '<p><br></p>') return false
+
+  const plainText = normalized
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .trim()
+
+  return plainText.length > 0
 }
 
 function defaultUpdateBy() {
@@ -711,8 +726,8 @@ function applySuggestion(value: string, setFieldValue: (field: string, value: un
 }
 
 async function requestAiSuggestions(values: Record<string, unknown>) {
-  if (!canUseAvailabilityAi.value) {
-    toast.error('Permessi AI + OPERATORE richiesti')
+  if (!canUseAvailabilityAgent.value) {
+    toast.error('Permessi AI + OPERATORE + beta_feature richiesti')
     return
   }
 
@@ -1036,21 +1051,28 @@ watch(() => route.params.id, loadItem)
           </div>
 
           <div class="col-12">
-            <FieldTiptap
-              name="notes"
-              label="Note"
-              :required="false"
-              :show-errors="false"
-              :model-value="normalizeNoteForEditor(values.notes)"
-              toolbar-sticky-on="top"
-              @update:model-value="(value) => setFieldValue('notes', value)"
-            />
-            <ErrorMessage name="notes" class="text-danger small" />
+            <Accordion
+              id="appointment-notes-accordion"
+              title="Note"
+              :defaultOpen="shouldOpenNotesAccordion"
+              class="appointment-filter-accordion"
+            >
+              <FieldTiptap
+                name="notes"
+                label="Note"
+                :required="false"
+                :show-errors="false"
+                :model-value="normalizeNoteForEditor(values.notes)"
+                toolbar-sticky-on="top"
+                @update:model-value="(value) => setFieldValue('notes', value)"
+              />
+              <ErrorMessage name="notes" class="text-danger small" />
+            </Accordion>
           </div>
 
         </div>
 
-        <div v-if="canUseAvailabilityAi && !values.isPersonal" class="card border-0 bg-light mt-3 p-3">
+        <div v-if="canUseAvailabilityAgent && !values.isPersonal" class="card border-0 bg-light mt-3 p-3">
           <div class="d-flex justify-content-between align-items-center gap-2">
             <strong>Agente disponibilita</strong>
             <Btn type="button" color="dark" icon="psychology" :loading="isAiLoading" @click="requestAiSuggestions(values)">
@@ -1058,7 +1080,7 @@ watch(() => route.params.id, loadItem)
             </Btn>
           </div>
           <small class="text-muted d-block mt-1">
-            Richiede permessi AI + OPERATORE. Tiene conto di trattamenti e durata stimata.
+            Richiede permessi AI + OPERATORE + beta_feature. Tiene conto di trattamenti e durata stimata.
           </small>
 
           <div v-if="aiClientContext" class="mt-2 small">

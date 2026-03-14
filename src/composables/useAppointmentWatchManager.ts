@@ -40,6 +40,7 @@ const calendarVisibleMonthByReason = new Map<string, string>()
 const calendarFromByReason = new Map<string, Date>()
 const activeMonthKeys = new Set<string>()
 const loadedMonthKeys = new Set<string>()
+let queryInteropDisabled = false
 
 let appliedMode = 'idle'
 let appliedReason = ''
@@ -135,6 +136,20 @@ function buildRangeOpts(from: Date, to?: Date): GetProps {
   }
 }
 
+function isQueryInteropError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? '')
+  return (
+    message.includes('INTERNAL ASSERTION FAILED') &&
+    message.includes('filters is not iterable')
+  )
+}
+
+function withoutQuery(opts: GetProps): GetProps {
+  if (!opts.query) return opts
+  const { query: _query, ...rest } = opts
+  return rest
+}
+
 function pickEffectiveRequest() {
   let target: WatchRequest | undefined
   for (const request of watchRequests.values()) {
@@ -154,10 +169,28 @@ function pickEffectiveRequest() {
 }
 
 async function safeStart(opts: GetProps) {
+  const runtimeOpts = queryInteropDisabled ? withoutQuery(opts) : opts
+
   try {
-    await appointmentStore.start(opts)
+    await appointmentStore.start(runtimeOpts)
     return true
   } catch (error) {
+    if (!queryInteropDisabled && runtimeOpts.query && isQueryInteropError(error)) {
+      queryInteropDisabled = true
+      console.warn(
+        '[appointment-watch] firestore query interop disabled; retrying without query constraints',
+        error,
+      )
+
+      try {
+        await appointmentStore.start(withoutQuery(opts))
+        return true
+      } catch (fallbackError) {
+        console.error('[appointment-watch] fallback start failed', fallbackError)
+        return false
+      }
+    }
+
     console.error('[appointment-watch] start failed', error)
     return false
   }
