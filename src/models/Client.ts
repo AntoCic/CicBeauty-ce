@@ -1,5 +1,7 @@
 // src/models/Client.ts
 import { FirestoreModel, normalizeGender, type Gender, type Timestampble } from 'cic-kit'
+import { Timestamp } from 'firebase/firestore'
+import { asDate } from '../utils/date'
 
 export type ClientDepositSettlement = {
   note: string
@@ -21,6 +23,14 @@ function normalizeMoney(value: unknown) {
   const next = Number(value)
   if (!Number.isFinite(next)) return 0
   return Math.max(0, Math.round(next * 100) / 100)
+}
+
+function normalizeOptionalTimestamp(value: unknown) {
+  if (!value) return undefined
+  if (value instanceof Timestamp) return value
+  const nextDate = asDate(value)
+  if (!nextDate) return undefined
+  return Timestamp.fromDate(nextDate)
 }
 
 function normalizeDate(value: unknown) {
@@ -73,6 +83,8 @@ export interface ClientData extends Partial<Timestampble> {
   name: string
   surname: string
   phone_number?: string
+  consenso_promozioni_whatsapp: boolean
+  data_consenso_promozioni?: Timestamp | null
   birthdate?: string
   gender: Gender
   email?: string
@@ -93,6 +105,8 @@ export class Client extends FirestoreModel<ClientData> {
   name: string
   surname: string
   phone_number?: string
+  consenso_promozioni_whatsapp: boolean
+  data_consenso_promozioni?: Timestamp
   birthdate?: string
   gender: Gender
   email?: string
@@ -109,6 +123,8 @@ export class Client extends FirestoreModel<ClientData> {
     this.name = data.name
     this.surname = data.surname
     this.phone_number = data.phone_number
+    this.consenso_promozioni_whatsapp = Boolean(data.consenso_promozioni_whatsapp)
+    this.data_consenso_promozioni = normalizeOptionalTimestamp(data.data_consenso_promozioni)
     this.birthdate = data.birthdate
     const normalizedGender = normalizeGender(data.gender)
     this.gender = normalizedGender || 'f'
@@ -128,6 +144,8 @@ export class Client extends FirestoreModel<ClientData> {
       name: this.name,
       surname: this.surname,
       phone_number: this.phone_number,
+      consenso_promozioni_whatsapp: this.consenso_promozioni_whatsapp,
+      data_consenso_promozioni: this.data_consenso_promozioni,
       birthdate: this.birthdate,
       gender: this.gender,
       email: this.email,

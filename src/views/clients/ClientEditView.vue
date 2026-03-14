@@ -2,6 +2,7 @@
 import { Btn, FieldTiptap, cicKitStore, normalizeGender, toast, type Gender } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
+import { Timestamp } from 'firebase/firestore'
 import * as yup from 'yup'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -22,10 +23,24 @@ type ClientForm = {
   name: string
   surname: string
   phone_number: string
+  consenso_promozioni_whatsapp: boolean
   gender: Gender
   email: string
   birthdate: string
   note: string
+}
+
+type ClientUpsertPayload = {
+  name: string
+  surname: string
+  phone_number: string
+  consenso_promozioni_whatsapp: boolean
+  data_consenso_promozioni?: Timestamp | null
+  gender: Gender
+  email: string
+  birthdate: string
+  note: string
+  updateBy: string
 }
 
 type GenderToggleOption = {
@@ -70,6 +85,7 @@ const schema = toTypedSchema(
     name: yup.string().required('Campo obbligatorio'),
     surname: yup.string().required('Campo obbligatorio'),
     phone_number: yup.string().default(''),
+    consenso_promozioni_whatsapp: yup.boolean().default(false),
     gender: yup.string().oneOf(['f', 'm', 'o']).required('Campo obbligatorio').default('f'),
     email: yup.string().email('Email non valida').default(''),
     birthdate: yup.string().default(''),
@@ -82,6 +98,7 @@ const initialValues = computed<ClientForm>(() => ({
   name: current.value?.name ?? '',
   surname: current.value?.surname ?? '',
   phone_number: current.value?.phone_number ?? '',
+  consenso_promozioni_whatsapp: Boolean(current.value?.consenso_promozioni_whatsapp),
   gender: normalizeGenderForForm(current.value?.gender),
   email: current.value?.email ?? '',
   birthdate: current.value?.birthdate ?? '',
@@ -121,6 +138,15 @@ function normalizeMoney(value: unknown, fallback = 0) {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return fallback
   return Math.max(0, Math.round(parsed * 100) / 100)
+}
+
+function normalizeBoolean(value: unknown) {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'string') {
+    const normalized = value.toLowerCase().trim()
+    return normalized === 'true' || normalized === '1' || normalized === 'on' || normalized === 'yes'
+  }
+  return Boolean(value)
 }
 
 function toIsoDate(value: unknown, fallback = '') {
@@ -368,6 +394,18 @@ function formatDepositDate(value: unknown) {
   })
 }
 
+function formatConsentTimestamp(value: unknown) {
+  const date = asDate(value)
+  if (!date) return '-'
+  return date.toLocaleString('it-IT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 function defaultUpdateBy() {
   return String(Auth.user?.email ?? Auth.uid ?? 'admin').trim()
 }
@@ -414,15 +452,26 @@ async function loadItem() {
 }
 
 async function onSubmit(values: Record<string, unknown>) {
-  const payload = {
+  const consensoPromozioniWhatsapp = normalizeBoolean(values.consenso_promozioni_whatsapp)
+  const previousConsent = Boolean(current.value?.consenso_promozioni_whatsapp)
+  const consentHasChanged = isCreateMode.value
+    ? true
+    : consensoPromozioniWhatsapp !== previousConsent
+
+  const payload: ClientUpsertPayload = {
     name: normalizeString(values.name),
     surname: normalizeString(values.surname),
     phone_number: normalizeString(values.phone_number),
+    consenso_promozioni_whatsapp: consensoPromozioniWhatsapp,
     gender: normalizeGenderForForm(values.gender),
     email: normalizeString(values.email),
     birthdate: normalizeString(values.birthdate),
     note: normalizeNoteForSave(values.note),
     updateBy: defaultUpdateBy(),
+  }
+
+  if (consentHasChanged) {
+    payload.data_consenso_promozioni = consensoPromozioniWhatsapp ? Timestamp.now() : null
   }
 
   try {
@@ -534,6 +583,25 @@ watch(() => route.params.id, loadItem)
           </div>
 
           <div class="col-12">
+            <div class="form-check">
+              <Field
+                name="consenso_promozioni_whatsapp"
+                type="checkbox"
+                class="form-check-input"
+                :value="true"
+                :unchecked-value="false"
+              />
+              <label class="form-check-label">Consenso promozioni WhatsApp</label>
+            </div>
+            <small
+              v-if="values.consenso_promozioni_whatsapp && current?.data_consenso_promozioni"
+              class="text-muted d-block mt-1"
+            >
+              Consenso registrato il {{ formatConsentTimestamp(current.data_consenso_promozioni) }}
+            </small>
+          </div>
+
+          <div class="col-12">
             <FieldTiptap
               name="note"
               label="Note"
@@ -589,6 +657,7 @@ watch(() => route.params.id, loadItem)
           :email="current.email"
           :birthdate="current.birthdate"
           :note="current.note"
+          :consenso-promozioni-whatsapp="current.consenso_promozioni_whatsapp"
           :show-details="true"
           compact
           class="client-main-card mx-auto"

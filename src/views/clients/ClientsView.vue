@@ -110,6 +110,7 @@ function appointmentMiniLabel(appointment?: { date_time?: unknown }) {
           <span>&#x25C0; precedente</span>
           <span>&#x25B6; prossimo</span>
           <span>&#x1F4C5; oggi</span>
+          <span>&#x2705; consenso WA</span>
         </p>
 
         <article
@@ -123,6 +124,7 @@ function appointmentMiniLabel(appointment?: { date_time?: unknown }) {
             :surname="client.surname"
             :phone-number="client.phone_number"
             :note="client.note"
+            :consenso-promozioni-whatsapp="client.consenso_promozioni_whatsapp"
             :compact="true"
           >
             <div class="client-row__appointments">

@@ -51,7 +51,7 @@ export interface AppConfigData extends AppConfigFields, Partial<Timestampble> {
 
 export const APP_CONFIG_DEFAULTS: AppConfigFields = {
   brandName: 'Cnc Beauty',
-  legalLastUpdated: '27 febbraio 2026',
+  legalLastUpdated: '14 marzo 2026',
   cookieConsentKeyDate: '2026-02-27',
   ownerName: 'Carla Ciancimino',
   legalEntity: 'Carla Ciancimino',
@@ -81,6 +81,7 @@ export const APP_CONFIG_DEFAULTS: AppConfigFields = {
   <li>Gestione area riservata amministratori: esecuzione del rapporto professionale.</li>
   <li>Adempimenti legali/fiscali: obbligo di legge.</li>
   <li>Analytics facoltativi: consenso.</li>
+  <li>Comunicazioni promozionali via WhatsApp: consenso esplicito, libero, specifico e revocabile.</li>
 </ul>
 <h2>Natura del servizio</h2>
 <p>Il sito e un catalogo informativo. Non sono attive funzioni di vendita online o pagamento elettronico verso i clienti finali.</p>
@@ -97,6 +98,10 @@ export const APP_CONFIG_DEFAULTS: AppConfigFields = {
   <li>Dati gestionali area admin: secondo tempi organizzativi e obblighi di legge applicabili.</li>
   <li>Preferenze cookie: fino a revoca o cancellazione dal browser.</li>
 </ul>
+<h2>Comunicazioni promozionali via WhatsApp</h2>
+<p>I messaggi promozionali su WhatsApp sono inviati esclusivamente agli utenti che hanno rilasciato un consenso esplicito, online oppure presso il punto vendita.</p>
+<p>Il consenso e facoltativo e puo essere revocato in qualunque momento inviando il messaggio "NO PROMO" via WhatsApp, oppure con una richiesta diretta al personale del negozio.</p>
+<p>Dalla presa in carico della revoca non verranno piu inviate comunicazioni promozionali, salvo eventuale nuovo consenso espresso.</p>
 <h2>Modifiche</h2>
 <p>La presente informativa puo essere aggiornata. In caso di modifiche rilevanti verra aggiornata la data di ultima revisione.</p>`.trim(),
   cookiePolicyBodyHtml: `
@@ -117,6 +122,10 @@ export const APP_CONFIG_DEFAULTS: AppConfigFields = {
 <p>Le informazioni su disponibilita, descrizioni e immagini sono fornite a scopo orientativo.</p>
 <h2>Accesso area riservata</h2>
 <p>L'accesso autenticato e riservato al personale amministrativo autorizzato. E vietato ogni accesso non autorizzato, tentativo di abuso o manomissione dei sistemi.</p>
+<h2>Comunicazioni promozionali via WhatsApp</h2>
+<p>L'invio di comunicazioni promozionali tramite WhatsApp avviene solo previo consenso esplicito dell'interessato, acquisito online o presso il punto vendita.</p>
+<p>Il consenso e revocabile in qualsiasi momento inviando "NO PROMO" via WhatsApp oppure richiedendo di non ricevere piu comunicazioni promozionali al personale.</p>
+<p>In assenza di consenso, o dopo revoca, non saranno inviati messaggi promozionali fino a nuovo consenso.</p>
 <h2>Limitazione di responsabilita</h2>
 <p>Nei limiti consentiti dalla legge, il titolare non risponde di danni indiretti derivanti da interruzioni del servizio, errori materiali, indisponibilita temporanee o uso improprio del sito.</p>
 <h2>Proprieta intellettuale</h2>

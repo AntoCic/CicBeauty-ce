@@ -41,6 +41,7 @@ import StatsView from './views/stats/StatsView.vue';
 import RelationsView from './views/relations/RelationsView.vue';
 import MigrationImportView from './views/migration/MigrationImportView.vue';
 import CatalogBackupView from './views/settings/CatalogBackupView.vue';
+import WhatsAppTemplatesView from './views/settings/WhatsAppTemplatesView.vue';
 import SepaTransferQrView from './views/payments/SepaTransferQrView.vue';
 
 
@@ -154,6 +155,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/settings/agent-prompts', name: 'AgentPromptsView', component: AgentPromptsView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
   { path: '/settings/calendar-recurrences', name: 'CalendarRecurrenceRulesView', component: CalendarRecurrenceRulesView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
   { path: '/settings/catalog-backup', name: 'CatalogBackupView', component: CatalogBackupView, meta: { loginStatus: true, permission: defaultUserPermission.SUPERADMIN } },
+  { path: '/settings/whatsapp-templates', name: 'WhatsAppTemplatesView', component: WhatsAppTemplatesView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   {
     path: '/ai/beauty-chat',
     name: 'AiBeautyChatView',

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { cicKitStore } from 'cic-kit'
-import { computed, onBeforeUnmount, watch } from 'vue'
+import { cicKitStore, toast } from 'cic-kit'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { useAppointmentWatchManager } from '../../composables/useAppointmentWatchManager'
@@ -12,6 +12,7 @@ import { clientStore } from '../../stores/clientStore'
 import { publicUserStore } from '../../stores/publicUser'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
+import { whatsAppTemplateStore } from '../../stores/whatsAppTemplateStore'
 import {
   appointmentOperatorIds,
   appointmentPersonalOwnerId,
@@ -24,6 +25,14 @@ import {
   startOfDay,
 } from '../../utils/calendar'
 import { asDate } from '../../utils/date'
+import {
+  formatWhatsAppDate,
+  formatWhatsAppDay,
+  formatWhatsAppDuration,
+  formatWhatsAppPrice,
+  formatWhatsAppTime,
+  normalizeWhatsAppPhoneNumber,
+} from '../../utils/whatsapp'
 
 const route = useRoute()
 const router = useRouter()
@@ -55,6 +64,7 @@ onBeforeUnmount(() => {
 const selectedOperatorId = computed(() => String(route.query.operatorId ?? '').trim())
 const defaultDuration = computed(() => appConfigStore.getConfigData().defaultAppointmentDurationMinutes)
 const currencyFormatter = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' })
+const sendingReminderIds = ref<string[]>([])
 
 const treatmentsById = computed(() => new Map(treatmentStore.itemsActiveArray.map((item) => [item.id, item])))
 const treatmentCategoryEmojiById = computed(() =>
@@ -103,6 +113,33 @@ function clientOutstandingAmount(clientId: string) {
   return normalizeMoney(totalOutstanding)
 }
 
+function defaultUpdateBy() {
+  const email = String(Auth.user?.email ?? '').trim()
+  if (email) return email
+  const uid = String(Auth.uid ?? '').trim()
+  if (uid) return uid
+  return 'operatore'
+}
+
+function isAppointmentVisibleForCurrentFilters(appointment: (typeof appointmentStore.itemsActiveArray)[number]) {
+  const me = String(Auth.uid ?? '').trim()
+  if (!canReadAppointmentForUser(appointment, me)) return false
+
+  const selectedOperator = selectedOperatorId.value
+  if (!selectedOperator) return true
+
+  const primary = primaryOperatorId(appointment)
+  const linked = appointmentOperatorIds(appointment)
+  if (isPersonalAppointment(appointment) && primary) return primary === selectedOperator
+  if (primary && primary === selectedOperator) return true
+  return linked.includes(selectedOperator)
+}
+
+function appointmentCenterAddress() {
+  const address = String(appConfigStore.getConfigData().officeAddress ?? '').trim()
+  return address || 'Via Enrico de Nicola, 16'
+}
+
 const dayAppointments = computed(() => {
   const dayStart = startOfDay(selectedDate.value)
   const dayEnd = endOfDay(selectedDate.value)
@@ -112,17 +149,7 @@ const dayAppointments = computed(() => {
       const start = asDate(appointment.date_time)
       if (!start) return false
       if (start < dayStart || start > dayEnd) return false
-
-      const me = String(Auth.uid ?? '').trim()
-      if (!canReadAppointmentForUser(appointment, me)) return false
-
-      const selectedOperator = selectedOperatorId.value
-      if (!selectedOperator) return true
-      const primary = primaryOperatorId(appointment)
-      const linked = appointmentOperatorIds(appointment)
-      if (isPersonalAppointment(appointment) && primary) return primary === selectedOperator
-      if (primary && primary === selectedOperator) return true
-      return linked.includes(selectedOperator)
+      return isAppointmentVisibleForCurrentFilters(appointment)
     })
     .map((appointment) => {
       const start = asDate(appointment.date_time) ?? dayStart
@@ -246,6 +273,128 @@ const dayLabel = computed(() =>
     year: 'numeric',
   }),
 )
+
+type TomorrowReminderItem = {
+  appointment: (typeof appointmentStore.itemsActiveArray)[number]
+  clientName: string
+  clientSurname: string
+  clientLabel: string
+  phoneNumber: string
+  start: Date
+  durationMinutes: number
+  totalPrice: number
+  treatmentLabel: string
+}
+
+const isTodayView = computed(() => dayKey(selectedDate.value) === dayKey(new Date()))
+const tomorrowLabel = computed(() => {
+  const tomorrow = startOfDay(new Date(selectedDate.value))
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  return tomorrow.toLocaleDateString('it-IT', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+  })
+})
+
+const tomorrowReminderItems = computed<TomorrowReminderItem[]>(() => {
+  if (!isTodayView.value) return []
+
+  const tomorrowStart = startOfDay(new Date(selectedDate.value))
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1)
+  const tomorrowEnd = endOfDay(tomorrowStart)
+
+  return appointmentStore.itemsActiveArray
+    .filter((appointment) => {
+      if (isPersonalAppointment(appointment)) return false
+      const start = asDate(appointment.date_time)
+      if (!start) return false
+      if (start < tomorrowStart || start > tomorrowEnd) return false
+      if (!isAppointmentVisibleForCurrentFilters(appointment)) return false
+
+      const clientId = String(appointment.client_id ?? appointment.user_id ?? '').trim()
+      if (!clientId) return false
+      const client = clientsById.value.get(clientId)
+      const normalizedPhone = normalizeWhatsAppPhoneNumber(client?.phone_number)
+      return Boolean(normalizedPhone)
+    })
+    .map((appointment) => {
+      const start = asDate(appointment.date_time) ?? tomorrowStart
+      const end = appointmentEndDate(appointment, treatmentsById.value, defaultDuration.value)
+      const durationMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))
+      const clientId = String(appointment.client_id ?? appointment.user_id ?? '').trim()
+      const client = clientId ? clientsById.value.get(clientId) : undefined
+      const clientName = String(client?.name ?? '').trim() || 'Cliente'
+      const clientSurname = String(client?.surname ?? '').trim()
+      const treatmentLabel = (appointment.treatment_ids ?? [])
+        .map((id) => String(treatmentsById.value.get(id)?.title ?? '').trim())
+        .filter(Boolean)
+        .join(', ') || 'Nessun trattamento'
+
+      return {
+        appointment,
+        clientName,
+        clientSurname,
+        clientLabel: `${clientName} ${clientSurname}`.trim(),
+        phoneNumber: normalizeWhatsAppPhoneNumber(client?.phone_number),
+        start,
+        durationMinutes,
+        totalPrice: normalizeMoney(appointment.total),
+        treatmentLabel,
+      }
+    })
+    .sort((a, b) => a.start.getTime() - b.start.getTime())
+})
+
+function isSendingReminder(appointmentId: string) {
+  return sendingReminderIds.value.includes(appointmentId)
+}
+
+function addSendingReminder(appointmentId: string) {
+  if (sendingReminderIds.value.includes(appointmentId)) return
+  sendingReminderIds.value = [...sendingReminderIds.value, appointmentId]
+}
+
+function removeSendingReminder(appointmentId: string) {
+  sendingReminderIds.value = sendingReminderIds.value.filter((id) => id !== appointmentId)
+}
+
+async function sendTomorrowReminder(item: TomorrowReminderItem) {
+  const appointmentId = item.appointment.id
+  if (isSendingReminder(appointmentId)) return
+
+  addSendingReminder(appointmentId)
+  try {
+    await item.appointment.update({
+      reminded: true,
+      updateBy: defaultUpdateBy(),
+    })
+
+    const placeholders = {
+      '[NOME]': item.clientName || 'Cliente',
+      '[COGNOME]': item.clientSurname,
+      '[GIORNO]': formatWhatsAppDay(item.start),
+      '[DATA]': formatWhatsAppDate(item.start),
+      '[ORA]': formatWhatsAppTime(item.start),
+      '[DURATA]': formatWhatsAppDuration(item.durationMinutes),
+      '[PREZZO]': formatWhatsAppPrice(item.totalPrice),
+      '[TRATTAMENTI]': item.treatmentLabel,
+      '[INDIRIZZO]': appointmentCenterAddress(),
+    }
+    const message = whatsAppTemplateStore.buildMessage('reminder', placeholders)
+    const sent = whatsAppTemplateStore.sendWhatsApp(message, item.phoneNumber)
+    if (!sent) {
+      toast.warning('Promemoria segnato come inviato, ma non e stato possibile aprire WhatsApp.')
+      return
+    }
+    toast.success('Promemoria pronto su WhatsApp')
+  } catch (error) {
+    console.error(error)
+    toast.error('Errore durante l\'invio del promemoria WhatsApp')
+  } finally {
+    removeSendingReminder(appointmentId)
+  }
+}
 
 function formatHour(date: Date) {
   return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
@@ -407,6 +556,45 @@ function createFromSelectedDay() {
           <p v-if="!dayAppointments.length" class="text-muted small mb-0">Nessun appuntamento nel giorno selezionato.</p>
         </div>
       </div>
+
+      <section v-if="isTodayView" class="card border-0 shadow-sm p-3 mt-2">
+        <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+          <h3 class="h6 mb-0">Promemoria domani</h3>
+          <small class="text-muted text-capitalize">{{ tomorrowLabel }}</small>
+        </div>
+
+        <div class="vstack gap-2">
+          <article v-for="item in tomorrowReminderItems" :key="item.appointment.id" class="tomorrow-reminder-row">
+            <div class="min-w-0">
+              <p class="fw-semibold mb-0 text-truncate">{{ item.clientLabel }}</p>
+              <p class="small text-muted mb-0">
+                {{ formatHour(item.start) }}
+                <span class="appointment-row__meta-badge ms-1">{{ item.durationMinutes }}m</span>
+                <span class="appointment-row__meta-badge appointment-row__meta-badge--price ms-1">
+                  {{ formatCurrency(item.totalPrice) }}
+                </span>
+              </p>
+              <p class="small text-muted mb-0 text-truncate">{{ item.treatmentLabel }}</p>
+              <span class="badge mt-1" :class="item.appointment.reminded ? 'text-bg-success' : 'text-bg-light border'">
+                {{ item.appointment.reminded ? 'promemoria inviato' : 'promemoria non inviato' }}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              class="reminder-send-btn"
+              :disabled="isSendingReminder(item.appointment.id)"
+              @click="sendTomorrowReminder(item)"
+            >
+              {{ item.appointment.reminded ? 'Reinvia reminder' : 'Invia reminder' }}
+            </button>
+          </article>
+
+          <p v-if="!tomorrowReminderItems.length" class="text-muted small mb-0">
+            Nessun appuntamento di domani con numero WhatsApp disponibile.
+          </p>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -529,6 +717,33 @@ function createFromSelectedDay() {
   display: inline-block;
   margin-top: 0.1rem;
   opacity: 0.9;
+}
+
+.tomorrow-reminder-row {
+  border: 1px solid rgba(84, 44, 58, 0.14);
+  border-radius: 0.65rem;
+  padding: 0.55rem;
+  background: rgba(255, 255, 255, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.reminder-send-btn {
+  border: 1px solid rgba(20, 138, 58, 0.46);
+  background: linear-gradient(140deg, rgba(37, 211, 102, 0.22) 0%, rgba(19, 156, 64, 0.28) 100%);
+  color: #145c2d;
+  border-radius: 999px;
+  padding: 0.28rem 0.75rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.reminder-send-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .min-w-0 {

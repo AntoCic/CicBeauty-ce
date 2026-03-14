@@ -19,6 +19,7 @@ import { clientStore } from './stores/clientStore';
 import { couponStore } from './stores/couponStore';
 import { typeCouponStore } from './stores/typeCouponStore';
 import { calendarRecurrenceStore } from './stores/calendarRecurrenceStore';
+import { whatsAppTemplateStore } from './stores/whatsAppTemplateStore';
 import { buildDefaultAppointmentWatchOpts } from './composables/useAppointmentWatchManager';
 
 const route = useRoute();
@@ -54,6 +55,7 @@ useStoreWatch([
   { store: calendarRecurrenceStore },
   { store: appointmentStore, getOpts: buildDefaultAppointmentWatchOpts(new Date()) },
   { store: couponStore },
+  { store: whatsAppTemplateStore },
 ]);
 
 watch(

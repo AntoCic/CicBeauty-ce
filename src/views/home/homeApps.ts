@@ -196,6 +196,15 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     group: 'settings',
   },
   {
+    id: 'whatsapp-templates',
+    title: 'Template WhatsApp',
+    to: { name: 'WhatsAppTemplatesView' },
+    icon: 'chat',
+    iconClass: 'app-icon-calm',
+    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
+    group: 'settings',
+  },
+  {
     id: 'test-playground',
     title: 'Test Playground',
     to: { name: 'TestPlaygroundView' },

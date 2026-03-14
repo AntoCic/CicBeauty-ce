@@ -21,6 +21,15 @@ import { appointmentPersonalOwnerId, isPersonalAppointment } from '../../utils/a
 import { computeAppointmentDurationMinutes, fromDateTimeLocalValue, toDateTimeLocalValue } from '../../utils/calendar'
 import { asDate } from '../../utils/date'
 import { hasAiAndOperatorAccess, hasBetaFeaturesAccess } from '../../utils/permissions'
+import { whatsAppTemplateStore } from '../../stores/whatsAppTemplateStore'
+import {
+  formatWhatsAppDate,
+  formatWhatsAppDay,
+  formatWhatsAppDuration,
+  formatWhatsAppPrice,
+  formatWhatsAppTime,
+  normalizeWhatsAppPhoneNumber,
+} from '../../utils/whatsapp'
 import ClientPersonCard from '../clients/components/ClientPersonCard.vue'
 import AppointmentDetailsCard from './components/AppointmentDetailsCard.vue'
 import AppointmentOperatorCard from './components/AppointmentOperatorCard.vue'
@@ -62,9 +71,12 @@ const aiClientContext = ref<{ previousAppointmentAt?: string; nextAppointmentAt?
 const isAiLoading = ref(false)
 const clientSearch = ref('')
 const treatmentSearch = ref('')
+const sendWhatsAppOnSave = ref(true)
+const sendWhatsAppOnDelete = ref(true)
 
 const routeId = computed(() => String(route.params.id ?? '').trim())
 const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
+const saveWhatsAppLabel = computed(() => (isCreateMode.value ? 'Invia conferma WhatsApp' : 'Invia aggiornamento WhatsApp'))
 const EDIT_WATCH_SUSPEND_REASON = 'appointment-edit-view'
 const { suspendAppointmentWatch, releaseAppointmentWatch } = useAppointmentWatchManager()
 
@@ -353,6 +365,105 @@ function formatCurrency(value: unknown) {
   }).format(normalizeNumber(value, 0))
 }
 
+type AppointmentWhatsAppContext = {
+  phoneNumber: string
+  placeholders: Record<string, string>
+}
+
+function appointmentCenterAddress() {
+  const address = normalizeString(appConfigStore.getConfigData().officeAddress)
+  return address || 'Via Enrico de Nicola, 16'
+}
+
+function treatmentTitlesFromIds(ids: string[]) {
+  return ids
+    .map((id) => normalizeString(treatmentsById.value.get(id)?.title ?? id))
+    .filter(Boolean)
+}
+
+function buildWhatsAppContextFromForm(values: Record<string, unknown>) {
+  const clientId = normalizeString(values.client_id)
+  if (!clientId) return undefined
+
+  const client = clientsById.value.get(clientId)
+  const phoneNumber = normalizeWhatsAppPhoneNumber(client?.phone_number)
+  if (!phoneNumber) return undefined
+
+  const startDate = fromDateTimeLocalValue(normalizeString(values.date_time))
+  if (!startDate) return undefined
+
+  const durationMinutes = estimateDurationForFix(values.fix_duration)
+  const normalizedTotal = normalizePriceValue(values.total) ?? 0
+  const treatments = treatmentTitlesFromIds(normalizeUniqueIds(selectedTreatmentIds.value))
+
+  return {
+    phoneNumber,
+    placeholders: {
+      '[NOME]': normalizeString(client?.name) || 'Cliente',
+      '[COGNOME]': normalizeString(client?.surname),
+      '[GIORNO]': formatWhatsAppDay(startDate),
+      '[DATA]': formatWhatsAppDate(startDate),
+      '[ORA]': formatWhatsAppTime(startDate),
+      '[DURATA]': formatWhatsAppDuration(durationMinutes),
+      '[PREZZO]': formatWhatsAppPrice(normalizedTotal),
+      '[TRATTAMENTI]': treatments.join(', '),
+      '[INDIRIZZO]': appointmentCenterAddress(),
+    },
+  } satisfies AppointmentWhatsAppContext
+}
+
+function buildWhatsAppContextFromCurrentAppointment() {
+  if (!current.value) return undefined
+  const clientId = normalizeString(current.value.client_id ?? current.value.user_id)
+  if (!clientId) return undefined
+
+  const client = clientsById.value.get(clientId)
+  const phoneNumber = normalizeWhatsAppPhoneNumber(client?.phone_number)
+  if (!phoneNumber) return undefined
+
+  const startDate = asDate(current.value.date_time)
+  if (!startDate) return undefined
+
+  const durationMinutes = computeAppointmentDurationMinutes(
+    current.value,
+    treatmentsById.value,
+    appConfigStore.getConfigData().defaultAppointmentDurationMinutes,
+  )
+  const treatments = treatmentTitlesFromIds(current.value.treatment_ids ?? [])
+
+  return {
+    phoneNumber,
+    placeholders: {
+      '[NOME]': normalizeString(client?.name) || 'Cliente',
+      '[COGNOME]': normalizeString(client?.surname),
+      '[GIORNO]': formatWhatsAppDay(startDate),
+      '[DATA]': formatWhatsAppDate(startDate),
+      '[ORA]': formatWhatsAppTime(startDate),
+      '[DURATA]': formatWhatsAppDuration(durationMinutes),
+      '[PREZZO]': formatWhatsAppPrice(current.value.total),
+      '[TRATTAMENTI]': treatments.join(', '),
+      '[INDIRIZZO]': appointmentCenterAddress(),
+    },
+  } satisfies AppointmentWhatsAppContext
+}
+
+function sendWhatsAppForAction(action: 'confirmation' | 'update' | 'delete', context?: AppointmentWhatsAppContext) {
+  if (!context) {
+    toast.warning('WhatsApp non inviato: numero cliente mancante o non valido.')
+    return false
+  }
+
+  const message = whatsAppTemplateStore.buildMessage(action, context.placeholders)
+  const sent = whatsAppTemplateStore.sendWhatsApp(message, context.phoneNumber)
+
+  if (!sent) {
+    toast.warning('WhatsApp non inviato: impossibile aprire la chat.')
+    return false
+  }
+
+  return true
+}
+
 function summaryClientLabel(values: Record<string, unknown>) {
   const clientId = normalizeString(values.client_id)
   if (!clientId) return 'Nessun cliente'
@@ -563,9 +674,15 @@ function onCancelEdit() {
   isEditMode.value = false
 }
 
+function openWhatsAppTemplates() {
+  void router.push({ name: 'WhatsAppTemplatesView' })
+}
+
 async function loadItem() {
   aiSuggestions.value = []
   aiClientContext.value = undefined
+  sendWhatsAppOnSave.value = true
+  sendWhatsAppOnDelete.value = true
 
   if (isCreateMode.value) {
     current.value = undefined
@@ -652,6 +769,8 @@ async function onSubmit(values: Record<string, unknown>) {
   const normalizedNotes = normalizeNoteForSave(values.notes)
   const notes = isPersonal && !normalizedNotes ? PERSONAL_DEFAULT_NOTE : normalizedNotes
   const normalizedTotal = isPersonal ? 0 : normalizePriceValue(values.total)
+  const saveWhatsAppContext = !isPersonal ? buildWhatsAppContextFromForm(values) : undefined
+  const shouldSendWhatsApp = !isPersonal && sendWhatsAppOnSave.value
   if (!isPersonal && normalizedTotal === undefined) {
     toast.error('Inserisci un prezzo totale valido')
     return
@@ -684,6 +803,9 @@ async function onSubmit(values: Record<string, unknown>) {
       isEditMode.value = false
       toast.success('Appuntamento creato')
       await router.replace({ name: 'AppointmentEditView', params: { id: created.id } })
+      if (shouldSendWhatsApp) {
+        sendWhatsAppForAction('confirmation', saveWhatsAppContext)
+      }
       return
     }
 
@@ -692,6 +814,9 @@ async function onSubmit(values: Record<string, unknown>) {
     await loadItem()
     isEditMode.value = false
     toast.success('Appuntamento aggiornato')
+    if (shouldSendWhatsApp) {
+      sendWhatsAppForAction('update', saveWhatsAppContext)
+    }
   } catch (error) {
     console.error(error)
     toast.error('Errore salvataggio appuntamento')
@@ -701,6 +826,8 @@ async function onSubmit(values: Record<string, unknown>) {
 async function onDeleteAppointment() {
   if (!current.value || isCreateMode.value || isDeleting.value) return
 
+  const deleteWhatsAppContext = buildWhatsAppContextFromCurrentAppointment()
+  const shouldSendDeleteWhatsApp = sendWhatsAppOnDelete.value && !Boolean(current.value.isPersonal)
   const ok = window.confirm('Eliminare definitivamente questo appuntamento?')
   if (!ok) return
 
@@ -709,6 +836,9 @@ async function onDeleteAppointment() {
     await current.value.delete(appointmentStore)
     toast.success('Appuntamento eliminato')
     await router.replace({ name: 'CalendarView' })
+    if (shouldSendDeleteWhatsApp) {
+      sendWhatsAppForAction('delete', deleteWhatsAppContext)
+    }
   } catch (error) {
     console.error(error)
     toast.error('Errore eliminazione appuntamento')
@@ -763,7 +893,19 @@ watch(() => route.params.id, loadItem)
 
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp :title="isCreateMode ? 'Nuovo appuntamento' : 'Appuntamento'" :to="{ name: 'CalendarView' }" />
+    <HeaderApp :title="isCreateMode ? 'Nuovo appuntamento' : 'Appuntamento'" :to="{ name: 'CalendarView' }">
+      <div class="app-header__tools">
+        <button
+          type="button"
+          class="wa-template-shortcut"
+          aria-label="Gestisci template WhatsApp"
+          title="Template WhatsApp"
+          @click="openWhatsAppTemplates"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">chat</span>
+        </button>
+      </div>
+    </HeaderApp>
 
     <div class="edit-wrapper mx-auto py-3">
       <p v-if="isLoading" class="text-muted small mt-3">Caricamento...</p>
@@ -1126,6 +1268,35 @@ watch(() => route.params.id, loadItem)
           </div>
         </div>
 
+        <div v-if="!values.isPersonal" class="whatsapp-automation-box mt-3">
+          <div class="whatsapp-automation-box__content">
+            <div>
+              <p class="whatsapp-automation-box__title mb-1">{{ saveWhatsAppLabel }}</p>
+              <small class="text-muted">Se attivo, apre WhatsApp dopo salvataggio riuscito.</small>
+            </div>
+
+            <label class="whatsapp-toggle" for="appointment-send-whatsapp-on-save">
+              <input
+                id="appointment-send-whatsapp-on-save"
+                v-model="sendWhatsAppOnSave"
+                type="checkbox"
+                class="whatsapp-toggle__input"
+              />
+              <span class="whatsapp-toggle__track">
+                <span class="whatsapp-toggle__thumb">
+                  <span class="material-symbols-outlined" aria-hidden="true">
+                    {{ sendWhatsAppOnSave ? 'check' : 'close' }}
+                  </span>
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <button type="button" class="whatsapp-automation-box__link" @click="openWhatsAppTemplates">
+            Modifica template messaggi
+          </button>
+        </div>
+
         <div class="d-flex gap-2 mt-4 flex-wrap">
           <Btn type="submit" color="dark" icon="save" :loading="isSubmitting || isDeleting">
             {{ isCreateMode ? 'Crea' : 'Salva' }}
@@ -1133,6 +1304,24 @@ watch(() => route.params.id, loadItem)
           <Btn type="button" color="secondary" variant="outline" icon="close" :disabled="isSubmitting" @click="onCancelEdit">
             Annulla
           </Btn>
+          <div v-if="!isCreateMode && !values.isPersonal" class="delete-whatsapp-toggle-inline">
+            <span class="delete-whatsapp-toggle-inline__label">Invia WhatsApp su elimina</span>
+            <label class="whatsapp-toggle whatsapp-toggle--compact" for="appointment-send-whatsapp-on-delete-edit">
+              <input
+                id="appointment-send-whatsapp-on-delete-edit"
+                v-model="sendWhatsAppOnDelete"
+                type="checkbox"
+                class="whatsapp-toggle__input"
+              />
+              <span class="whatsapp-toggle__track">
+                <span class="whatsapp-toggle__thumb">
+                  <span class="material-symbols-outlined" aria-hidden="true">
+                    {{ sendWhatsAppOnDelete ? 'check' : 'close' }}
+                  </span>
+                </span>
+              </span>
+            </label>
+          </div>
           <Btn
             v-if="!isCreateMode"
             type="button"
@@ -1180,6 +1369,7 @@ watch(() => route.params.id, loadItem)
               :email="currentClient.email"
               :birthdate="currentClient.birthdate"
               :note="currentClient.note"
+              :consenso-promozioni-whatsapp="currentClient.consenso_promozioni_whatsapp"
               :show-details="true"
               compact
             />
@@ -1207,6 +1397,24 @@ watch(() => route.params.id, loadItem)
         </div>
 
         <div class="d-flex gap-2 mt-2 flex-wrap">
+          <div v-if="!current.isPersonal" class="delete-whatsapp-toggle-inline">
+            <span class="delete-whatsapp-toggle-inline__label">Invia WhatsApp su elimina</span>
+            <label class="whatsapp-toggle whatsapp-toggle--compact" for="appointment-send-whatsapp-on-delete-view">
+              <input
+                id="appointment-send-whatsapp-on-delete-view"
+                v-model="sendWhatsAppOnDelete"
+                type="checkbox"
+                class="whatsapp-toggle__input"
+              />
+              <span class="whatsapp-toggle__track">
+                <span class="whatsapp-toggle__thumb">
+                  <span class="material-symbols-outlined" aria-hidden="true">
+                    {{ sendWhatsAppOnDelete ? 'check' : 'close' }}
+                  </span>
+                </span>
+              </span>
+            </label>
+          </div>
           <Btn type="button" color="danger" variant="outline" icon="delete" :loading="isDeleting" @click="onDeleteAppointment">
             Elimina appuntamento
           </Btn>
@@ -1230,6 +1438,141 @@ watch(() => route.params.id, loadItem)
 
 .appointment-main-card {
   max-width: 760px;
+}
+
+.wa-template-shortcut {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(84, 44, 58, 0.32);
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+  color: #4b2935;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.whatsapp-automation-box {
+  border: 1px solid rgba(37, 126, 62, 0.28);
+  border-radius: 0.75rem;
+  background:
+    radial-gradient(circle at 14% 12%, rgba(37, 211, 102, 0.2) 0%, transparent 58%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.92) 0%, rgba(243, 252, 246, 0.9) 100%);
+  padding: 0.7rem;
+}
+
+.whatsapp-automation-box__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.whatsapp-automation-box__title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #1b5f2f;
+}
+
+.whatsapp-automation-box__link {
+  margin-top: 0.45rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #1d743a;
+  font-size: 0.74rem;
+  text-decoration: underline;
+}
+
+.whatsapp-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.whatsapp-toggle__input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.whatsapp-toggle__track {
+  width: 66px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 126, 62, 0.4);
+  padding: 3px;
+  background: rgba(112, 129, 116, 0.35);
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.whatsapp-toggle__thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #fff;
+  color: #607070;
+  box-shadow: 0 3px 8px rgba(15, 43, 24, 0.26);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateX(0);
+  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.whatsapp-toggle__thumb .material-symbols-outlined {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.whatsapp-toggle__input:checked + .whatsapp-toggle__track {
+  background: linear-gradient(135deg, rgba(37, 211, 102, 0.32) 0%, rgba(9, 177, 66, 0.5) 100%);
+  border-color: rgba(20, 138, 58, 0.58);
+}
+
+.whatsapp-toggle__input:checked + .whatsapp-toggle__track .whatsapp-toggle__thumb {
+  transform: translateX(32px);
+  background: #1fa748;
+  color: #fff;
+}
+
+.whatsapp-toggle__input:focus-visible + .whatsapp-toggle__track {
+  outline: 2px solid rgba(31, 167, 72, 0.52);
+  outline-offset: 2px;
+}
+
+.whatsapp-toggle--compact .whatsapp-toggle__track {
+  width: 56px;
+  height: 30px;
+}
+
+.whatsapp-toggle--compact .whatsapp-toggle__thumb {
+  width: 24px;
+  height: 24px;
+}
+
+.whatsapp-toggle--compact .whatsapp-toggle__input:checked + .whatsapp-toggle__track .whatsapp-toggle__thumb {
+  transform: translateX(26px);
+}
+
+.delete-whatsapp-toggle-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(37, 126, 62, 0.28);
+  background: rgba(240, 252, 244, 0.85);
+}
+
+.delete-whatsapp-toggle-inline__label {
+  font-size: 0.72rem;
+  color: #1b5f2f;
 }
 
 .appointment-type-switch {

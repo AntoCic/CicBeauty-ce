@@ -200,6 +200,8 @@ async function onQuickClientSubmit(setFieldValue: SetFieldValue) {
     birthdate: normalizeString(quickClientForm.value.birthdate),
     email: '',
     note: '',
+    consenso_promozioni_whatsapp: false,
+    data_consenso_promozioni: null,
     preferredOperatorIds: [] as string[],
     preferred: [] as string[],
     updateBy: defaultUpdateBy(),

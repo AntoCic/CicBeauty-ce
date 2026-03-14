@@ -11,10 +11,12 @@ const props = withDefaults(
     email?: string
     birthdate?: string
     note?: string
+    consensoPromozioniWhatsapp?: boolean
     compact?: boolean
     showDetails?: boolean
   }>(),
   {
+    consensoPromozioniWhatsapp: false,
     compact: false,
     showDetails: false,
   },
@@ -72,6 +74,14 @@ const compactNote = computed(() => {
       <div class="client-person-card__identity min-w-0">
         <p class="client-person-card__name mb-0">
           <span class="client-person-card__name-text text-truncate">{{ fullName || 'Cliente senza nome' }}</span>
+          <span
+            v-if="consensoPromozioniWhatsapp"
+            class="client-person-card__consent"
+            title="Consenso promozioni WhatsApp"
+            aria-label="Consenso promozioni WhatsApp"
+          >
+            &#x2705;
+          </span>
           <span v-if="showDetails && genderEmoji" class="client-person-card__gender">{{ genderEmoji }}</span>
         </p>
         <p v-if="showDetails && birthdateLabel" class="client-person-card__sub mb-0">{{ birthdateLabel }}</p>
@@ -150,6 +160,12 @@ const compactNote = computed(() => {
 
 .client-person-card__gender {
   font-size: 0.88rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.client-person-card__consent {
+  font-size: 0.84rem;
   line-height: 1;
   flex-shrink: 0;
 }

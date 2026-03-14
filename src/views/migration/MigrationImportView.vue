@@ -205,6 +205,12 @@ function toIsoDate(value: unknown) {
   return `${year}-${month}-${day}`
 }
 
+function toOptionalTimestamp(value: unknown) {
+  const date = asDate(value)
+  if (!date) return undefined
+  return Timestamp.fromDate(date)
+}
+
 function resolveAppointmentDate(row: LegacyRecord) {
   return asDate(row.date_time ?? row.date ?? row.start)
 }
@@ -551,10 +557,13 @@ async function onImportClients() {
 
       const oldId = normalizeString(row.old_id ?? row._id ?? row.id)
       const deposits = normalizeLegacyDeposits(row)
+      const consensoPromozioniWhatsapp = Boolean(row.consenso_promozioni_whatsapp)
       const payload = {
         name,
         surname,
         phone_number: normalizeString(row.phone_number ?? row.telefono),
+        consenso_promozioni_whatsapp: consensoPromozioniWhatsapp,
+        data_consenso_promozioni: consensoPromozioniWhatsapp ? (toOptionalTimestamp(row.data_consenso_promozioni) ?? null) : null,
         gender: normalizeGender(row.gender) || 'f',
         email: normalizeString(row.email),
         birthdate: toIsoDate(row.birthdate),
