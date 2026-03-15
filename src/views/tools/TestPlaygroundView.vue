@@ -98,6 +98,10 @@ const treatmentIds = computed(() =>
     .filter(Boolean),
 )
 const hasRunningAction = computed(() => Boolean(runningAction.value))
+const canUseDestructiveCleanup = computed(() => {
+  if (typeof window === 'undefined') return false
+  return window.location.protocol === 'http:' && window.location.hostname === 'localhost'
+})
 const appointmentsTodayCount = ref(12)
 const appointmentsMonthValue = ref(toMonthInputValue())
 const appointmentsMonthCount = ref(40)
@@ -345,6 +349,12 @@ function isActionBusy(actionId: string) {
 
 function isActionDisabled(actionId: string) {
   return hasRunningAction.value && runningAction.value !== actionId
+}
+
+function ensureLocalDestructiveCleanup() {
+  if (canUseDestructiveCleanup.value) return true
+  toast.warning('Azione consentita solo in locale su http://localhost/')
+  return false
 }
 
 function pickUniqueIds(ids: string[], count: number) {
@@ -815,6 +825,8 @@ function activeIds(items: Array<{ id: string }>) {
 }
 
 async function onDeleteAllAppointments() {
+  if (!ensureLocalDestructiveCleanup()) return
+
   const total = appointmentStore.itemsActiveArray.length
   if (!total) {
     toast.warning('Nessun appuntamento da eliminare')
@@ -835,6 +847,8 @@ async function onDeleteAllAppointments() {
 }
 
 async function onDeleteAllClients() {
+  if (!ensureLocalDestructiveCleanup()) return
+
   const total = clientStore.itemsActiveArray.length
   if (!total) {
     toast.warning('Nessun cliente da eliminare')
@@ -855,6 +869,8 @@ async function onDeleteAllClients() {
 }
 
 async function onDeleteAllCoupons() {
+  if (!ensureLocalDestructiveCleanup()) return
+
   const total = couponStore.itemsActiveArray.length
   if (!total) {
     toast.warning('Nessun coupon da eliminare')
@@ -970,13 +986,16 @@ async function onGenerateAppointmentsByCheckedMonthsFromForm() {
         <p class="small text-muted mb-3">
           Azioni distruttive: eliminano definitivamente tutti i record della categoria scelta dopo conferma.
         </p>
+        <p v-if="!canUseDestructiveCleanup" class="small text-warning mb-3">
+          Disponibile solo in ambiente locale su <code>http://localhost/</code>.
+        </p>
         <div class="playground-actions">
           <Btn
             type="button"
             color="dark"
             icon="delete_sweep"
             :loading="isActionBusy('delete-all-appointments')"
-            :disabled="isActionDisabled('delete-all-appointments')"
+            :disabled="isActionDisabled('delete-all-appointments') || !canUseDestructiveCleanup"
             @click="onDeleteAllAppointments"
           >
             Elimina tutti gli appuntamenti
@@ -986,7 +1005,7 @@ async function onGenerateAppointmentsByCheckedMonthsFromForm() {
             color="dark"
             icon="person_remove"
             :loading="isActionBusy('delete-all-clients')"
-            :disabled="isActionDisabled('delete-all-clients')"
+            :disabled="isActionDisabled('delete-all-clients') || !canUseDestructiveCleanup"
             @click="onDeleteAllClients"
           >
             Elimina tutti i clienti
@@ -996,7 +1015,7 @@ async function onGenerateAppointmentsByCheckedMonthsFromForm() {
             color="dark"
             icon="local_offer"
             :loading="isActionBusy('delete-all-coupons')"
-            :disabled="isActionDisabled('delete-all-coupons')"
+            :disabled="isActionDisabled('delete-all-coupons') || !canUseDestructiveCleanup"
             @click="onDeleteAllCoupons"
           >
             Elimina tutti i coupon

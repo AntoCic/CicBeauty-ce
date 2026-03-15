@@ -45,6 +45,11 @@ const selectedDate = computed(() => {
   if (Number.isNaN(next.getTime())) return startOfDay(fallback)
   return startOfDay(next)
 })
+const selectedDateKey = computed(() => {
+  const raw = String(route.query.date ?? '').trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
+  return dayKey(selectedDate.value)
+})
 
 const selectedOperatorId = computed(() => String(route.query.operatorId ?? '').trim())
 const defaultDuration = computed(() => appConfigStore.getConfigData().defaultAppointmentDurationMinutes)
@@ -175,6 +180,14 @@ const dayAppointments = computed(() => {
     })
     .sort((a, b) => a.start.getTime() - b.start.getTime())
 })
+const dayTotalEarned = computed(() =>
+  normalizeMoney(
+    dayAppointments.value.reduce((total, item) => {
+      if (item.appointment.isPersonal) return total
+      return total + item.totalPrice
+    }, 0),
+  ),
+)
 
 function startsInLunchWindow(start: Date) {
   const lunchStart = new Date(start)
@@ -455,7 +468,7 @@ function createFromSelectedDay() {
     name: 'AppointmentEditView',
     params: { id: 'new' },
     query: {
-      date: dayKey(selectedDate.value),
+      date: selectedDateKey.value,
       operatorId: selectedOperatorId.value || undefined,
     },
   })
@@ -466,7 +479,7 @@ function createFromSelectedDay() {
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
     <HeaderApp title="Dettaglio giorno" :to="{ name: 'CalendarView' }">
-      <div class="app-header__tools">
+      <div class="app-header__tools day-header-tools">
         <button
           type="button"
           class="day-header-create-btn"
@@ -480,9 +493,19 @@ function createFromSelectedDay() {
     </HeaderApp>
 
     <div class="px-2 pb-4">
-      <div class="card border-0 shadow-sm p-3 mb-2">
-        <h2 class="h6 mb-1 text-capitalize">{{ dayLabel }}</h2>
-        <small class="text-muted">Appuntamenti: {{ dayAppointments.length }} | Inserimenti rapidi: {{ insertionGapsCount }}</small>
+      <div class="card border-0 shadow-sm p-3 mb-2 day-overview-card">
+        <div class="day-overview-card__content">
+          <div class="min-w-0">
+            <h2 class="h6 mb-1 text-capitalize">{{ dayLabel }}</h2>
+            <small class="text-muted">
+              Appuntamenti: {{ dayAppointments.length }} | Inserimenti rapidi: {{ insertionGapsCount }}
+            </small>
+          </div>
+          <div class="day-earned-pill" aria-label="Totale guadagnato del giorno">
+            <span class="day-earned-pill__label">Totale guadagnato</span>
+            <strong class="day-earned-pill__value">{{ formatCurrency(dayTotalEarned) }}</strong>
+          </div>
+        </div>
       </div>
 
       <div class="card border-0 shadow-sm p-3 h-100">
@@ -585,6 +608,52 @@ function createFromSelectedDay() {
 </template>
 
 <style scoped lang="scss">
+.day-header-tools {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.day-overview-card {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(232, 179, 190, 0.28) 0%, transparent 45%),
+    radial-gradient(circle at 100% 100%, rgba(20, 138, 58, 0.16) 0%, transparent 44%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 245, 246, 0.95) 100%);
+}
+
+.day-overview-card__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.day-earned-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.12rem;
+  padding: 0.5rem 0.72rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(20, 138, 58, 0.28);
+  background: linear-gradient(140deg, rgba(192, 255, 214, 0.32) 0%, rgba(156, 232, 188, 0.24) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
+}
+
+.day-earned-pill__label {
+  font-size: 0.66rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(11, 85, 45, 0.86);
+}
+
+.day-earned-pill__value {
+  font-size: 1rem;
+  line-height: 1.1;
+  color: #0f5132;
+}
+
 .appointment-row {
   border: 1px solid rgba(84, 44, 58, 0.14);
   border-left: 4px solid transparent;

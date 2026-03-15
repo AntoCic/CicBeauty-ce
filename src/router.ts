@@ -35,6 +35,7 @@ import AppointmentEditView from './views/calendar/AppointmentEditView.vue';
 import CalendarRecurrenceRulesView from './views/calendar/CalendarRecurrenceRulesView.vue';
 import ClientsView from './views/clients/ClientsView.vue';
 import ClientEditView from './views/clients/ClientEditView.vue';
+import ClientLaserSheetView from './views/clients/ClientLaserSheetView.vue';
 import ExpensesView from './views/expenses/ExpensesView.vue';
 import CouponsView from './views/coupons/CouponsView.vue';
 import StatsView from './views/stats/StatsView.vue';
@@ -144,6 +145,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/appointments/:id', name: 'AppointmentEditView', component: AppointmentEditView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/clients', name: 'ClientsView', component: ClientsView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/clients/:id', name: 'ClientEditView', component: ClientEditView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
+  { path: '/clients/:id/laser', name: 'ClientLaserSheetView', component: ClientLaserSheetView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/expenses', name: 'ExpensesView', component: ExpensesView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/payments/sepa-qr', name: 'SepaTransferQrView', component: SepaTransferQrView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
   { path: '/coupons', name: 'CouponsView', component: CouponsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },

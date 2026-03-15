@@ -16,12 +16,35 @@ type QuickNavItem = {
 const route = useRoute()
 const operatorPermission: AppPermissionInput = UserPermission.OPERATORE
 
-const todayIsoDate = computed(() => {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
+function keyForDay(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function normalizeIsoDay(rawValue: unknown) {
+  const raw = String(rawValue ?? '').trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return ''
+  const parsed = new Date(`${raw}T12:00:00`)
+  if (Number.isNaN(parsed.getTime())) return ''
+  return keyForDay(parsed)
+}
+
+const todayIsoDate = computed(() => {
+  return keyForDay(new Date())
+})
+
+const createAppointmentDate = computed(() => {
+  const isDayView = String(route.name ?? '').trim() === 'CalendarDayView'
+  if (!isDayView) return todayIsoDate.value
+  return normalizeIsoDay(route.query.date) || todayIsoDate.value
+})
+
+const createAppointmentOperatorId = computed(() => {
+  const isDayView = String(route.name ?? '').trim() === 'CalendarDayView'
+  if (!isDayView) return ''
+  return String(route.query.operatorId ?? '').trim()
 })
 
 const quickNavItems = computed<QuickNavItem[]>(() => [
@@ -57,7 +80,14 @@ const quickNavItems = computed<QuickNavItem[]>(() => [
     id: 'add-appointment',
     label: 'Nuovo',
     icon: 'add_circle',
-    to: { name: 'AppointmentEditView', params: { id: 'new' }, query: { date: todayIsoDate.value } },
+    to: {
+      name: 'AppointmentEditView',
+      params: { id: 'new' },
+      query: {
+        date: createAppointmentDate.value,
+        operatorId: createAppointmentOperatorId.value || undefined,
+      },
+    },
     permission: operatorPermission,
   },
 ])

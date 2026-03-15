@@ -1,5 +1,17 @@
 <script setup lang="ts">
-import { Btn, FieldTiptap, cicKitStore, normalizeGender, toast, type Gender } from 'cic-kit'
+import {
+  Btn,
+  FieldFile,
+  FieldTiptap,
+  cicKitStore,
+  getFileExtension,
+  normalizeGender,
+  toast,
+  toFileArray,
+  uploadFilesToUrls,
+  type FieldFileValue,
+  type Gender,
+} from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import { Timestamp } from 'firebase/firestore'
@@ -8,6 +20,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAppointmentWatchManager } from '../../composables/useAppointmentWatchManager'
 import type { Client, ClientDeposit, ClientDepositSettlement } from '../../models/Client'
+import { computeFitzpatrickScore, resolveFitzpatrickPhototype } from '../../models/laserSheet'
 import { Auth } from '../../main'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
@@ -68,6 +81,9 @@ const editingPurchaseIndex = ref(-1)
 const isPurchaseHeaderEditing = ref(false)
 const settlementEditMap = ref<Record<number, boolean>>({})
 const isSavingPurchase = ref(false)
+const clientFilesValue = ref<FieldFileValue>([])
+const isUploadingClientFiles = ref(false)
+const isDeletingClientFile = ref(false)
 
 const routeId = computed(() => String(route.params.id ?? '').trim())
 const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
@@ -114,6 +130,9 @@ const clientAppointments = computed(() => {
 })
 
 const appointmentSummary = computed(() => buildClientAppointmentSummary(clientAppointments.value))
+const laserScore = computed(() => computeFitzpatrickScore(current.value?.schedaLaser))
+const laserPhototype = computed(() => resolveFitzpatrickPhototype(laserScore.value))
+const hasLaserSheet = computed(() => Boolean(current.value?.schedaLaser && Object.keys(current.value.schedaLaser).length))
 
 function normalizeString(value: unknown) {
   return String(value ?? '').trim()
@@ -158,6 +177,116 @@ function toIsoDate(value: unknown, fallback = '') {
   const month = String(parsed.getMonth() + 1).padStart(2, '0')
   const day = String(parsed.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function sanitizeFileName(name: string) {
+  const safe = normalizeString(name)
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+  return safe || 'client-file'
+}
+
+function stripFileExtension(fileName: string) {
+  const dotIndex = fileName.lastIndexOf('.')
+  if (dotIndex <= 0) return fileName
+  return fileName.slice(0, dotIndex)
+}
+
+function resetClientFilesSelection() {
+  clientFilesValue.value = []
+}
+
+async function uploadClientFiles(files: File[], clientId: string) {
+  if (!clientStore.storageFolder) {
+    throw new Error('Storage clienti non disponibile')
+  }
+  const batchId = Date.now()
+  return uploadFilesToUrls(files, async (file, index) => {
+    const extension = getFileExtension(file)
+    const baseName = sanitizeFileName(stripFileExtension(file.name))
+    const path = extension
+      ? `${clientId}/files/${batchId}_${index}_${baseName}.${extension}`
+      : `${clientId}/files/${batchId}_${index}_${baseName}`
+    const uploaded = await clientStore.storageFolder!.update(path, file)
+    return uploaded.url
+  })
+}
+
+async function addClientFiles() {
+  if (!current.value || isCreateMode.value || isUploadingClientFiles.value || isDeletingClientFile.value) return
+  const selectedFiles = toFileArray(clientFilesValue.value)
+  if (!selectedFiles.length) {
+    toast.warning('Seleziona almeno un file')
+    return
+  }
+  if (!clientStore.storageFolder) {
+    toast.error('Storage clienti non disponibile')
+    return
+  }
+
+  isUploadingClientFiles.value = true
+  try {
+    const uploadedUrls = await uploadClientFiles(selectedFiles, current.value.id)
+    if (!uploadedUrls.length) {
+      toast.warning('Nessun file caricato')
+      return
+    }
+    await current.value.update({
+      fileUrls: [...(current.value.fileUrls ?? []), ...uploadedUrls],
+      updateBy: defaultUpdateBy(),
+    })
+    await loadItem()
+    toast.success('File cliente caricati')
+  } catch (error) {
+    console.error(error)
+    toast.error('Errore upload file cliente')
+  } finally {
+    isUploadingClientFiles.value = false
+    resetClientFilesSelection()
+  }
+}
+
+function openClientFile(url: string) {
+  window.open(url, '_blank', 'noopener')
+}
+
+function clientFileName(url: string) {
+  const withoutQuery = String(url ?? '').split('?')[0] ?? ''
+  const rawName = withoutQuery.split('/').pop() ?? 'file'
+  try {
+    return decodeURIComponent(rawName)
+  } catch (error) {
+    return rawName
+  }
+}
+
+async function removeClientFile(url: string) {
+  if (!current.value || isCreateMode.value || isDeletingClientFile.value) return
+  const ok = window.confirm('Eliminare questo file cliente?')
+  if (!ok) return
+
+  isDeletingClientFile.value = true
+  try {
+    await clientStore.storageFolder?.removeFromUrl(url)
+    await current.value.update({
+      fileUrls: (current.value.fileUrls ?? []).filter((item) => item !== url),
+      updateBy: defaultUpdateBy(),
+    })
+    await loadItem()
+    toast.success('File cliente eliminato')
+  } catch (error) {
+    console.error(error)
+    toast.error('Errore eliminazione file cliente')
+  } finally {
+    isDeletingClientFile.value = false
+  }
+}
+
+function openLaserSheetPage() {
+  if (!current.value || isCreateMode.value) return
+  router.push({ name: 'ClientLaserSheetView', params: { id: current.value.id } })
 }
 
 function cloneSettlements(list: ClientDepositSettlement[]) {
@@ -429,6 +558,7 @@ function openAppointment(appointment: AppointmentLike) {
 
 async function loadItem() {
   resetPurchaseModalState()
+  resetClientFilesSelection()
   if (isCreateMode.value) {
     current.value = undefined
     isEditMode.value = true
@@ -699,6 +829,89 @@ watch(() => route.params.id, loadItem)
             Elimina cliente
           </Btn>
         </div>
+
+        <section class="mt-3">
+          <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+            <h2 class="h6 mb-0">Scheda laser</h2>
+            <Btn type="button" color="dark" variant="outline" icon="description" @click="openLaserSheetPage">
+              Apri scheda laser
+            </Btn>
+          </div>
+
+          <div class="laser-summary-card">
+            <p class="mb-1">
+              Numero scheda: <strong>{{ current.schedaLaserNumber || '-' }}</strong>
+            </p>
+            <p class="mb-1">
+              Data scheda:
+              <strong>{{ formatConsentTimestamp(current.dataSchiedaLaser) }}</strong>
+            </p>
+            <p class="mb-0">
+              Fitzpatrick: <strong>{{ hasLaserSheet ? `${laserScore}/40` : '-' }}</strong> | Fototipo:
+              <strong>{{ hasLaserSheet ? laserPhototype : '-' }}</strong>
+            </p>
+          </div>
+        </section>
+
+        <section class="mt-3">
+          <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+            <h2 class="h6 mb-0">File cliente</h2>
+            <Btn
+              type="button"
+              color="dark"
+              icon="upload_file"
+              :loading="isUploadingClientFiles"
+              @click="addClientFiles"
+            >
+              Carica file
+            </Btn>
+          </div>
+
+          <FieldFile
+            name="client-files"
+            v-model="clientFilesValue"
+            multiple
+            :show-errors="false"
+            :disabled="isUploadingClientFiles || isDeletingClientFile"
+            @clear="resetClientFilesSelection"
+          >
+            <template #dropzone="{ open, clear, files, disabled }">
+              <div class="dropzone-wrap" :class="{ disabled }">
+                <div class="d-flex gap-2 flex-wrap">
+                  <Btn type="button" icon="upload_file" color="dark" :disabled="disabled" @click="open">
+                    Scegli file
+                  </Btn>
+                  <Btn type="button" icon="delete" variant="outline" color="secondary" :disabled="disabled || !files.length" @click="clear">
+                    Svuota selezione
+                  </Btn>
+                </div>
+                <small class="text-muted d-block mt-1">File selezionati: {{ files.length }}</small>
+              </div>
+            </template>
+          </FieldFile>
+
+          <div v-if="current.fileUrls?.length" class="vstack gap-2 mt-2">
+            <article v-for="url in current.fileUrls" :key="url" class="client-file-row">
+              <p class="mb-0 text-truncate">{{ clientFileName(url) }}</p>
+              <div class="d-flex gap-2 flex-wrap">
+                <Btn type="button" color="secondary" variant="outline" icon="download" @click="openClientFile(url)">
+                  Scarica
+                </Btn>
+                <Btn
+                  type="button"
+                  color="danger"
+                  variant="outline"
+                  icon="delete"
+                  :disabled="isDeletingClientFile || isUploadingClientFiles"
+                  @click="removeClientFile(url)"
+                >
+                  Elimina
+                </Btn>
+              </div>
+            </article>
+          </div>
+          <p v-else class="text-muted small mb-0 mt-2">Nessun file cliente caricato.</p>
+        </section>
 
         <section class="mt-3">
           <h2 class="h6 mb-2">Appuntamenti cliente</h2>
@@ -1060,6 +1273,36 @@ watch(() => route.params.id, loadItem)
 .deposit-view-card__latest {
   font-size: 0.82rem;
   color: #6f4f5c;
+}
+
+.dropzone-wrap {
+  border: 1px dashed rgba(84, 44, 58, 0.24);
+  border-radius: 0.62rem;
+  padding: 0.7rem;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.dropzone-wrap.disabled {
+  opacity: 0.65;
+}
+
+.client-file-row {
+  border: 1px solid rgba(84, 44, 58, 0.16);
+  border-radius: 0.55rem;
+  padding: 0.5rem 0.6rem;
+  background: rgba(255, 255, 255, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.laser-summary-card {
+  border: 1px solid rgba(84, 44, 58, 0.14);
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.65rem;
+  background: rgba(255, 255, 255, 0.74);
+  font-size: 0.86rem;
 }
 
 .client-purchase-modal {

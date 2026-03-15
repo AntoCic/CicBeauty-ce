@@ -52,6 +52,12 @@ service firebase.storage {
       allow delete: if isOperator();
     }
 
+    match /public/clients/{clientId}/{path=**} {
+      allow read: if isOperator();
+      allow write: if isOperator() && isValidUpload(25, null);
+      allow delete: if isOperator();
+    }
+
     match /public/coupons/{couponId}/{path=**} {
       allow read: if isOperator();
       allow write: if isOperator() && isValidUpload(25, null);

@@ -2,6 +2,7 @@
 import { FirestoreModel, normalizeGender, type Gender, type Timestampble } from 'cic-kit'
 import { Timestamp } from 'firebase/firestore'
 import { asDate } from '../utils/date'
+import { normalizeLaserSheetRecord, type LaserSheetRecord } from './laserSheet'
 
 export type ClientDepositSettlement = {
   note: string
@@ -42,6 +43,21 @@ function normalizeDate(value: unknown) {
   const month = String(parsed.getMonth() + 1).padStart(2, '0')
   const day = String(parsed.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function normalizeUrlList(value: unknown) {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => normalizeString(item))
+    .filter(Boolean)
+}
+
+function normalizePositiveInteger(value: unknown) {
+  const next = Number(value)
+  if (!Number.isFinite(next)) return undefined
+  const integer = Math.round(next)
+  if (integer <= 0) return undefined
+  return integer
 }
 
 function normalizeSettlements(value: unknown) {
@@ -95,6 +111,12 @@ export interface ClientData extends Partial<Timestampble> {
   note?: string
   acconti?: ClientDeposit[]
   deposits?: ClientDeposit[]
+  fileUrls?: string[]
+  schedaLaser?: LaserSheetRecord
+  dataSchiedaLaser?: Timestamp | null
+  schedaLaserNumber?: number
+  laserDocUrls?: string[]
+  laserMediaUrls?: string[]
   updateBy: string
 }
 
@@ -116,6 +138,12 @@ export class Client extends FirestoreModel<ClientData> {
   old_id?: string
   note?: string
   deposits: ClientDeposit[]
+  fileUrls: string[]
+  schedaLaser?: LaserSheetRecord
+  dataSchiedaLaser?: Timestamp
+  schedaLaserNumber?: number
+  laserDocUrls: string[]
+  laserMediaUrls: string[]
   updateBy: string
 
   constructor(data: ClientData) {
@@ -135,6 +163,12 @@ export class Client extends FirestoreModel<ClientData> {
     this.old_id = data.old_id
     this.note = data.note
     this.deposits = normalizeDeposits(data.deposits ?? data.acconti)
+    this.fileUrls = normalizeUrlList(data.fileUrls)
+    this.schedaLaser = normalizeLaserSheetRecord(data.schedaLaser)
+    this.dataSchiedaLaser = normalizeOptionalTimestamp(data.dataSchiedaLaser)
+    this.schedaLaserNumber = normalizePositiveInteger(data.schedaLaserNumber)
+    this.laserDocUrls = normalizeUrlList(data.laserDocUrls)
+    this.laserMediaUrls = normalizeUrlList(data.laserMediaUrls)
     this.updateBy = data.updateBy
   }
 
@@ -156,6 +190,12 @@ export class Client extends FirestoreModel<ClientData> {
       note: this.note,
       acconti: this.deposits,
       deposits: this.deposits,
+      fileUrls: this.fileUrls,
+      schedaLaser: this.schedaLaser,
+      dataSchiedaLaser: this.dataSchiedaLaser,
+      schedaLaserNumber: this.schedaLaserNumber,
+      laserDocUrls: this.laserDocUrls,
+      laserMediaUrls: this.laserMediaUrls,
       updateBy: this.updateBy,
       ...this.timestampbleProps()
     }
