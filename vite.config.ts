@@ -6,6 +6,7 @@ import { fileURLToPath, URL } from 'node:url'
 // https://vite.dev/config/
 export default defineConfig({
   resolve: {
+    dedupe: ['firebase', '@firebase/app', '@firebase/firestore'],
     alias: {
       '@shared': fileURLToPath(new URL('./shared', import.meta.url)),
       '@src': fileURLToPath(new URL('./src', import.meta.url)),

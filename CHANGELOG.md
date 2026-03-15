@@ -1,3 +1,9 @@
+## v0.0.47 - 2026-03-15
+
+fix appointment watch
+
+---
+
 ## v0.0.46 - 2026-03-14
 
 fix permission

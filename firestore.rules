@@ -110,6 +110,11 @@ service cloud.firestore {
       allow read: if isSignedIn() && isOperator();
       allow write: if isSignedIn() && isOperator();
     }
+    
+    match /whatsAppTemplates/{id} {
+      allow read: if isSignedIn() && isOperator();
+      allow write: if isSignedIn() && isAdmin();
+    }
 
     match /public_users/{userId} {
       allow read: if isSignedIn();

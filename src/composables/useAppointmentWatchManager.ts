@@ -1,5 +1,7 @@
 import type { GetProps } from 'cic-kit'
 import { Timestamp, where, type QueryConstraint } from 'firebase/firestore'
+import { UserPermission } from '../enums/UserPermission'
+import { Auth } from '../main'
 import { appointmentStore } from '../stores/appointmentStore'
 import { appointmentWatchState } from '../stores/appointmentWatchState'
 
@@ -23,7 +25,6 @@ type WatchRequest = {
   from: Date
   to?: Date
   rangeKey: string
-  opts: GetProps
   updatedAt: number
 }
 
@@ -40,13 +41,18 @@ const calendarVisibleMonthByReason = new Map<string, string>()
 const calendarFromByReason = new Map<string, Date>()
 const activeMonthKeys = new Set<string>()
 const loadedMonthKeys = new Set<string>()
-let queryInteropDisabled = false
+const WATCH_HEALTH_CHECK_MS = 4000
+const RETRY_DELAY_MIN_MS = 1500
+const RETRY_DELAY_MAX_MS = 30000
 
 let appliedMode = 'idle'
 let appliedReason = ''
 let appliedRangeKey = ''
 let appliedSuspendKey = ''
 let applyQueue = Promise.resolve()
+let watchHealthTimer: ReturnType<typeof setInterval> | null = null
+let retryTimer: ReturnType<typeof setTimeout> | null = null
+let retryAttempt = 0
 
 function normalizeReason(value: unknown) {
   return String(value ?? '').trim()
@@ -91,6 +97,40 @@ function toIso(value?: Date) {
   return value.toISOString()
 }
 
+function hasOperatorPermission() {
+  const user = Auth.user
+  return Boolean(
+    Auth.isAdmin ||
+    Auth.isSuperAdmin ||
+    user?.hasPermission?.(UserPermission.OPERATORE),
+  )
+}
+
+function canStartAppointmentWatch() {
+  const authUid = String(Auth.uid ?? '').trim()
+  const firebaseUid = String(Auth.firebaseUser?.uid ?? '').trim()
+  const uidLooksConsistent = !authUid || !firebaseUid || authUid === firebaseUid
+
+  return Boolean(
+    Auth?.isLoggedIn &&
+    !Auth?.isOnLoginProcess &&
+    firebaseUid &&
+    uidLooksConsistent &&
+    hasOperatorPermission(),
+  )
+}
+
+function shouldWaitForAuthSession() {
+  const authUid = String(Auth.uid ?? '').trim()
+  const firebaseUid = String(Auth.firebaseUser?.uid ?? '').trim()
+  const uidLooksConsistent = !authUid || !firebaseUid || authUid === firebaseUid
+  return Boolean(
+    Auth?.isLoggedIn &&
+    hasOperatorPermission() &&
+    (Auth?.isOnLoginProcess || !firebaseUid || !uidLooksConsistent),
+  )
+}
+
 function syncMetaCollections() {
   appointmentWatchState.activeReasons = [...watchRequests.keys()].sort()
   appointmentWatchState.suspendedReasons = [...suspendedReasons].sort()
@@ -122,18 +162,21 @@ function addLoadedMonths(from: Date, untilMonth: Date) {
   }
 }
 
-function buildRangeOpts(from: Date, to?: Date): GetProps {
+function buildRangeOpts(from: Date, to?: Date, maxResults?: number): GetProps {
   const query: QueryConstraint[] = [
     where('date_time', '>=', Timestamp.fromDate(from)),
   ]
   if (to) {
     query.push(where('date_time', '<', Timestamp.fromDate(to)))
   }
-
-  return {
+  const opts: GetProps = {
     query,
     orderBy: { fieldPath: 'date_time', directionStr: 'asc' },
   }
+  if (typeof maxResults === 'number' && maxResults > 0) {
+    opts.limit = maxResults
+  }
+  return opts
 }
 
 function isQueryInteropError(error: unknown) {
@@ -144,10 +187,47 @@ function isQueryInteropError(error: unknown) {
   )
 }
 
-function withoutQuery(opts: GetProps): GetProps {
-  if (!opts.query) return opts
-  const { query: _query, ...rest } = opts
-  return rest
+function isPermissionDeniedError(error: unknown) {
+  if (typeof error === 'object' && error && 'code' in error) {
+    const code = String((error as { code?: unknown }).code ?? '')
+    if (code.includes('permission-denied')) return true
+  }
+  const message = error instanceof Error ? error.message : String(error ?? '')
+  return message.toLowerCase().includes('insufficient permissions')
+}
+
+function ensureWatchHealthTimer() {
+  if (watchHealthTimer) return
+
+  watchHealthTimer = setInterval(() => {
+    if (suspendedReasons.size > 0) return
+    if (appliedMode === 'idle') return
+    if (appointmentStore.live) return
+    scheduleRetry('listener dropped; scheduling restart')
+  }, WATCH_HEALTH_CHECK_MS)
+}
+
+function clearRetryTimer() {
+  if (!retryTimer) return
+  clearTimeout(retryTimer)
+  retryTimer = null
+}
+
+function resetRetryState() {
+  retryAttempt = 0
+  clearRetryTimer()
+}
+
+function scheduleRetry(reason: string, fixedDelayMs?: number) {
+  if (retryTimer) return
+  const delay = typeof fixedDelayMs === 'number'
+    ? fixedDelayMs
+    : Math.min(RETRY_DELAY_MIN_MS * 2 ** retryAttempt, RETRY_DELAY_MAX_MS)
+  retryTimer = setTimeout(() => {
+    retryTimer = null
+    queueApplyWatchPlan()
+  }, delay)
+  console.warn(`[appointment-watch] ${reason}; retry in ${delay}ms`)
 }
 
 function pickEffectiveRequest() {
@@ -169,39 +249,48 @@ function pickEffectiveRequest() {
 }
 
 async function safeStart(opts: GetProps) {
-  const runtimeOpts = queryInteropDisabled ? withoutQuery(opts) : opts
-
   try {
-    await appointmentStore.start(runtimeOpts)
+    await appointmentStore.start(opts)
+    resetRetryState()
     return true
   } catch (error) {
-    if (!queryInteropDisabled && runtimeOpts.query && isQueryInteropError(error)) {
-      queryInteropDisabled = true
-      console.warn(
-        '[appointment-watch] firestore query interop disabled; retrying without query constraints',
-        error,
-      )
-
-      try {
-        await appointmentStore.start(withoutQuery(opts))
-        return true
-      } catch (fallbackError) {
-        console.error('[appointment-watch] fallback start failed', fallbackError)
-        return false
-      }
+    if (isPermissionDeniedError(error)) {
+      retryAttempt += 1
+      scheduleRetry('permission denied while starting listener')
+      console.warn('[appointment-watch] start denied, waiting auth/permissions sync', {
+        authUid: String(Auth.uid ?? '').trim(),
+        firebaseUid: String(Auth.firebaseUser?.uid ?? '').trim(),
+        isLoggedIn: Boolean(Auth.isLoggedIn),
+        isOnLoginProcess: Boolean(Auth.isOnLoginProcess),
+      })
+      return false
     }
 
+    if (isQueryInteropError(error)) {
+      console.warn(
+        '[appointment-watch] firestore query interop error, retrying same filtered query',
+        error,
+      )
+      retryAttempt += 1
+      scheduleRetry('query interop transient failure')
+      return false
+    }
+
+    retryAttempt += 1
+    scheduleRetry('start failed')
     console.error('[appointment-watch] start failed', error)
     return false
   }
 }
 
 function queueApplyWatchPlan() {
+  ensureWatchHealthTimer()
   applyQueue = applyQueue
     .then(async () => {
       syncMetaCollections()
 
       if (suspendedReasons.size > 0) {
+        resetRetryState()
         const suspendKey = [...suspendedReasons].sort().join('|')
         if (appliedMode !== 'suspended' || appliedSuspendKey !== suspendKey) {
           appointmentStore.stop()
@@ -212,6 +301,23 @@ function queueApplyWatchPlan() {
           appliedSuspendKey = suspendKey
         }
         setAppliedMeta('suspended', suspendKey)
+        return
+      }
+
+      if (!canStartAppointmentWatch()) {
+        const shouldRetryForAuthSync = shouldWaitForAuthSession()
+        resetRetryState()
+        if (shouldRetryForAuthSync) {
+          scheduleRetry('auth session not ready for appointment watch', RETRY_DELAY_MIN_MS)
+        }
+        if (appointmentStore.live) {
+          appointmentStore.stop()
+          appointmentWatchState.restartCount += 1
+        }
+        appliedMode = 'idle'
+        appliedReason = ''
+        appliedRangeKey = ''
+        setAppliedMeta('idle', '')
         return
       }
 
@@ -228,7 +334,7 @@ function queueApplyWatchPlan() {
           return
         }
 
-        const started = await safeStart(target.opts)
+        const started = await safeStart(buildRangeOpts(target.from, target.to))
         if (!started) return
 
         appliedMode = target.mode
@@ -287,7 +393,6 @@ function setWatchRequest(
     from,
     to,
     rangeKey: nextRangeKey,
-    opts: buildRangeOpts(from, to),
     updatedAt: Date.now(),
   })
 
@@ -298,11 +403,6 @@ export function buildDefaultAppointmentWatchRange(referenceDate = new Date()) {
   const month = startOfMonth(referenceDate)
   const from = addMonths(month, -1)
   return { from, to: undefined as Date | undefined }
-}
-
-export function buildDefaultAppointmentWatchOpts(referenceDate = new Date()): GetProps {
-  const { from, to } = buildDefaultAppointmentWatchRange(referenceDate)
-  return buildRangeOpts(from, to)
 }
 
 export function activateCalendarMonthWatch(monthDate: Date, reason = DEFAULT_REASON_CALENDAR) {
@@ -401,9 +501,14 @@ export function releaseAppointmentWatch(reason: string) {
   queueApplyWatchPlan()
 }
 
+export function ensureAppointmentWatchRunning() {
+  queueApplyWatchPlan()
+}
+
 export function useAppointmentWatchManager() {
   return {
     appointmentWatchState,
+    ensureAppointmentWatchRunning,
     activateCalendarMonthWatch,
     activateDayWatch,
     activateRangeWatch,

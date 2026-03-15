@@ -14,13 +14,12 @@ import { treatmentCategoryStore } from './stores/treatmentCategoryStore';
 import { productStore } from './stores/productStore';
 import { productCategoryStore } from './stores/productCategoryStore';
 import { typeExpenseStore } from './stores/typeExpenseStore';
-import { appointmentStore } from './stores/appointmentStore';
 import { clientStore } from './stores/clientStore';
 import { couponStore } from './stores/couponStore';
 import { typeCouponStore } from './stores/typeCouponStore';
 import { calendarRecurrenceStore } from './stores/calendarRecurrenceStore';
 import { whatsAppTemplateStore } from './stores/whatsAppTemplateStore';
-import { buildDefaultAppointmentWatchOpts } from './composables/useAppointmentWatchManager';
+import { ensureAppointmentWatchRunning } from './composables/useAppointmentWatchManager';
 
 const route = useRoute();
 let initAppLoadingClosed = false;
@@ -53,10 +52,11 @@ useStoreWatch([
   { store: typeExpenseStore },
   { store: typeCouponStore },
   { store: calendarRecurrenceStore },
-  { store: appointmentStore, getOpts: buildDefaultAppointmentWatchOpts(new Date()) },
   { store: couponStore },
   { store: whatsAppTemplateStore },
 ]);
+
+ensureAppointmentWatchRunning()
 
 watch(
   () => Auth?.isLoggedIn,
@@ -73,8 +73,24 @@ watch(
         cicKitStore.serviceWorkerToast = false;
       }
     }
+    ensureAppointmentWatchRunning()
   },
   { immediate: true },
+)
+
+watch(
+  () => (Array.isArray(Auth?.user?.permissions) ? Auth.user.permissions.join('|') : ''),
+  () => {
+    ensureAppointmentWatchRunning()
+  },
+  { immediate: true },
+)
+
+watch(
+  () => `${String(Auth?.firebaseUser?.uid ?? '')}|${Boolean(Auth?.isOnLoginProcess)}`,
+  () => {
+    ensureAppointmentWatchRunning()
+  },
 )
 
 async function onRouteComponentMounted() {
