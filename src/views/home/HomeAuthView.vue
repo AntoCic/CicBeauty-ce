@@ -3,6 +3,7 @@ import { cicKitStore } from 'cic-kit'
 import { computed, ref } from 'vue'
 import { hasPermissionAccess } from '../../utils/permissions'
 import { AUTH_HOME_APPS, type HomeAppShortcut } from './homeApps'
+import HomeQrCarousel from './components/HomeQrCarousel.vue'
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 
@@ -94,6 +95,7 @@ function closeSettingsFolder() {
         </section>
       </Transition>
 
+      <HomeQrCarousel />
     </section>
   </div>
 </template>
