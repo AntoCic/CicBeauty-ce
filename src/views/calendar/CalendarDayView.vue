@@ -478,7 +478,7 @@ function createFromSelectedDay() {
 
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp title="Dettaglio giorno" :to="{ name: 'CalendarView' }">
+    <HeaderApp title="Dettaglio giorno" :to="{ name: 'home' }">
       <div class="app-header__tools day-header-tools">
         <button
           type="button"

@@ -19,7 +19,7 @@ import {
 } from '../../utils/whatsapp'
 import { hasPermissionAccess } from '../../utils/permissions'
 
-useChangeHeader('Template WhatsApp', { name: 'CalendarView' })
+useChangeHeader('Template WhatsApp', { name: 'home' })
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const canManage = computed(() => hasPermissionAccess(defaultUserPermission.ADMIN))

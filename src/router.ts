@@ -10,6 +10,7 @@ import ProductCategoriesManageView from './views/products/ProductCategoriesManag
 import ProductEditView from './views/products/ProductEditView.vue';
 import ProductView from './views/products/ProductView.vue';
 import HomeView from './views/home/HomeView.vue';
+import HomeAuthView from './views/home/HomeAuthView.vue';
 import UserView from './views/user/UserView.vue';
 import TreatmentsView from './views/treatments/TreatmentsView.vue';
 import TreatmentsManageView from './views/treatments/TreatmentsManageView.vue';
@@ -29,7 +30,6 @@ import AiTransparencyView from './views/legal/AiTransparencyView.vue';
 import AppConfigView from './views/app-config/AppConfigView.vue';
 import AgentPromptsView from './views/ai/AgentPromptsView.vue';
 import TestPlaygroundView from './views/tools/TestPlaygroundView.vue';
-import CalendarView from './views/calendar/CalendarView.vue';
 import CalendarDayView from './views/calendar/CalendarDayView.vue';
 import AppointmentEditView from './views/calendar/AppointmentEditView.vue';
 import CalendarRecurrenceRulesView from './views/calendar/CalendarRecurrenceRulesView.vue';
@@ -43,7 +43,7 @@ import RelationsView from './views/relations/RelationsView.vue';
 import MigrationImportView from './views/migration/MigrationImportView.vue';
 import CatalogBackupView from './views/settings/CatalogBackupView.vue';
 import WhatsAppTemplatesView from './views/settings/WhatsAppTemplatesView.vue';
-import SepaTransferQrView from './views/payments/SepaTransferQrView.vue';
+import BonificoView from './views/payments/BonificoView.vue';
 
 
 // ===================================================================================================
@@ -58,6 +58,16 @@ export const routes: RouteRecordRaw[] = [
       publicDepth: 0,
       title: 'CNC Beauty | Trattamenti, prodotti e benessere',
       description: 'Centro estetico CNC Beauty: trattamenti professionali, prodotti selezionati e consulenza personalizzata.',
+    },
+  },
+  {
+    path: '/home-app',
+    name: 'homeApp',
+    component: HomeAuthView,
+    meta: {
+      loginStatus: true,
+      publicRoute: true,
+      robots: 'noindex,nofollow',
     },
   },
   {
@@ -140,14 +150,13 @@ export const routes: RouteRecordRaw[] = [
   },
   { path: '/type-expenses', name: 'TypeExpensesView', component: TypeExpensesView, meta: { loginStatus: true } },
   { path: '/type-coupons', name: 'TypeCouponsView', component: TypeCouponsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
-  { path: '/calendar', name: 'CalendarView', component: CalendarView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/calendar/day', name: 'CalendarDayView', component: CalendarDayView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/appointments/:id', name: 'AppointmentEditView', component: AppointmentEditView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/clients', name: 'ClientsView', component: ClientsView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/clients/:id', name: 'ClientEditView', component: ClientEditView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/clients/:id/laser', name: 'ClientLaserSheetView', component: ClientLaserSheetView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/expenses', name: 'ExpensesView', component: ExpensesView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
-  { path: '/payments/sepa-qr', name: 'SepaTransferQrView', component: SepaTransferQrView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
+  { path: '/bonifico-app', name: 'BonificoView', component: BonificoView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/coupons', name: 'CouponsView', component: CouponsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/stats', name: 'StatsView', component: StatsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/relations', name: 'RelationsView', component: RelationsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },

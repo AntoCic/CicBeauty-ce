@@ -1,3 +1,9 @@
+## v0.0.49 - 2026-03-16
+
+fix usability
+
+---
+
 ## v0.0.47 - 2026-03-15
 
 fix appointment watch

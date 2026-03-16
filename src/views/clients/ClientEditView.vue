@@ -25,6 +25,7 @@ import { Auth } from '../../main'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
 import { asDate } from '../../utils/date'
+import { sanitizePhoneNumberInput } from '../../utils/phone'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import ClientAppointmentCard from './components/ClientAppointmentCard.vue'
 import ClientPersonCard from './components/ClientPersonCard.vue'
@@ -61,6 +62,8 @@ type GenderToggleOption = {
   label: string
   className: string
 }
+
+type FormSetFieldValue = (field: string, value: unknown, shouldValidate?: boolean) => void
 
 const genderToggleOptions: GenderToggleOption[] = [
   { value: 'f', label: 'F', className: 'gender-segment--f' },
@@ -100,7 +103,7 @@ const schema = toTypedSchema(
   yup.object({
     name: yup.string().required('Campo obbligatorio'),
     surname: yup.string().required('Campo obbligatorio'),
-    phone_number: yup.string().default(''),
+    phone_number: yup.string().matches(/^\+?\d*$/, 'Inserisci solo numeri e +').default(''),
     consenso_promozioni_whatsapp: yup.boolean().default(false),
     gender: yup.string().oneOf(['f', 'm', 'o']).required('Campo obbligatorio').default('f'),
     email: yup.string().email('Email non valida').default(''),
@@ -113,7 +116,7 @@ const formKey = computed(() => (isCreateMode.value ? 'client-new' : current.valu
 const initialValues = computed<ClientForm>(() => ({
   name: current.value?.name ?? '',
   surname: current.value?.surname ?? '',
-  phone_number: current.value?.phone_number ?? '',
+  phone_number: sanitizePhoneNumberInput(current.value?.phone_number ?? ''),
   consenso_promozioni_whatsapp: Boolean(current.value?.consenso_promozioni_whatsapp),
   gender: normalizeGenderForForm(current.value?.gender),
   email: current.value?.email ?? '',
@@ -136,6 +139,18 @@ const hasLaserSheet = computed(() => Boolean(current.value?.schedaLaser && Objec
 
 function normalizeString(value: unknown) {
   return String(value ?? '').trim()
+}
+
+function onPhoneNumberInput(event: Event, setFieldValue: FormSetFieldValue) {
+  if (!(event.target instanceof HTMLInputElement)) return
+  setFieldValue('phone_number', sanitizePhoneNumberInput(event.target.value), true)
+}
+
+function onPhoneNumberPaste(event: ClipboardEvent, setFieldValue: FormSetFieldValue) {
+  const pastedText = event.clipboardData?.getData('text') ?? ''
+  if (!pastedText) return
+  event.preventDefault()
+  setFieldValue('phone_number', sanitizePhoneNumberInput(pastedText), true)
 }
 
 function normalizeGenderForForm(value: unknown): Gender {
@@ -591,7 +606,7 @@ async function onSubmit(values: Record<string, unknown>) {
   const payload: ClientUpsertPayload = {
     name: normalizeString(values.name),
     surname: normalizeString(values.surname),
-    phone_number: normalizeString(values.phone_number),
+    phone_number: sanitizePhoneNumberInput(values.phone_number),
     consenso_promozioni_whatsapp: consensoPromozioniWhatsapp,
     gender: normalizeGenderForForm(values.gender),
     email: normalizeString(values.email),
@@ -678,7 +693,16 @@ watch(() => route.params.id, loadItem)
 
           <div class="col-12 col-md-6">
             <label class="form-label">Telefono</label>
-            <Field name="phone_number" class="form-control" placeholder="+39..." />
+            <Field
+              name="phone_number"
+              class="form-control"
+              type="tel"
+              inputmode="tel"
+              autocomplete="tel"
+              placeholder="+39..."
+              @input="onPhoneNumberInput($event, setFieldValue)"
+              @paste="onPhoneNumberPaste($event, setFieldValue)"
+            />
             <ErrorMessage name="phone_number" class="text-danger small" />
           </div>
 

@@ -63,18 +63,17 @@ const quickNavItems = computed<QuickNavItem[]>(() => [
     permission: operatorPermission,
   },
   {
-    id: 'home',
-    label: 'Home',
-    icon: 'home',
+    id: 'calendar',
+    label: 'Calendario',
+    icon: 'calendar_month',
     to: { name: 'home' },
     center: true,
   },
   {
-    id: 'appointments',
-    label: 'Agenda',
-    icon: 'calendar_month',
-    to: { name: 'CalendarView' },
-    permission: operatorPermission,
+    id: 'home-app',
+    label: 'HomeApp',
+    icon: 'home',
+    to: { name: 'homeApp' },
   },
   {
     id: 'add-appointment',
@@ -106,14 +105,17 @@ function isItemActive(item: QuickNavItem) {
   if (item.id === 'clients') {
     return routeName === 'ClientsView' || routeName === 'ClientEditView'
   }
-  if (item.id === 'appointments') {
-    return routeName === 'CalendarView'
+  if (item.id === 'calendar') {
+    return routeName === 'home'
+  }
+  if (item.id === 'home-app') {
+    return routeName === 'homeApp'
   }
   if (item.id === 'add-appointment') {
     return routeName === 'AppointmentEditView' && routeId === 'new'
   }
 
-  return routeName === 'home'
+  return false
 }
 </script>
 

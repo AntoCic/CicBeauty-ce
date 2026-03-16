@@ -5,24 +5,9 @@ import { hasPermissionAccess } from '../../utils/permissions'
 import { AUTH_HOME_APPS, type HomeAppShortcut } from './homeApps'
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
-const isQrModalOpen = ref(false)
 
 function canOpenApp(app: HomeAppShortcut) {
   return hasPermissionAccess(app.permission)
-}
-
-function openQrModal() {
-  isQrModalOpen.value = true
-}
-
-function closeQrModal() {
-  isQrModalOpen.value = false
-}
-
-function onQrKeydown(event: KeyboardEvent) {
-  if (event.key !== 'Enter' && event.key !== ' ') return
-  event.preventDefault()
-  openQrModal()
 }
 
 const SETTINGS_APP_ORDER = [
@@ -109,19 +94,7 @@ function closeSettingsFolder() {
         </section>
       </Transition>
 
-      <img class="home-qr" src="/img/qr.png" alt="QR Cic Beauty" role="button" tabindex="0"
-        aria-label="Apri QR ingrandito" @click="openQrModal" @keydown="onQrKeydown" />
     </section>
-
-    <div v-if="isQrModalOpen" class="home-qr-modal" role="dialog" aria-modal="true"
-      aria-label="QR Cic Beauty ingrandito">
-      <div class="home-qr-modal__backdrop" @click="closeQrModal"></div>
-      <div class="home-qr-modal__content">
-        <button type="button" class="btn-close home-qr-modal__close" aria-label="Chiudi QR ingrandito"
-          @click="closeQrModal"></button>
-        <img class="home-qr-modal__image" src="/img/qr.png" alt="QR Cic Beauty ingrandito" />
-      </div>
-    </div>
   </div>
 </template>
 
@@ -248,53 +221,6 @@ function closeSettingsFolder() {
   transform: translateY(-6px);
 }
 
-.home-qr {
-  width: min(150px, 68vw);
-  height: auto;
-  margin-top: 2rem;
-  cursor: zoom-in;
-}
-
-.home-qr:focus-visible {
-  outline: 2px solid #1f5eff;
-  outline-offset: 4px;
-  border-radius: 6px;
-}
-
-.home-qr-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 1200;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-}
-
-.home-qr-modal__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.home-qr-modal__content {
-  position: relative;
-  width: min(calc(100vw - 2rem), 400px);
-  max-height: calc(100vh - 2rem);
-}
-
-.home-qr-modal__close {
-  position: absolute;
-  top: -0.35rem;
-  right: -0.35rem;
-}
-
-.home-qr-modal__image {
-  width: 100%;
-  height: auto;
-  max-height: calc(100vh - 2rem);
-  object-fit: contain;
-}
-
 .home-footer {
   margin-top: 14px;
   display: grid;
@@ -320,6 +246,10 @@ function closeSettingsFolder() {
 
 .app-icon-sky {
   background: linear-gradient(135deg, #1f5eff 0%, #2d9cff 100%);
+}
+
+.app-icon-fuchsia {
+  background: linear-gradient(135deg, #d811b2 0%, #8f0b75 100%);
 }
 
 .app-icon-night {

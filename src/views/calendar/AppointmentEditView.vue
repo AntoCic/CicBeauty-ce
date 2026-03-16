@@ -4,11 +4,10 @@ import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { Timestamp } from 'firebase/firestore'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { callAvailabilityAgent } from '../../call/callAvailabilityAgent'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
-import { useAppointmentWatchManager } from '../../composables/useAppointmentWatchManager'
 import { Auth } from '../../main'
 import type { Appointment } from '../../models/Appointment'
 import { appConfigStore } from '../../stores/appConfigStore'
@@ -16,11 +15,13 @@ import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
 import { couponStore } from '../../stores/couponStore'
 import { publicUserStore } from '../../stores/publicUser'
+import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
 import { appointmentPersonalOwnerId, isPersonalAppointment } from '../../utils/appointmentVisibility'
 import { computeAppointmentDurationMinutes, fromDateTimeLocalValue, toDateTimeLocalValue } from '../../utils/calendar'
 import { asDate } from '../../utils/date'
 import { hasAiAndOperatorAccess, hasBetaFeaturesAccess } from '../../utils/permissions'
+import { matchesPhoneSearch } from '../../utils/phone'
 import { whatsAppTemplateStore } from '../../stores/whatsAppTemplateStore'
 import {
   formatWhatsAppDate,
@@ -77,13 +78,6 @@ const sendWhatsAppOnDelete = ref(true)
 const routeId = computed(() => String(route.params.id ?? '').trim())
 const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
 const saveWhatsAppLabel = computed(() => (isCreateMode.value ? 'Invia conferma WhatsApp' : 'Invia aggiornamento WhatsApp'))
-const EDIT_WATCH_SUSPEND_REASON = 'appointment-edit-view'
-const { suspendAppointmentWatch, releaseAppointmentWatch } = useAppointmentWatchManager()
-
-suspendAppointmentWatch(EDIT_WATCH_SUSPEND_REASON)
-onBeforeUnmount(() => {
-  releaseAppointmentWatch(EDIT_WATCH_SUSPEND_REASON)
-})
 
 const formKey = computed(() => (isCreateMode.value ? 'appointment-new' : current.value?.id ?? 'appointment-edit'))
 const schema = toTypedSchema(
@@ -144,15 +138,33 @@ const initialValues = computed<AppointmentForm>(() => {
 const shouldOpenNotesAccordion = computed(() => hasMeaningfulNote(initialValues.value.notes))
 
 const treatmentsById = computed(() => new Map(treatmentStore.itemsActiveArray.map((item) => [item.id, item])))
+const treatmentCategoryEmojiById = computed(() => {
+  return new Map(
+    treatmentCategoryStore.itemsActiveArray.map((category) => [
+      category.id,
+      String(category.emoji ?? '').trim(),
+    ]),
+  )
+})
 const clientsById = computed(() => new Map(clientStore.itemsActiveArray.map((item) => [item.id, item])))
 const operatorUsers = computed(() => publicUserStore.itemsActiveArray.filter((item) => Boolean(item.operatore)))
 const operatorsById = computed(() => new Map(operatorUsers.value.map((item) => [item.id, item])))
+const sortedClients = computed(() => {
+  return [...clientStore.itemsActiveArray].sort((a, b) =>
+    `${normalizeString(a.name)} ${normalizeString(a.surname)}`.localeCompare(
+      `${normalizeString(b.name)} ${normalizeString(b.surname)}`,
+      'it',
+    ),
+  )
+})
 const filteredClients = computed(() => {
   const search = normalizeString(clientSearch.value).toLocaleLowerCase()
-  if (!search) return clientStore.itemsActiveArray
-  return clientStore.itemsActiveArray.filter((client) => {
-    const label = `${client.name} ${client.surname} ${client.phone_number ?? ''} ${client.email ?? ''}`.toLocaleLowerCase()
-    return label.includes(search)
+  if (!search) return sortedClients.value
+
+  return sortedClients.value.filter((client) => {
+    const textLabel = `${client.name} ${client.surname} ${client.email ?? ''}`.toLocaleLowerCase()
+    if (textLabel.includes(search)) return true
+    return matchesPhoneSearch(client.phone_number, search)
   })
 })
 const filteredTreatments = computed(() => {
@@ -306,6 +318,28 @@ function clientLabel(clientId: string) {
   if (!client) return clientId
   return `${client.name} ${client.surname}`.trim()
 }
+
+function clientAccordionHeaderLabel(values: Record<string, unknown>) {
+  const clientId = normalizeString(values.client_id)
+  if (!clientId) return ''
+  return clientLabel(clientId)
+}
+
+function treatmentPrimaryEmojiForId(treatmentId: string) {
+  const treatment = treatmentsById.value.get(normalizeString(treatmentId))
+  if (!treatment) return ''
+  for (const categoryId of treatment.categoryIds ?? []) {
+    const emoji = String(treatmentCategoryEmojiById.value.get(categoryId) ?? '').trim()
+    if (emoji) return emoji
+  }
+  return ''
+}
+
+const selectedTreatmentsHeaderEmojis = computed(() => {
+  return selectedTreatmentIds.value
+    .map((id) => treatmentPrimaryEmojiForId(id))
+    .filter(Boolean)
+})
 
 function formatHour(date: Date) {
   return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
@@ -668,7 +702,7 @@ function enterEditMode() {
 
 function onCancelEdit() {
   if (isCreateMode.value) {
-    void router.replace({ name: 'CalendarView' })
+    void router.replace({ name: 'home' })
     return
   }
   isEditMode.value = false
@@ -831,7 +865,7 @@ async function onDeleteAppointment() {
   try {
     await current.value.delete(appointmentStore)
     toast.success('Appuntamento eliminato')
-    await router.replace({ name: 'CalendarView' })
+    await router.replace({ name: 'home' })
     if (shouldSendDeleteWhatsApp) {
       sendWhatsAppForAction('delete', deleteWhatsAppContext)
     }
@@ -889,7 +923,7 @@ watch(() => route.params.id, loadItem)
 
 <template>
   <div class="container-fluid pb-t overflow-auto h-100" :style="bgStyle">
-    <HeaderApp :title="isCreateMode ? 'Nuovo appuntamento' : 'Appuntamento'" :to="{ name: 'CalendarView' }" />
+    <HeaderApp :title="isCreateMode ? 'Nuovo appuntamento' : 'Appuntamento'" :to="{ name: 'home' }" />
 
     <div class="edit-wrapper mx-auto py-3">
       <p v-if="isLoading" class="text-muted small mt-3">Caricamento...</p>
@@ -965,7 +999,16 @@ watch(() => route.params.id, loadItem)
             <Accordion id="appointment-client-accordion" title="Cliente" :defaultOpen="true" class="appointment-filter-accordion">
               <template #header>
                 <div class="accordion-header-row">
-                  <span>Cliente</span>
+                  <div class="accordion-header-meta">
+                    <span>Cliente</span>
+                    <span
+                      v-if="clientAccordionHeaderLabel(values)"
+                      class="accordion-header-value"
+                      :title="clientAccordionHeaderLabel(values)"
+                    >
+                      {{ clientAccordionHeaderLabel(values) }}
+                    </span>
+                  </div>
                   <span v-if="hasClientAccordionError(values, errors, submitCount)" class="badge text-bg-danger">
                     Obbligatorio
                   </span>
@@ -1011,7 +1054,23 @@ watch(() => route.params.id, loadItem)
             >
               <template #header>
                 <div class="accordion-header-row">
-                  <span>Trattamenti</span>
+                  <div class="accordion-header-meta">
+                    <span>Trattamenti</span>
+                    <span
+                      v-if="selectedTreatmentsHeaderEmojis.length"
+                      class="accordion-header-emojis"
+                      aria-label="Tipi trattamenti selezionati"
+                    >
+                      <span
+                        v-for="(emoji, index) in selectedTreatmentsHeaderEmojis"
+                        :key="`${emoji}-${index}`"
+                        class="accordion-header-emoji"
+                        aria-hidden="true"
+                      >
+                        {{ emoji }}
+                      </span>
+                    </span>
+                  </div>
                   <span v-if="isTreatmentsRequiredMissing(values)" class="badge text-bg-danger">Obbligatorio</span>
                 </div>
               </template>
@@ -1563,6 +1622,35 @@ watch(() => route.params.id, loadItem)
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
+}
+
+.accordion-header-meta {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.34rem 0.45rem;
+}
+
+.accordion-header-value {
+  max-width: min(42vw, 260px);
+  color: #5b3f4b;
+  font-size: 0.74rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.accordion-header-emojis {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.12rem;
+}
+
+.accordion-header-emoji {
+  font-size: 0.92rem;
+  line-height: 1;
 }
 
 .chip-grid {

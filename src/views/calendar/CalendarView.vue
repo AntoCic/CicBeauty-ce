@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Btn, cicKitStore } from 'cic-kit'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { Btn, cicKitStore, loading } from 'cic-kit'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppointmentWatchManager } from '../../composables/useAppointmentWatchManager'
 import { DEFAULT_USER_COLOR, normalizeUserColor } from '../../constants/userProfile'
@@ -98,6 +98,7 @@ const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
 const OVERFLOW_EMOJI = '\u2795'
 const CALENDAR_RECURRENCE_FALLBACK_FREQUENCY: CalendarRecurrenceFrequency = 'yearly'
 const CALENDAR_RECURRENCE_FALLBACK_CATEGORY: CalendarRecurrenceCategory = 'general'
+const CALENDAR_BOOT_LOADING_KEY = 'loading:calendar-initial'
 
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
@@ -108,6 +109,9 @@ const showOnlyMyPersonal = ref(false)
 const isFilterModalOpen = ref(false)
 const draftOperatorId = ref<'all' | string>('all')
 const draftShowOnlyMyPersonal = ref(false)
+const calendarGridRef = ref<HTMLElement | null>(null)
+const autoScrolledMonthKey = ref('')
+const hasInitialCalendarSnapshot = ref(false)
 const CALENDAR_WATCH_REASON = 'calendar-month-view'
 const currentViewerId = computed(() => String(Auth.uid ?? '').trim())
 const { activateCalendarMonthWatch, releaseAppointmentWatch } = useAppointmentWatchManager()
@@ -122,6 +126,7 @@ watch(
 
 onBeforeUnmount(() => {
   releaseAppointmentWatch(CALENDAR_WATCH_REASON)
+  loading.off(CALENDAR_BOOT_LOADING_KEY)
 })
 
 const operators = computed(() => {
@@ -241,6 +246,14 @@ const activeFilters = computed(() => {
 })
 
 const hasActiveFilters = computed(() => activeFilters.value.length > 0)
+const currentMonthKey = computed(() => monthKey(new Date()))
+const isVisibleMonthCurrent = computed(() => monthKey(visibleMonth.value) === currentMonthKey.value)
+const shouldShowCalendarBootLoading = computed(() => {
+  if (hasInitialCalendarSnapshot.value) return false
+  if (!isVisibleMonthCurrent.value) return false
+  if (!Auth.isLoggedIn) return false
+  return !appointmentStore.live || appointmentStore.isFirstRun
+})
 
 const calendarGridWindow = computed(() => {
   const start = calendarGridStart(visibleMonth.value)
@@ -385,6 +398,41 @@ const calendarDays = computed<CalendarDayCell[]>(() => {
   })
 })
 
+watch(
+  [visibleMonth, calendarDays],
+  () => {
+    void scrollToTodayIfNeeded()
+  },
+  { immediate: true },
+)
+
+watch(
+  () => appointmentStore.live && !appointmentStore.isFirstRun,
+  (isReady) => {
+    if (isReady) {
+      hasInitialCalendarSnapshot.value = true
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  shouldShowCalendarBootLoading,
+  (isLoading, wasLoading) => {
+    if (isLoading) {
+      loading.on(CALENDAR_BOOT_LOADING_KEY)
+      return
+    }
+
+    loading.off(CALENDAR_BOOT_LOADING_KEY)
+    if (wasLoading && isVisibleMonthCurrent.value) {
+      autoScrolledMonthKey.value = ''
+      void scrollToTodayIfNeeded(true)
+    }
+  },
+  { immediate: true },
+)
+
 function keyForDay(date: Date) {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -392,8 +440,34 @@ function keyForDay(date: Date) {
   return `${year}-${month}-${day}`
 }
 
+function monthKey(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${year}-${month}`
+}
+
 function normalizeMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0)
+}
+
+async function scrollToTodayIfNeeded(force = false) {
+  const visibleKey = monthKey(visibleMonth.value)
+  const today = new Date()
+  const todayMonthKey = monthKey(today)
+
+  if (visibleKey !== todayMonthKey) {
+    autoScrolledMonthKey.value = ''
+    return
+  }
+  if (!force && autoScrolledMonthKey.value === visibleKey) return
+
+  await nextTick()
+  await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)))
+  const todayCell = calendarGridRef.value?.querySelector<HTMLElement>('.calendar-day--today')
+  if (!todayCell) return
+
+  todayCell.scrollIntoView({ block: 'center', inline: 'nearest' })
+  autoScrolledMonthKey.value = visibleKey
 }
 
 function calendarGridStart(month: Date) {
@@ -624,7 +698,7 @@ function applyFilters() {
       </section>
 
       <section class="card border-0 shadow-sm p-0 calendar-shell">
-        <div class="calendar-grid">
+        <div ref="calendarGridRef" class="calendar-grid">
           <div
             v-for="(label, index) in WEEKDAY_LABELS"
             :key="label"

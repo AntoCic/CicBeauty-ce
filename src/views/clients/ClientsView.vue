@@ -1,25 +1,18 @@
 <script setup lang="ts">
 import { Btn, cicKitStore } from 'cic-kit'
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
-import { useAppointmentWatchManager } from '../../composables/useAppointmentWatchManager'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
 import ClientPersonCard from './components/ClientPersonCard.vue'
 import { appointmentClientId, buildClientAppointmentSummary } from './clientAppointmentUtils'
 import { asDate } from '../../utils/date'
+import { matchesPhoneSearch } from '../../utils/phone'
 
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const search = ref('')
-const CLIENTS_WATCH_SUSPEND_REASON = 'clients-view'
-const { suspendAppointmentWatch, releaseAppointmentWatch } = useAppointmentWatchManager()
-
-suspendAppointmentWatch(CLIENTS_WATCH_SUSPEND_REASON)
-onBeforeUnmount(() => {
-  releaseAppointmentWatch(CLIENTS_WATCH_SUSPEND_REASON)
-})
 
 const appointmentSummaryByClient = computed(() => {
   const grouped = new Map<string, (typeof appointmentStore.itemsActiveArray)[number][]>()
@@ -49,11 +42,13 @@ const filteredClientCards = computed(() => {
     `${a.surname} ${a.name}`.localeCompare(`${b.surname} ${b.name}`, 'it'),
   )
   const filtered = term
-    ? source.filter((client) =>
-        [client.name, client.surname, client.note]
+    ? source.filter((client) => {
+        const matchesText = [client.name, client.surname, client.note, client.email]
           .map((v) => String(v ?? '').toLowerCase())
-          .some((v) => v.includes(term)),
-      )
+          .some((v) => v.includes(term))
+        if (matchesText) return true
+        return matchesPhoneSearch(client.phone_number, term)
+      })
     : source
 
   return filtered.map((client) => ({
@@ -93,7 +88,7 @@ function appointmentMiniLabel(appointment?: { date_time?: unknown }) {
           v-model="search"
           class="app-header__search"
           type="search"
-          placeholder="Cerca cliente..."
+          placeholder="Cerca cliente o numero..."
           aria-label="Cerca cliente"
         />
         <Btn

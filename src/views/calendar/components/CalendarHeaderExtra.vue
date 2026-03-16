@@ -13,7 +13,7 @@ defineEmits<{
 </script>
 
 <template>
-  <HeaderApp :to="{ name: 'home' }">
+  <HeaderApp :to="{ name: 'homeApp' }">
     <div class="d-flex justify-content-between align-items-center">
       <h1 class="app-header__title">Calendario</h1>
       <div>
