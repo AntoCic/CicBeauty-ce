@@ -1235,7 +1235,20 @@ watch(() => route.params.id, loadItem)
             </small>
           </div>
 
-          <div class="col-12">
+          <div v-if="values.isPersonal" class="col-12">
+            <FieldTiptap
+              name="notes"
+              label="Note"
+              :required="false"
+              :show-errors="false"
+              :model-value="normalizeNoteForEditor(values.notes)"
+              toolbar-sticky-on="top"
+              @update:model-value="(value) => setFieldValue('notes', value)"
+            />
+            <ErrorMessage name="notes" class="text-danger small" />
+          </div>
+
+          <div v-else class="col-12">
             <Accordion
               id="appointment-notes-accordion"
               title="Note"

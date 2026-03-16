@@ -5,6 +5,7 @@ import { DEFAULT_USER_COLOR, PERSONAL_APPOINTMENT_COLOR, normalizeUserColor } fr
 type CalendarAppointmentCardValue = {
   id: string
   start: Date
+  notes: string
   clientFirstName: string
   clientSurname: string
   treatmentNames: string[]
@@ -31,11 +32,30 @@ const currencyFormatter = new Intl.NumberFormat('it-IT', {
 
 const hourLabel = computed(() => hourFormatter.format(props.appointment.start))
 
+function normalizeNoteLabel(value: unknown) {
+  const normalized = String(value ?? '').trim()
+  if (!normalized) return ''
+
+  return normalized
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+const personalLabel = computed(() => {
+  if (!props.appointment.isPersonal) return ''
+  return normalizeNoteLabel(props.appointment.notes) || 'Personale'
+})
+
 const mobileName = computed(() => {
+  if (props.appointment.isPersonal) return personalLabel.value
   return String(props.appointment.clientFirstName ?? '').trim() || 'Cliente'
 })
 
 const fullName = computed(() => {
+  if (props.appointment.isPersonal) return personalLabel.value
   const firstName = String(props.appointment.clientFirstName ?? '').trim()
   const surname = String(props.appointment.clientSurname ?? '').trim()
   return `${firstName} ${surname}`.trim() || firstName || 'Cliente'
@@ -45,6 +65,7 @@ const emojiLabelMobile = computed(() => props.appointment.emojis.join(''))
 const emojiLabelDesktop = computed(() => props.appointment.emojis.join(' '))
 
 const treatmentLabelTablet = computed(() => {
+  if (props.appointment.isPersonal) return ''
   const names = props.appointment.treatmentNames.filter(Boolean)
   if (!names.length) return 'Nessun trattamento'
   if (names.length <= 2) return names.join(', ')
@@ -52,6 +73,7 @@ const treatmentLabelTablet = computed(() => {
 })
 
 const treatmentLabelDesktop = computed(() => {
+  if (props.appointment.isPersonal) return ''
   const names = props.appointment.treatmentNames.filter(Boolean)
   return names.length ? names.join(', ') : 'Nessun trattamento'
 })
@@ -128,20 +150,31 @@ function openAppointment() {
   >
     <span class="calendar-appointment-card__top">
       <span class="calendar-appointment-card__hour">{{ hourLabel }}</span>
-      <span v-if="emojiLabelMobile" class="calendar-appointment-card__emoji calendar-appointment-card__emoji--mobile">{{ emojiLabelMobile }}</span>
-      <span v-if="emojiLabelDesktop" class="calendar-appointment-card__emoji calendar-appointment-card__emoji--desktop">{{ emojiLabelDesktop }}</span>
+      <span
+        v-if="!appointment.isPersonal && emojiLabelMobile"
+        class="calendar-appointment-card__emoji calendar-appointment-card__emoji--mobile"
+      >
+        {{ emojiLabelMobile }}
+      </span>
+      <span
+        v-if="!appointment.isPersonal && emojiLabelDesktop"
+        class="calendar-appointment-card__emoji calendar-appointment-card__emoji--desktop"
+      >
+        {{ emojiLabelDesktop }}
+      </span>
     </span>
 
     <span class="calendar-appointment-card__mobile">{{ mobileName }}</span>
 
     <span class="calendar-appointment-card__tablet">
       <span class="d-block text-truncate">{{ fullName }}</span>
-      <span class="d-block text-truncate">{{ treatmentLabelTablet }} | {{ appointment.durationMinutes }}m</span>
+      <span v-if="!appointment.isPersonal" class="d-block text-truncate">{{ treatmentLabelTablet }} | {{ appointment.durationMinutes }}m</span>
+      <span v-else class="d-block text-truncate">{{ appointment.durationMinutes }}m</span>
     </span>
 
     <span class="calendar-appointment-card__desktop">
       <span class="d-block text-truncate">{{ fullName }}</span>
-      <span class="d-block text-truncate">{{ treatmentLabelDesktop }}</span>
+      <span v-if="!appointment.isPersonal" class="d-block text-truncate">{{ treatmentLabelDesktop }}</span>
       <span v-if="desktopMeta" class="calendar-appointment-card__meta d-block text-truncate">{{ desktopMeta }}</span>
     </span>
   </button>

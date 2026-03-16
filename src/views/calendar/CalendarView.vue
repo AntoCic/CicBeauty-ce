@@ -45,6 +45,7 @@ type VisibleAppointment = {
   start: Date
   end: Date
   dayKey: string
+  notes: string
   clientFirstName: string
   clientSurname: string
   treatmentNames: string[]
@@ -347,6 +348,7 @@ const visibleAppointments = computed<VisibleAppointment[]>(() => {
       start,
       end: new Date(start.getTime() + durationMinutes * 60000),
       dayKey: keyForDay(start),
+      notes: String(appointment.notes ?? '').trim(),
       clientFirstName,
       clientSurname,
       treatmentNames,
