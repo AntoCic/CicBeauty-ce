@@ -829,20 +829,20 @@ function drawTextFromTop(
   })
 }
 
-function drawCenteredTextFromTop(
-  page: PDFPage,
-  text: string,
-  top: number,
-  size: number,
-  font: PDFFont,
-  color = rgb(0.08, 0.08, 0.08),
-) {
-  const normalized = normalizeString(text)
-  if (!normalized) return
-  const width = font.widthOfTextAtSize(normalized, size)
-  const x = Math.max(24, (page.getWidth() - width) / 2)
-  drawTextFromTop(page, normalized, x, top, size, font, color)
-}
+// function drawCenteredTextFromTop(
+//   page: PDFPage,
+//   text: string,
+//   top: number,
+//   size: number,
+//   font: PDFFont,
+//   color = rgb(0.08, 0.08, 0.08),
+// ) {
+//   const normalized = normalizeString(text)
+//   if (!normalized) return
+//   const width = font.widthOfTextAtSize(normalized, size)
+//   const x = Math.max(24, (page.getWidth() - width) / 2)
+//   drawTextFromTop(page, normalized, x, top, size, font, color)
+// }
 
 function wrapText(text: string, maxLength = 74) {
   const normalized = normalizeString(text)
@@ -909,14 +909,17 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
   const age = fillOrFallback(values.clientAge || ageFromBirthdate(client.birthdate))
   const gender = fillOrFallback(values.clientGender)
   const schedaNumber = client.schedaLaserNumber ? String(client.schedaLaserNumber) : '-'
+  const schedaNumberPositionY = 17
 
-  drawTextFromTop(page1, `Scheda n. ${schedaNumber}`, 40, 34, 10, boldFont)
-  drawCenteredTextFromTop(page1, fullName || 'Cliente', 52, 13, boldFont)
+  drawTextFromTop(page1, `${schedaNumber}  -  ${fullName}`, 35, 30, 13, boldFont)
+  drawTextFromTop(page1, `Scheda n. ${schedaNumber}`, 500, schedaNumberPositionY, 10, boldFont)
+  // drawCenteredTextFromTop(page1, fullName || 'Cliente', 35, 13, boldFont)
 
   const page2HeaderShift = 14
   const page2MainShift = 22
   const page2FitzShift = 13
 
+  drawTextFromTop(page2, `Scheda n. ${schedaNumber}`, 500, schedaNumberPositionY, 10, boldFont)
   drawTextFromTop(page2, documentDate, 72, 91 + page2HeaderShift, 10, baseFont)
   drawTextFromTop(page2, operatorName, 310, 91 + page2HeaderShift, 10, baseFont)
   drawTextFromTop(page2, fullName, 82, 129 + page2MainShift, 10, baseFont)
@@ -960,6 +963,7 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
   }
   drawTextFromTop(page2, String(score), 559, 746 + page2FitzShift, 10, boldFont)
 
+  drawTextFromTop(page3, `Scheda n. ${schedaNumber}`, 500, schedaNumberPositionY, 10, boldFont)
   drawTextFromTop(page3, fullName, 65, 110, 9, baseFont, rgb(0.08, 0.08, 0.08), 220)
   drawTextFromTop(page3, fillOrFallback(values.clientAddress), 65, 134, 9, baseFont, rgb(0.08, 0.08, 0.08), 220)
   drawTextFromTop(page3, fillOrFallback(values.consensoFoto).toUpperCase(), 382, 516, 9, boldFont)
@@ -972,9 +976,9 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
   drawTextFromTop(page3, documentDate, 88, 792, 9, baseFont)
   drawTextFromTop(page3, fullName, 286, 792, 9, baseFont)
 
+  drawTextFromTop(page4, `Scheda n. ${schedaNumber}`, 500, schedaNumberPositionY, 10, boldFont)
   drawTextFromTop(page4, documentDate, 40, 72, 10, baseFont)
   drawTextFromTop(page4, fullName, 230, 72, 10, baseFont, rgb(0.08, 0.08, 0.08), 220)
-  drawTextFromTop(page4, `Scheda n. ${schedaNumber}`, 41, 92, 9, boldFont)
   drawTextFromTop(page4, `Punteggio questionario: ${score}`, 300, 92, 9, boldFont)
   drawTextFromTop(page4, `Fototipo: ${phototype}`, 300, 106, 9, boldFont)
 
