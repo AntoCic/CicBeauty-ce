@@ -240,6 +240,7 @@ const currentClientLabel = computed(() => {
   if (!client) return 'Cliente non associato'
   return `${client.name} ${client.surname}`.trim() || 'Cliente non associato'
 })
+const currentClientPath = computed(() => clientDetailPath(currentClientId.value))
 
 const currentOperatorLabel = computed(() => {
   const operator = currentPrimaryOperator.value
@@ -268,6 +269,18 @@ const currentCouponLabel = computed(() => {
 
 function normalizeString(value: unknown) {
   return String(value ?? '').trim()
+}
+
+function clientDetailPath(clientId: unknown) {
+  const normalized = normalizeString(clientId)
+  if (!normalized) return ''
+  return `/clients/${encodeURIComponent(normalized)}`
+}
+
+function openClientDetail(clientId: unknown) {
+  const targetPath = clientDetailPath(clientId)
+  if (!targetPath) return
+  router.push(targetPath)
 }
 
 function normalizeNumber(value: unknown, fallback = 0) {
@@ -935,7 +948,7 @@ watch(() => route.params.id, loadItem)
         :initial-values="initialValues"
         @submit="onSubmit"
         v-slot="{ isSubmitting, values, setFieldValue, errors, submitCount }"
-        class="card border-0 shadow-sm p-3 p-md-4 form-shell"
+        class="card border-0 shadow-sm p-3 p-md-4 form-shell appointment-edit-card"
       >
         <div class="row g-3">
           <div class="col-12">
@@ -1001,11 +1014,17 @@ watch(() => route.params.id, loadItem)
                 <div class="accordion-header-row">
                   <div class="accordion-header-meta">
                     <span>Cliente</span>
-                    <span
-                      v-if="clientAccordionHeaderLabel(values)"
-                      class="accordion-header-value"
-                      :title="clientAccordionHeaderLabel(values)"
+                    <button
+                      v-if="clientAccordionHeaderLabel(values) && normalizeString(values.client_id)"
+                      type="button"
+                      class="accordion-header-value accordion-header-link"
+                      :title="`Apri scheda cliente: ${clientAccordionHeaderLabel(values)}`"
+                      @click.stop="openClientDetail(values.client_id)"
                     >
+                      {{ clientAccordionHeaderLabel(values) }}
+                      <span class="material-symbols-outlined accordion-header-link__icon" aria-hidden="true">arrow_outward</span>
+                    </button>
+                    <span v-else-if="clientAccordionHeaderLabel(values)" class="accordion-header-value" :title="clientAccordionHeaderLabel(values)">
                       {{ clientAccordionHeaderLabel(values) }}
                     </span>
                   </div>
@@ -1346,44 +1365,60 @@ watch(() => route.params.id, loadItem)
           </div>
         </div>
 
-        <div class="d-flex gap-2 mt-4 flex-wrap">
+        <div class="d-flex gap-2 mt-4 flex-wrap appointment-primary-actions">
           <Btn type="submit" color="dark" icon="save" :loading="isSubmitting || isDeleting">
             {{ isCreateMode ? 'Crea' : 'Salva' }}
           </Btn>
           <Btn type="button" color="secondary" variant="outline" icon="close" :disabled="isSubmitting" @click="onCancelEdit">
             Annulla
           </Btn>
-          <div v-if="!isCreateMode && !values.isPersonal" class="delete-whatsapp-toggle-inline">
-            <span class="delete-whatsapp-toggle-inline__label">Invia WhatsApp su elimina</span>
-            <label class="whatsapp-toggle whatsapp-toggle--compact" for="appointment-send-whatsapp-on-delete-edit">
-              <input
-                id="appointment-send-whatsapp-on-delete-edit"
-                v-model="sendWhatsAppOnDelete"
-                type="checkbox"
-                class="whatsapp-toggle__input"
-              />
-              <span class="whatsapp-toggle__track">
-                <span class="whatsapp-toggle__thumb">
-                  <span class="material-symbols-outlined" aria-hidden="true">
-                    {{ sendWhatsAppOnDelete ? 'check' : 'close' }}
+        </div>
+
+        <article v-if="!isCreateMode" class="appointment-secondary-actions mt-5">
+          <div class="appointment-secondary-actions__header">
+            <p class="appointment-secondary-actions__title mb-1">Azioni accessorie</p>
+            <p class="appointment-secondary-actions__subtitle mb-0">
+              Impostazioni di invio e cancellazione appuntamento: operazioni delicate ma importanti.
+            </p>
+          </div>
+
+          <div class="appointment-secondary-actions__body">
+            <div class="appointment-secondary-actions__toggle-wrap">
+              <span class="appointment-secondary-actions__toggle-label">Invia WhatsApp su elimina</span>
+              <label class="whatsapp-toggle whatsapp-toggle--compact" for="appointment-send-whatsapp-on-delete-edit">
+                <input
+                  id="appointment-send-whatsapp-on-delete-edit"
+                  v-model="sendWhatsAppOnDelete"
+                  type="checkbox"
+                  class="whatsapp-toggle__input"
+                  :disabled="values.isPersonal"
+                />
+                <span class="whatsapp-toggle__track">
+                  <span class="whatsapp-toggle__thumb">
+                    <span class="material-symbols-outlined" aria-hidden="true">
+                      {{ sendWhatsAppOnDelete ? 'check' : 'close' }}
+                    </span>
                   </span>
                 </span>
-              </span>
-            </label>
+              </label>
+            </div>
+            <small v-if="values.isPersonal" class="appointment-secondary-actions__helper text-muted">
+              Gli appuntamenti personali non prevedono invio WhatsApp.
+            </small>
+
+            <Btn
+              type="button"
+              color="danger"
+              icon="delete"
+              class="appointment-secondary-actions__delete-btn"
+              :loading="isDeleting"
+              :disabled="isSubmitting"
+              @click="onDeleteAppointment"
+            >
+              Elimina appuntamento
+            </Btn>
           </div>
-          <Btn
-            v-if="!isCreateMode"
-            type="button"
-            color="danger"
-            variant="outline"
-            icon="delete"
-            :loading="isDeleting"
-            :disabled="isSubmitting"
-            @click="onDeleteAppointment"
-          >
-            Elimina
-          </Btn>
-        </div>
+        </article>
       </Form>
 
       <div v-else-if="current" class="view-shell">
@@ -1392,6 +1427,7 @@ watch(() => route.params.id, loadItem)
           :time-label="currentTimeLabel"
           :duration-minutes="currentDurationMinutes"
           :client-label="currentClientLabel"
+          :client-path="currentClientPath"
           :operator-label="currentOperatorLabel"
           :treatments-label="currentTreatmentsLabel"
           :coupon-label="currentCouponLabel"
@@ -1407,22 +1443,41 @@ watch(() => route.params.id, loadItem)
           </template>
         </AppointmentDetailsCard>
 
-        <div class="row g-2 mt-2">
+        <div class="view-shell__section-header">
+          <p class="view-shell__section-title mb-1">Dettagli correlati</p>
+          <p class="view-shell__section-subtitle mb-0">Scheda cliente e operatore principale associato all'appuntamento.</p>
+        </div>
+
+        <div class="row g-3">
           <div class="col-12 col-md-6">
-            <ClientPersonCard
+            <div
               v-if="currentClient"
-              :name="currentClient.name"
-              :surname="currentClient.surname"
-              :gender="currentClient.gender"
-              :phone-number="currentClient.phone_number"
-              :email="currentClient.email"
-              :birthdate="currentClient.birthdate"
-              :note="currentClient.note"
-              :consenso-promozioni-whatsapp="currentClient.consenso_promozioni_whatsapp"
-              :show-details="true"
-              compact
-            />
-            <article v-else class="card border-0 shadow-sm p-3 h-100">
+              class="client-preview-tile"
+              role="link"
+              tabindex="0"
+              :aria-label="`Apri dettaglio cliente ${currentClient.name} ${currentClient.surname}`"
+              @click="openClientDetail(currentClient.id)"
+              @keydown.enter.prevent="openClientDetail(currentClient.id)"
+              @keydown.space.prevent="openClientDetail(currentClient.id)"
+            >
+              <ClientPersonCard
+                :name="currentClient.name"
+                :surname="currentClient.surname"
+                :gender="currentClient.gender"
+                :phone-number="currentClient.phone_number"
+                :email="currentClient.email"
+                :birthdate="currentClient.birthdate"
+                :note="currentClient.note"
+                :consenso-promozioni-whatsapp="currentClient.consenso_promozioni_whatsapp"
+                :show-details="true"
+                compact
+              />
+              <div class="client-preview-tile__cta">
+                Apri scheda cliente
+                <span class="material-symbols-outlined client-preview-tile__cta-icon" aria-hidden="true">arrow_outward</span>
+              </div>
+            </div>
+            <article v-else class="card border-0 shadow-sm p-3 h-100 view-info-card">
               <p class="fw-semibold mb-1">Cliente</p>
               <p class="text-muted small mb-0">Nessun cliente associato a questo appuntamento.</p>
             </article>
@@ -1444,30 +1499,6 @@ watch(() => route.params.id, loadItem)
             />
           </div>
         </div>
-
-        <div class="d-flex gap-2 mt-2 flex-wrap">
-          <div v-if="!current.isPersonal" class="delete-whatsapp-toggle-inline">
-            <span class="delete-whatsapp-toggle-inline__label">Invia WhatsApp su elimina</span>
-            <label class="whatsapp-toggle whatsapp-toggle--compact" for="appointment-send-whatsapp-on-delete-view">
-              <input
-                id="appointment-send-whatsapp-on-delete-view"
-                v-model="sendWhatsAppOnDelete"
-                type="checkbox"
-                class="whatsapp-toggle__input"
-              />
-              <span class="whatsapp-toggle__track">
-                <span class="whatsapp-toggle__thumb">
-                  <span class="material-symbols-outlined" aria-hidden="true">
-                    {{ sendWhatsAppOnDelete ? 'check' : 'close' }}
-                  </span>
-                </span>
-              </span>
-            </label>
-          </div>
-          <Btn type="button" color="danger" variant="outline" icon="delete" :loading="isDeleting" @click="onDeleteAppointment">
-            Elimina appuntamento
-          </Btn>
-        </div>
       </div>
 
       <p v-else class="text-muted small mt-3">Appuntamento non trovato.</p>
@@ -1485,8 +1516,81 @@ watch(() => route.params.id, loadItem)
   margin-inline: auto;
 }
 
+.appointment-edit-card {
+  border-radius: 0.9rem;
+}
+
+.view-shell {
+  max-width: 900px;
+  margin-inline: auto;
+  display: grid;
+  gap: 0.95rem;
+}
+
 .appointment-main-card {
-  max-width: 760px;
+  max-width: 100%;
+}
+
+.view-info-card {
+  border-radius: 0.7rem;
+}
+
+.view-shell__section-header {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 0.2rem;
+}
+
+.view-shell__section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5b3744;
+}
+
+.view-shell__section-subtitle {
+  font-size: 0.83rem;
+  color: #6b5a60;
+}
+
+.client-preview-tile {
+  position: relative;
+  border-radius: 0.72rem;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.client-preview-tile:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(36, 68, 95, 0.13);
+}
+
+.client-preview-tile:focus-visible {
+  outline: 2px solid rgba(35, 68, 95, 0.38);
+  outline-offset: 2px;
+}
+
+.client-preview-tile__cta {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  border: 1px solid rgba(35, 68, 95, 0.25);
+  border-radius: 999px;
+  padding: 0.12rem 0.42rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #23445f;
+  background: rgba(255, 255, 255, 0.9);
+  pointer-events: none;
+}
+
+.client-preview-tile__cta-icon {
+  font-size: 0.76rem;
+  line-height: 1;
 }
 
 .whatsapp-automation-box {
@@ -1573,6 +1677,11 @@ watch(() => route.params.id, loadItem)
   outline-offset: 2px;
 }
 
+.whatsapp-toggle__input:disabled + .whatsapp-toggle__track {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .whatsapp-toggle--compact .whatsapp-toggle__track {
   width: 56px;
   height: 30px;
@@ -1587,19 +1696,75 @@ watch(() => route.params.id, loadItem)
   transform: translateX(26px);
 }
 
-.delete-whatsapp-toggle-inline {
-  display: inline-flex;
+.appointment-primary-actions {
   align-items: center;
-  gap: 0.42rem;
-  padding: 0.3rem 0.45rem;
-  border-radius: 0.55rem;
-  border: 1px solid rgba(37, 126, 62, 0.28);
-  background: rgba(240, 252, 244, 0.85);
 }
 
-.delete-whatsapp-toggle-inline__label {
-  font-size: 0.72rem;
+.appointment-secondary-actions {
+  border: 1px solid rgba(220, 53, 69, 0.26);
+  border-radius: 0.85rem;
+  padding: 0.9rem 0.95rem;
+  background:
+    radial-gradient(circle at 10% 12%, rgba(220, 53, 69, 0.12) 0%, transparent 58%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 244, 245, 0.9) 100%);
+  box-shadow: 0 6px 18px rgba(97, 29, 39, 0.08);
+}
+
+.appointment-secondary-actions__header {
+  margin-bottom: 0.75rem;
+}
+
+.appointment-secondary-actions__title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #7b2432;
+}
+
+.appointment-secondary-actions__subtitle {
+  font-size: 0.8rem;
+  color: #6d4b52;
+  line-height: 1.3;
+}
+
+.appointment-secondary-actions__body {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.appointment-secondary-actions__toggle-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  border: 1px solid rgba(37, 126, 62, 0.2);
+  border-radius: 0.65rem;
+  padding: 0.48rem 0.58rem;
+  background: rgba(247, 253, 249, 0.86);
+}
+
+.appointment-secondary-actions__toggle-label {
+  font-size: 0.78rem;
   color: #1b5f2f;
+  font-weight: 600;
+}
+
+.appointment-secondary-actions__helper {
+  display: block;
+  margin-top: -0.25rem;
+  font-size: 0.76rem;
+}
+
+.appointment-secondary-actions__delete-btn {
+  justify-content: center;
+}
+
+@media (max-width: 575.98px) {
+  .appointment-secondary-actions__delete-btn {
+    width: 100%;
+  }
 }
 
 .appointment-type-switch {
@@ -1653,6 +1818,28 @@ watch(() => route.params.id, loadItem)
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.accordion-header-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.accordion-header-link:focus-visible {
+  outline: 2px solid rgba(35, 68, 95, 0.35);
+  outline-offset: 2px;
+  border-radius: 0.2rem;
+}
+
+.accordion-header-link__icon {
+  font-size: 0.84rem;
+  line-height: 1;
 }
 
 .accordion-header-emojis {

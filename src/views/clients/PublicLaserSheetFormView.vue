@@ -196,10 +196,11 @@ function validateCurrentStep() {
   stepValidationError.value = ''
   if (!currentStep.value || !currentStep.value.fields.length) return true
   if (currentStep.value.id === 'profile') {
+    const address = normalizeString(form.value.clientAddress)
     const age = Number(form.value.clientAge)
     const gender = normalizeString(form.value.clientGender).toUpperCase()
-    if (!Number.isFinite(age) || age <= 0 || (gender !== 'F' && gender !== 'M')) {
-      stepValidationError.value = 'Compila eta e sesso oppure usa "Salta".'
+    if (!address || !Number.isFinite(age) || age <= 0 || (gender !== 'F' && gender !== 'M')) {
+      stepValidationError.value = 'Compila indirizzo, eta e sesso oppure usa "Salta".'
       return false
     }
     return true

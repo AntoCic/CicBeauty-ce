@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import {
   Btn,
-  FieldFile,
   FieldTiptap,
   cicKitStore,
   getFileExtension,
   normalizeGender,
   toast,
-  toFileArray,
   uploadFilesToUrls,
-  type FieldFileValue,
   type Gender,
 } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
@@ -28,6 +25,7 @@ import { asDate } from '../../utils/date'
 import { sanitizePhoneNumberInput } from '../../utils/phone'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import ClientAppointmentCard from './components/ClientAppointmentCard.vue'
+import ClientFilesGallery from './components/ClientFilesGallery.vue'
 import ClientPersonCard from './components/ClientPersonCard.vue'
 import { appointmentClientId, buildClientAppointmentSummary, type AppointmentLike } from './clientAppointmentUtils'
 
@@ -85,7 +83,6 @@ const editingPurchaseIndex = ref(-1)
 const isPurchaseHeaderEditing = ref(false)
 const settlementEditMap = ref<Record<number, boolean>>({})
 const isSavingPurchase = ref(false)
-const clientFilesValue = ref<FieldFileValue>([])
 const isUploadingClientFiles = ref(false)
 const isDeletingClientFile = ref(false)
 
@@ -222,10 +219,6 @@ function stripFileExtension(fileName: string) {
   return fileName.slice(0, dotIndex)
 }
 
-function resetClientFilesSelection() {
-  clientFilesValue.value = []
-}
-
 async function uploadClientFiles(files: File[], clientId: string) {
   if (!clientStore.storageFolder) {
     throw new Error('Storage clienti non disponibile')
@@ -242,10 +235,9 @@ async function uploadClientFiles(files: File[], clientId: string) {
   })
 }
 
-async function addClientFiles() {
+async function addClientFiles(files: File[]) {
   if (!current.value || isCreateMode.value || isUploadingClientFiles.value || isDeletingClientFile.value) return
-  const selectedFiles = toFileArray(clientFilesValue.value)
-  if (!selectedFiles.length) {
+  if (!files.length) {
     toast.warning('Seleziona almeno un file')
     return
   }
@@ -256,7 +248,7 @@ async function addClientFiles() {
 
   isUploadingClientFiles.value = true
   try {
-    const uploadedUrls = await uploadClientFiles(selectedFiles, current.value.id)
+    const uploadedUrls = await uploadClientFiles(files, current.value.id)
     if (!uploadedUrls.length) {
       toast.warning('Nessun file caricato')
       return
@@ -272,22 +264,41 @@ async function addClientFiles() {
     toast.error('Errore upload file cliente')
   } finally {
     isUploadingClientFiles.value = false
-    resetClientFilesSelection()
   }
-}
-
-function openClientFile(url: string) {
-  window.open(url, '_blank', 'noopener')
 }
 
 function clientFileName(url: string) {
-  const withoutQuery = String(url ?? '').split('?')[0] ?? ''
-  const rawName = withoutQuery.split('/').pop() ?? 'file'
-  try {
-    return decodeURIComponent(rawName)
-  } catch (error) {
-    return rawName
+  const normalized = String(url ?? '')
+  const withoutQuery = normalized.split('?')[0] ?? ''
+  const rawTail = withoutQuery.split('/').pop() ?? 'file'
+  const decodedTail = safeDecodeURIComponent(rawTail)
+  const decodedSegments = decodedTail.split('/').filter(Boolean)
+  if (decodedSegments.length) {
+    return decodedSegments[decodedSegments.length - 1] ?? 'file'
   }
+
+  const rawSegments = rawTail.split(/%2f/i).filter(Boolean)
+  const candidate = rawSegments[rawSegments.length - 1] ?? rawTail
+  return safeDecodeURIComponent(candidate) || 'file'
+}
+
+function safeDecodeURIComponent(value: string) {
+  try {
+    return decodeURIComponent(value)
+  } catch (error) {
+    return value
+  }
+}
+
+function downloadClientFile(url: string) {
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = clientFileName(url)
+  anchor.target = '_blank'
+  anchor.rel = 'noopener'
+  document.body.appendChild(anchor)
+  anchor.click()
+  document.body.removeChild(anchor)
 }
 
 async function removeClientFile(url: string) {
@@ -587,7 +598,6 @@ function openAppointment(appointment: AppointmentLike) {
 
 async function loadItem() {
   resetPurchaseModalState()
-  resetClientFilesSelection()
   isDeleteClientModalOpen.value = false
   if (isCreateMode.value) {
     current.value = undefined
@@ -914,63 +924,17 @@ watch(() => route.params.id, loadItem)
         </section>
 
         <section class="client-section-card">
-          <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
-            <h2 class="h6 mb-0">File cliente</h2>
-            <Btn
-              type="button"
-              color="dark"
-              icon="upload_file"
-              :loading="isUploadingClientFiles"
-              @click="addClientFiles"
-            >
-              Carica file
-            </Btn>
-          </div>
-
-          <FieldFile
-            name="client-files"
-            v-model="clientFilesValue"
-            multiple
-            :show-errors="false"
-            :disabled="isUploadingClientFiles || isDeletingClientFile"
-            @clear="resetClientFilesSelection"
-          >
-            <template #dropzone="{ open, clear, files, disabled }">
-              <div class="dropzone-wrap" :class="{ disabled }">
-                <div class="d-flex gap-2 flex-wrap">
-                  <Btn type="button" icon="upload_file" color="dark" :disabled="disabled" @click="open">
-                    Scegli file
-                  </Btn>
-                  <Btn type="button" icon="delete" variant="outline" color="secondary" :disabled="disabled || !files.length" @click="clear">
-                    Svuota selezione
-                  </Btn>
-                </div>
-                <small class="text-muted d-block mt-1">File selezionati: {{ files.length }}</small>
-              </div>
-            </template>
-          </FieldFile>
-
-          <div v-if="current.fileUrls?.length" class="vstack gap-2 mt-2">
-            <article v-for="url in current.fileUrls" :key="url" class="client-file-row">
-              <p class="mb-0 text-truncate">{{ clientFileName(url) }}</p>
-              <div class="d-flex gap-2 flex-wrap">
-                <Btn type="button" color="secondary" variant="outline" icon="download" @click="openClientFile(url)">
-                  Scarica
-                </Btn>
-                <Btn
-                  type="button"
-                  color="danger"
-                  variant="outline"
-                  icon="delete"
-                  :disabled="isDeletingClientFile || isUploadingClientFiles"
-                  @click="removeClientFile(url)"
-                >
-                  Elimina
-                </Btn>
-              </div>
-            </article>
-          </div>
-          <p v-else class="text-muted small mb-0 mt-2">Nessun file cliente caricato.</p>
+          <ClientFilesGallery
+            section-title="File cliente"
+            field-name="client-files"
+            :urls="current.fileUrls ?? []"
+            empty-text="Nessun file cliente caricato."
+            :is-uploading="isUploadingClientFiles"
+            :is-deleting="isDeletingClientFile"
+            :upload-files="addClientFiles"
+            :download-file="downloadClientFile"
+            :delete-file="removeClientFile"
+          />
         </section>
 
         <section class="client-section-card">
@@ -1435,28 +1399,6 @@ watch(() => route.params.id, loadItem)
 .deposit-view-card__latest {
   font-size: 0.82rem;
   color: #6f4f5c;
-}
-
-.dropzone-wrap {
-  border: 1px dashed rgba(84, 44, 58, 0.24);
-  border-radius: 0.62rem;
-  padding: 0.7rem;
-  background: rgba(255, 255, 255, 0.7);
-}
-
-.dropzone-wrap.disabled {
-  opacity: 0.65;
-}
-
-.client-file-row {
-  border: 1px solid rgba(84, 44, 58, 0.16);
-  border-radius: 0.55rem;
-  padding: 0.5rem 0.6rem;
-  background: rgba(255, 255, 255, 0.82);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
 }
 
 .laser-summary-card {

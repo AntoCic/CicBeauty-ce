@@ -46,6 +46,7 @@ import MigrationImportView from './views/migration/MigrationImportView.vue';
 import CatalogBackupView from './views/settings/CatalogBackupView.vue';
 import WhatsAppTemplatesView from './views/settings/WhatsAppTemplatesView.vue';
 import BonificoView from './views/payments/BonificoView.vue';
+import PriceListView from './views/price-list/PriceListView.vue';
 
 
 // ===================================================================================================
@@ -167,11 +168,18 @@ export const routes: RouteRecordRaw[] = [
   { path: '/calendar/day', name: 'CalendarDayView', component: CalendarDayView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/appointments/:id', name: 'AppointmentEditView', component: AppointmentEditView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/clients', name: 'ClientsView', component: ClientsView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
-  { path: '/clients/:id', name: 'ClientEditView', component: ClientEditView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
+  {
+    path: '/clients/:id',
+    alias: '/clientes/:id',
+    name: 'ClientEditView',
+    component: ClientEditView,
+    meta: { loginStatus: true, permission: UserPermission.OPERATORE },
+  },
   { path: '/clients/:id/laser', name: 'ClientLaserSheetView', component: ClientLaserSheetView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/laser-sheets', name: 'ClientLaserSheetsView', component: ClientLaserSheetsView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/expenses', name: 'ExpensesView', component: ExpensesView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/bonifico-app', name: 'BonificoView', component: BonificoView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
+  { path: '/price-list', name: 'PriceListView', component: PriceListView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/coupons', name: 'CouponsView', component: CouponsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/stats', name: 'StatsView', component: StatsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/relations', name: 'RelationsView', component: RelationsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },

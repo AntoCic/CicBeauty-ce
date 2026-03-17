@@ -62,6 +62,14 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     iconClass: 'app-icon-calm',
   },
   {
+    id: 'price-list',
+    title: 'Listino PDF',
+    to: { name: 'PriceListView' },
+    icon: 'picture_as_pdf',
+    iconClass: 'app-icon-rose',
+    permission: UserPermission.OPERATORE,
+  },
+  {
     id: 'coupons',
     title: 'Coupon',
     to: { name: 'CouponsView' },

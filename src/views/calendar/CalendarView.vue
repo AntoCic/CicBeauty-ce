@@ -54,6 +54,8 @@ type VisibleAppointment = {
   emojis: string[]
   isPersonal: boolean
   operatorColor: string
+  operatorIds: string[]
+  hasOperatorOverlap: boolean
 }
 
 type CalendarDayCell = {
@@ -342,6 +344,7 @@ const visibleAppointments = computed<VisibleAppointment[]>(() => {
       treatmentsMap,
       fallbackDuration,
     )
+    const operatorIds = appointmentAssignedOperatorIds(appointment)
 
     items.push({
       id: appointment.id,
@@ -357,10 +360,18 @@ const visibleAppointments = computed<VisibleAppointment[]>(() => {
       emojis: buildAppointmentEmojis(linkedTreatments, categoryEmojiMap),
       isPersonal,
       operatorColor: colorsByOperatorId.get(primaryOperatorId(appointment)) ?? DEFAULT_USER_COLOR,
+      operatorIds,
+      hasOperatorOverlap: false,
     })
   }
 
-  return items.sort((a, b) => a.start.getTime() - b.start.getTime())
+  const sortedAppointments = items.sort((a, b) => a.start.getTime() - b.start.getTime())
+  const overlappingAppointmentIds = findOverlappingAppointmentsByOperator(sortedAppointments)
+
+  return sortedAppointments.map((appointment) => ({
+    ...appointment,
+    hasOperatorOverlap: overlappingAppointmentIds.has(appointment.id),
+  }))
 })
 
 const specialBadgesByDayKey = computed(() => {
@@ -507,6 +518,66 @@ function buildAppointmentEmojis(linkedTreatments: TreatmentLite[], emojiByCatego
   return [firstEmoji, OVERFLOW_EMOJI]
 }
 
+function rangesOverlap(startA: Date, endA: Date, startB: Date, endB: Date) {
+  return startA.getTime() < endB.getTime() && endA.getTime() > startB.getTime()
+}
+
+function findOverlappingAppointmentsByOperator(appointments: VisibleAppointment[]) {
+  const overlappingAppointmentIds = new Set<string>()
+  const appointmentsByOperator = new Map<string, VisibleAppointment[]>()
+
+  for (const appointment of appointments) {
+    for (const operatorId of appointment.operatorIds) {
+      const list = appointmentsByOperator.get(operatorId) ?? []
+      list.push(appointment)
+      appointmentsByOperator.set(operatorId, list)
+    }
+  }
+
+  for (const operatorAppointments of appointmentsByOperator.values()) {
+    if (operatorAppointments.length < 2) continue
+
+    const sortedByStart = [...operatorAppointments].sort((a, b) => {
+      const startDiff = a.start.getTime() - b.start.getTime()
+      if (startDiff !== 0) return startDiff
+      return a.end.getTime() - b.end.getTime()
+    })
+    const activeAppointments: VisibleAppointment[] = []
+
+    for (const currentAppointment of sortedByStart) {
+      const currentStartTs = currentAppointment.start.getTime()
+
+      for (let index = activeAppointments.length - 1; index >= 0; index -= 1) {
+        const activeAppointment = activeAppointments[index]
+        if (!activeAppointment) continue
+        if (activeAppointment.end.getTime() <= currentStartTs) {
+          activeAppointments.splice(index, 1)
+        }
+      }
+
+      for (const activeAppointment of activeAppointments) {
+        if (
+          !rangesOverlap(
+            activeAppointment.start,
+            activeAppointment.end,
+            currentAppointment.start,
+            currentAppointment.end,
+          )
+        ) {
+          continue
+        }
+
+        overlappingAppointmentIds.add(activeAppointment.id)
+        overlappingAppointmentIds.add(currentAppointment.id)
+      }
+
+      activeAppointments.push(currentAppointment)
+    }
+  }
+
+  return overlappingAppointmentIds
+}
+
 function startsInLunchWindow(start: Date) {
   const lunchStart = new Date(start)
   lunchStart.setHours(12, 30, 0, 0)
@@ -565,6 +636,16 @@ function buildDayTimeline(appointments: VisibleAppointment[]) {
 
 function primaryOperatorId(appointment: StoreAppointment) {
   return appointmentPersonalOwnerId(appointment) || appointmentOperatorIds(appointment)[0] || ''
+}
+
+function appointmentAssignedOperatorIds(appointment: StoreAppointment) {
+  const ownerId = appointmentPersonalOwnerId(appointment)
+  const ids = new Set<string>()
+  if (ownerId) ids.add(ownerId)
+  for (const operatorId of appointmentOperatorIds(appointment)) {
+    ids.add(operatorId)
+  }
+  return Array.from(ids)
 }
 
 function operatorMatch(appointment: StoreAppointment, selectedOperator: 'all' | string) {

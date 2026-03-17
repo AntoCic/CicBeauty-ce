@@ -14,6 +14,7 @@ type CalendarAppointmentCardValue = {
   emojis: string[]
   isPersonal: boolean
   operatorColor: string
+  hasOperatorOverlap: boolean
 }
 
 const props = defineProps<{
@@ -119,6 +120,15 @@ function isDarkColor(value: string) {
 const normalizedOperatorColor = computed(() => normalizeUserColor(props.appointment.operatorColor ?? DEFAULT_USER_COLOR))
 
 const cardStyle = computed(() => {
+  if (props.appointment.hasOperatorOverlap) {
+    return {
+      background: 'linear-gradient(145deg, #5f0018 0%, #79001f 58%, #910029 100%)',
+      borderColor: '#ffd6df',
+      color: '#fff8fa',
+      boxShadow: '0 0 0 1px rgba(255, 214, 223, 0.72), 0 5px 12px rgba(76, 0, 21, 0.36)',
+    }
+  }
+
   if (props.appointment.isPersonal) {
     return {
       background: rgbaFromHex(PERSONAL_APPOINTMENT_COLOR, 0.2, 'rgba(8, 92, 140, 0.2)'),
@@ -144,12 +154,21 @@ function openAppointment() {
   <button
     type="button"
     class="calendar-appointment-card"
-    :class="{ 'calendar-appointment-card--personal': appointment.isPersonal }"
+    :class="{
+      'calendar-appointment-card--personal': appointment.isPersonal,
+      'calendar-appointment-card--operator-overlap': appointment.hasOperatorOverlap,
+    }"
     :style="cardStyle"
+    :title="
+      appointment.hasOperatorOverlap
+        ? 'Errore: operatore assegnato a due appuntamenti sovrapposti'
+        : undefined
+    "
     @click.stop="openAppointment"
   >
     <span class="calendar-appointment-card__top">
       <span class="calendar-appointment-card__hour">{{ hourLabel }}</span>
+      <span v-if="appointment.hasOperatorOverlap" class="calendar-appointment-card__overlap-flag">OVERLAP</span>
       <span
         v-if="!appointment.isPersonal && emojiLabelMobile"
         class="calendar-appointment-card__emoji calendar-appointment-card__emoji--mobile"
@@ -192,6 +211,10 @@ function openAppointment() {
   display: block;
 }
 
+.calendar-appointment-card--operator-overlap {
+  border-width: 2px;
+}
+
 .calendar-appointment-card__top {
   display: flex;
   align-items: center;
@@ -204,6 +227,21 @@ function openAppointment() {
   font-weight: 700;
   white-space: nowrap;
   letter-spacing: -0.01em;
+}
+
+.calendar-appointment-card__overlap-flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.03rem 0.23rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 230, 236, 0.96);
+  background: rgba(255, 235, 241, 0.95);
+  color: #5a0017;
+  font-size: 0.44rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
 }
 
 .calendar-appointment-card__emoji {

@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import {
   Btn,
-  FieldFile,
   cicKitStore,
   getFileExtension,
   toast,
-  toFileArray,
   uploadFilesToUrls,
-  type FieldFileValue,
 } from 'cic-kit'
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib'
 import { Timestamp } from 'firebase/firestore'
@@ -15,6 +12,7 @@ import QRCode from 'qrcode'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
+import ClientFilesGallery from './components/ClientFilesGallery.vue'
 import {
   buildClientLaserShareUrl,
   createClientLaserShareToken,
@@ -35,6 +33,7 @@ import { Auth } from '../../main'
 import { clientStore } from '../../stores/clientStore'
 import { publicUserStore } from '../../stores/publicUser'
 import { asDate } from '../../utils/date'
+import { normalizeWhatsAppPhoneNumber, sendWhatsAppMessage } from '../../utils/whatsapp'
 
 type YesNoValue = '' | 'si' | 'no'
 type FtzValue = '' | '0' | '1' | '2' | '3' | '4'
@@ -83,10 +82,7 @@ const current = ref<Client | undefined>(undefined)
 const isLoading = ref(false)
 const isSaving = ref(false)
 const isDownloadingPdf = ref(false)
-const docsFileValue = ref<FieldFileValue>([])
-const mediaFileValue = ref<FieldFileValue>([])
 const isUploadingDocs = ref(false)
-const isUploadingMedia = ref(false)
 const isDeletingFile = ref(false)
 const isShareTokenModalOpen = ref(false)
 const isCreatingShareToken = ref(false)
@@ -177,6 +173,15 @@ const shareTokenExpiresAtLabel = computed(() => {
   })
 })
 const canCreateShareToken = computed(() => Boolean(normalizeString(current.value?.phone_number)))
+const shareWhatsAppPhone = computed(() => normalizeWhatsAppPhoneNumber(current.value?.phone_number))
+const canSendShareLinkOnWhatsApp = computed(() => Boolean(shareLink.value) && Boolean(shareWhatsAppPhone.value))
+const laserDocumentUrls = computed(() => {
+  const urls = [
+    ...(current.value?.laserDocUrls ?? []),
+    ...(current.value?.laserMediaUrls ?? []),
+  ]
+  return [...new Set(urls.map((url) => normalizeString(url)).filter(Boolean))]
+})
 
 function normalizeString(value: unknown) {
   return String(value ?? '').trim()
@@ -398,14 +403,8 @@ function nextLaserSheetNumber() {
   return max + 1
 }
 
-function resetFileInputs() {
-  docsFileValue.value = []
-  mediaFileValue.value = []
-}
-
 async function loadItem() {
   isLoading.value = true
-  resetFileInputs()
   try {
     current.value = await clientStore.ensureOne(routeId.value)
     if (!current.value) {
@@ -484,35 +483,26 @@ function stripFileExtension(fileName: string) {
   return fileName.slice(0, dotIndex)
 }
 
-async function uploadFiles(kind: 'docs' | 'media') {
-  if (!current.value) return
+async function uploadLaserDocuments(files: File[]) {
+  if (!current.value || isUploadingDocs.value) return
   if (!clientStore.storageFolder) {
     toast.error('Storage clienti non disponibile')
     return
   }
-
-  const source = kind === 'docs' ? docsFileValue.value : mediaFileValue.value
-  const selectedFiles = toFileArray(source)
-  if (!selectedFiles.length) {
+  if (!files.length) {
     toast.warning('Seleziona almeno un file')
     return
   }
 
-  if (kind === 'docs') {
-    isUploadingDocs.value = true
-  } else {
-    isUploadingMedia.value = true
-  }
-
+  isUploadingDocs.value = true
   try {
     const batchId = Date.now()
-    const uploadedUrls = await uploadFilesToUrls(selectedFiles, async (file, index) => {
+    const uploadedUrls = await uploadFilesToUrls(files, async (file, index) => {
       const extension = getFileExtension(file)
       const baseName = sanitizeFileName(stripFileExtension(file.name))
-      const folder = kind === 'docs' ? 'laser/docs' : 'laser/media'
       const path = extension
-        ? `${current.value!.id}/${folder}/${batchId}_${index}_${baseName}.${extension}`
-        : `${current.value!.id}/${folder}/${batchId}_${index}_${baseName}`
+        ? `${current.value!.id}/laser/docs/${batchId}_${index}_${baseName}.${extension}`
+        : `${current.value!.id}/laser/docs/${batchId}_${index}_${baseName}`
       const uploaded = await clientStore.storageFolder!.update(path, file)
       return uploaded.url
     })
@@ -522,35 +512,21 @@ async function uploadFiles(kind: 'docs' | 'media') {
       return
     }
 
-    const nextDocUrls = kind === 'docs'
-      ? [...(current.value.laserDocUrls ?? []), ...uploadedUrls]
-      : [...(current.value.laserDocUrls ?? [])]
-    const nextMediaUrls = kind === 'media'
-      ? [...(current.value.laserMediaUrls ?? []), ...uploadedUrls]
-      : [...(current.value.laserMediaUrls ?? [])]
-
     await current.value.update({
-      laserDocUrls: nextDocUrls,
-      laserMediaUrls: nextMediaUrls,
+      laserDocUrls: [...(current.value.laserDocUrls ?? []), ...uploadedUrls],
       updateBy: defaultUpdateBy(),
     })
     await loadItem()
-    toast.success(kind === 'docs' ? 'Documenti caricati' : 'Foto/file caricati')
+    toast.success('Documenti caricati')
   } catch (error) {
     console.error(error)
     toast.error('Errore upload file')
   } finally {
-    if (kind === 'docs') {
-      isUploadingDocs.value = false
-      docsFileValue.value = []
-    } else {
-      isUploadingMedia.value = false
-      mediaFileValue.value = []
-    }
+    isUploadingDocs.value = false
   }
 }
 
-async function removeLaserFile(kind: 'docs' | 'media', url: string) {
+async function removeLaserFile(url: string) {
   if (!current.value || isDeletingFile.value) return
   const ok = window.confirm('Eliminare definitivamente questo file?')
   if (!ok) return
@@ -558,16 +534,9 @@ async function removeLaserFile(kind: 'docs' | 'media', url: string) {
   isDeletingFile.value = true
   try {
     await clientStore.storageFolder?.removeFromUrl(url)
-    const nextDocUrls = kind === 'docs'
-      ? (current.value.laserDocUrls ?? []).filter((item) => item !== url)
-      : [...(current.value.laserDocUrls ?? [])]
-    const nextMediaUrls = kind === 'media'
-      ? (current.value.laserMediaUrls ?? []).filter((item) => item !== url)
-      : [...(current.value.laserMediaUrls ?? [])]
-
     await current.value.update({
-      laserDocUrls: nextDocUrls,
-      laserMediaUrls: nextMediaUrls,
+      laserDocUrls: (current.value.laserDocUrls ?? []).filter((item) => item !== url),
+      laserMediaUrls: (current.value.laserMediaUrls ?? []).filter((item) => item !== url),
       updateBy: defaultUpdateBy(),
     })
     await loadItem()
@@ -677,6 +646,38 @@ async function copyShareLink() {
   }
 }
 
+function buildShareLinkWhatsAppMessage() {
+  const clientFirstName = normalizeString(current.value?.name) || 'Ciao'
+  const operatorName = normalizeString(shareOperatorFirstName.value) || 'operatore'
+  return [
+    `Ciao ${clientFirstName},`,
+    'per preparare al meglio il trattamento laser abbiamo bisogno di alcune informazioni preliminari.',
+    'Puoi compilare la scheda da questo link:',
+    shareLink.value,
+    '',
+    `Grazie, ${operatorName}.`,
+  ].join('\n')
+}
+
+function sendShareLinkOnWhatsApp() {
+  if (!shareLink.value) {
+    toast.warning('Crea prima un link pubblico da condividere')
+    return
+  }
+  if (!shareWhatsAppPhone.value) {
+    toast.warning('Numero WhatsApp cliente mancante o non valido')
+    return
+  }
+
+  const message = buildShareLinkWhatsAppMessage()
+  const sent = sendWhatsAppMessage(message, shareWhatsAppPhone.value)
+  if (!sent) {
+    toast.warning('Impossibile aprire WhatsApp su questo dispositivo')
+    return
+  }
+  toast.success('Messaggio WhatsApp pronto')
+}
+
 function hasSkippedQuestion(key: string) {
   if (!key) return false
   return normalizeStringArray(current.value?.laserShareSkippedKeys).includes(key)
@@ -684,6 +685,41 @@ function hasSkippedQuestion(key: string) {
 
 function isClearingSkippedKey(key: string) {
   return clearingSkippedKeys.value.includes(key)
+}
+
+function fieldKeyFromControl(control: Element | null) {
+  if (!control) return ''
+  if (
+    !(control instanceof HTMLInputElement)
+    && !(control instanceof HTMLTextAreaElement)
+    && !(control instanceof HTMLSelectElement)
+  ) {
+    return ''
+  }
+
+  const dataKey = normalizeString(control.getAttribute('data-skip-key'))
+  if (dataKey) return dataKey
+  const name = normalizeString(control.name)
+  if (name === 'client-gender') return 'clientGender'
+  return name
+}
+
+function resolveInteractionFieldKey(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return ''
+  const directControl = target.closest('input, textarea, select')
+  const directKey = fieldKeyFromControl(directControl)
+  if (directKey) return directKey
+
+  const label = target.closest('label')
+  if (!label) return ''
+  const labelControl = label.querySelector('input, textarea, select')
+  return fieldKeyFromControl(labelControl)
+}
+
+function onFormInteraction(event: Event) {
+  const key = resolveInteractionFieldKey(event.target)
+  if (!key || !hasSkippedQuestion(key)) return
+  void clearSkippedQuestion(key, { silent: true })
 }
 
 async function clearSkippedQuestion(key: string, options?: { silent?: boolean }) {
@@ -714,18 +750,38 @@ async function clearSkippedQuestion(key: string, options?: { silent?: boolean })
   }
 }
 
-function openUrl(url: string) {
-  window.open(url, '_blank', 'noopener')
+function fileNameFromUrl(url: string) {
+  const normalized = String(url ?? '')
+  const withoutQuery = normalized.split('?')[0] ?? ''
+  const rawTail = withoutQuery.split('/').pop() ?? 'file'
+  const decodedTail = safeDecodeURIComponent(rawTail)
+  const decodedSegments = decodedTail.split('/').filter(Boolean)
+  if (decodedSegments.length) {
+    return decodedSegments[decodedSegments.length - 1] ?? 'file'
+  }
+
+  const rawSegments = rawTail.split(/%2f/i).filter(Boolean)
+  const candidate = rawSegments[rawSegments.length - 1] ?? rawTail
+  return safeDecodeURIComponent(candidate) || 'file'
 }
 
-function fileNameFromUrl(url: string) {
-  const withoutQuery = url.split('?')[0] ?? ''
-  const rawName = withoutQuery.split('/').pop() ?? 'file'
+function safeDecodeURIComponent(value: string) {
   try {
-    return decodeURIComponent(rawName)
+    return decodeURIComponent(value)
   } catch (error) {
-    return rawName
+    return value
   }
+}
+
+function downloadFile(url: string) {
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = fileNameFromUrl(url)
+  anchor.target = '_blank'
+  anchor.rel = 'noopener'
+  document.body.appendChild(anchor)
+  anchor.click()
+  document.body.removeChild(anchor)
 }
 
 function fitzScoreFromForm(values: LaserSheetForm) {
@@ -771,6 +827,21 @@ function drawTextFromTop(
     color,
     maxWidth,
   })
+}
+
+function drawCenteredTextFromTop(
+  page: PDFPage,
+  text: string,
+  top: number,
+  size: number,
+  font: PDFFont,
+  color = rgb(0.08, 0.08, 0.08),
+) {
+  const normalized = normalizeString(text)
+  if (!normalized) return
+  const width = font.widthOfTextAtSize(normalized, size)
+  const x = Math.max(24, (page.getWidth() - width) / 2)
+  drawTextFromTop(page, normalized, x, top, size, font, color)
 }
 
 function wrapText(text: string, maxLength = 74) {
@@ -819,10 +890,11 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
   const baseFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
   const pages = pdfDoc.getPages()
+  const page1 = pages[0]
   const page2 = pages[1]
   const page3 = pages[2]
   const page4 = pages[3]
-  if (!page2 || !page3 || !page4) {
+  if (!page1 || !page2 || !page3 || !page4) {
     throw new Error('Template PDF incompleto')
   }
 
@@ -838,36 +910,43 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
   const gender = fillOrFallback(values.clientGender)
   const schedaNumber = client.schedaLaserNumber ? String(client.schedaLaserNumber) : '-'
 
-  drawTextFromTop(page2, documentDate, 40, 91, 10, baseFont)
-  drawTextFromTop(page2, operatorName, 310, 91, 10, baseFont)
-  drawTextFromTop(page2, fullName, 48, 129, 10, baseFont)
-  drawTextFromTop(page2, age, 510, 129, 10, baseFont)
-  drawTextFromTop(page2, address, 70, 150, 10, baseFont, rgb(0.08, 0.08, 0.08), 370)
-  drawTextFromTop(page2, gender, 540, 150, 10, boldFont)
-  drawTextFromTop(page2, email, 48, 172, 9, baseFont, rgb(0.08, 0.08, 0.08), 350)
-  drawTextFromTop(page2, primaryPhone, 392, 172, 9, baseFont, rgb(0.08, 0.08, 0.08), 160)
+  drawTextFromTop(page1, `Scheda n. ${schedaNumber}`, 40, 34, 10, boldFont)
+  drawCenteredTextFromTop(page1, fullName || 'Cliente', 52, 13, boldFont)
 
-  drawTextFromTop(page2, fillOrFallback(values.epilationAlreadyDone), 40, 217, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
-  drawTextFromTop(page2, fillOrFallback(values.epilationAreasDone), 40, 237, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
-  drawTextFromTop(page2, fillOrFallback(values.epilationResults), 40, 258, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
-  drawTextFromTop(page2, fillOrFallback(values.epilationCurrentMethods), 40, 279, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
+  const page2HeaderShift = 14
+  const page2MainShift = 22
+  const page2FitzShift = 13
 
-  drawTextFromTop(page2, fillOrFallback(values.medsWomanAnticoncezionali), 56, 375, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.medsWomanAnabolizzanti), 56, 395, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.medsWomanCortisonici), 56, 415, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.medsWomanAltri), 56, 435, 8, baseFont, rgb(0.08, 0.08, 0.08), 120)
+  drawTextFromTop(page2, documentDate, 72, 91 + page2HeaderShift, 10, baseFont)
+  drawTextFromTop(page2, operatorName, 310, 91 + page2HeaderShift, 10, baseFont)
+  drawTextFromTop(page2, fullName, 82, 129 + page2MainShift, 10, baseFont)
+  drawTextFromTop(page2, age, 510, 129 + page2MainShift, 10, baseFont)
+  drawTextFromTop(page2, address, 82, 150 + page2MainShift, 10, baseFont, rgb(0.08, 0.08, 0.08), 370)
+  drawTextFromTop(page2, gender, 540, 150 + page2MainShift, 10, boldFont)
+  drawTextFromTop(page2, email, 82, 172 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 320)
+  drawTextFromTop(page2, primaryPhone, 446, 172 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 112)
 
-  drawTextFromTop(page2, fillOrFallback(values.medsManRicrescitaCapelli), 194, 375, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.medsManAnabolizzanti), 194, 395, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.medsManCortisonici), 194, 415, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.medsManAltri), 194, 435, 8, baseFont, rgb(0.08, 0.08, 0.08), 120)
+  drawTextFromTop(page2, fillOrFallback(values.epilationAlreadyDone), 40, 217 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
+  drawTextFromTop(page2, fillOrFallback(values.epilationAreasDone), 40, 237 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
+  drawTextFromTop(page2, fillOrFallback(values.epilationResults), 40, 258 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
+  drawTextFromTop(page2, fillOrFallback(values.epilationCurrentMethods), 40, 279 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
 
-  drawTextFromTop(page2, fillOrFallback(values.gravidanzaAllattamento), 372, 375, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.pacemaker), 372, 395, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.epilessia), 372, 415, 8, baseFont)
+  drawTextFromTop(page2, fillOrFallback(values.medsWomanAnticoncezionali), 56, 375 + page2MainShift, 8, baseFont)
+  drawTextFromTop(page2, fillOrFallback(values.medsWomanAnabolizzanti), 56, 395 + page2MainShift, 8, baseFont)
+  drawTextFromTop(page2, fillOrFallback(values.medsWomanCortisonici), 56, 415 + page2MainShift, 8, baseFont)
+  drawTextFromTop(page2, fillOrFallback(values.medsWomanAltri), 56, 435 + page2MainShift, 8, baseFont, rgb(0.08, 0.08, 0.08), 120)
 
-  drawTextFromTop(page2, fillOrFallback(values.cicloRegolare), 232, 463, 9, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.zonaInteresse), 362, 463, 9, baseFont, rgb(0.08, 0.08, 0.08), 185)
+  drawTextFromTop(page2, fillOrFallback(values.medsManRicrescitaCapelli), 194, 375 + page2MainShift, 8, baseFont)
+  drawTextFromTop(page2, fillOrFallback(values.medsManAnabolizzanti), 194, 395 + page2MainShift, 8, baseFont)
+  drawTextFromTop(page2, fillOrFallback(values.medsManCortisonici), 194, 415 + page2MainShift, 8, baseFont)
+  drawTextFromTop(page2, fillOrFallback(values.medsManAltri), 194, 435 + page2MainShift, 8, baseFont, rgb(0.08, 0.08, 0.08), 120)
+
+  drawTextFromTop(page2, fillOrFallback(values.gravidanzaAllattamento), 372, 375 + page2MainShift, 8, baseFont)
+  drawTextFromTop(page2, fillOrFallback(values.pacemaker), 372, 395 + page2MainShift, 8, baseFont)
+  drawTextFromTop(page2, fillOrFallback(values.epilessia), 372, 415 + page2MainShift, 8, baseFont)
+
+  drawTextFromTop(page2, fillOrFallback(values.cicloRegolare), 232, 463 + page2MainShift, 9, baseFont)
+  drawTextFromTop(page2, fillOrFallback(values.zonaInteresse), 362, 463 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 185)
 
   const fitzRowTopOffsets = [536, 557, 577, 598, 619, 640, 661, 682, 704, 725]
   for (let index = 0; index < LASER_SHEET_FITZPATRICK_IDS.length; index += 1) {
@@ -877,9 +956,9 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
     if (scoreValue === '') continue
     const top = fitzRowTopOffsets[index]
     if (!top) continue
-    drawTextFromTop(page2, String(scoreValue), 559, top, 9, boldFont)
+    drawTextFromTop(page2, String(scoreValue), 559, top + page2FitzShift, 9, boldFont)
   }
-  drawTextFromTop(page2, String(score), 559, 746, 10, boldFont)
+  drawTextFromTop(page2, String(score), 559, 746 + page2FitzShift, 10, boldFont)
 
   drawTextFromTop(page3, fullName, 65, 110, 9, baseFont, rgb(0.08, 0.08, 0.08), 220)
   drawTextFromTop(page3, fillOrFallback(values.clientAddress), 65, 134, 9, baseFont, rgb(0.08, 0.08, 0.08), 220)
@@ -893,11 +972,11 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
   drawTextFromTop(page3, documentDate, 88, 792, 9, baseFont)
   drawTextFromTop(page3, fullName, 286, 792, 9, baseFont)
 
-  drawTextFromTop(page4, documentDate, 40, 91, 10, baseFont)
-  drawTextFromTop(page4, fullName, 230, 91, 10, baseFont, rgb(0.08, 0.08, 0.08), 220)
-  drawTextFromTop(page4, `Scheda n. ${schedaNumber}`, 41, 117, 9, boldFont)
-  drawTextFromTop(page4, `Punteggio questionario: ${score}`, 300, 117, 9, boldFont)
-  drawTextFromTop(page4, `Fototipo: ${phototype}`, 300, 133, 9, boldFont)
+  drawTextFromTop(page4, documentDate, 40, 72, 10, baseFont)
+  drawTextFromTop(page4, fullName, 230, 72, 10, baseFont, rgb(0.08, 0.08, 0.08), 220)
+  drawTextFromTop(page4, `Scheda n. ${schedaNumber}`, 41, 92, 9, boldFont)
+  drawTextFromTop(page4, `Punteggio questionario: ${score}`, 300, 92, 9, boldFont)
+  drawTextFromTop(page4, `Fototipo: ${phototype}`, 300, 106, 9, boldFont)
 
   drawWrappedRows(
     page4,
@@ -906,11 +985,11 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
       'Non indicate',
     )}.`,
     41,
-    754,
-    8,
+    118,
+    7,
     baseFont,
-    86,
-    10,
+    98,
+    8,
   )
 
   return pdfDoc.save()
@@ -1106,6 +1185,17 @@ watch(() => route.params.id, loadItem)
               <Btn
                 v-if="hasActiveShareToken"
                 type="button"
+                color="dark"
+                variant="outline"
+                icon="send"
+                :disabled="!canSendShareLinkOnWhatsApp"
+                @click="sendShareLinkOnWhatsApp"
+              >
+                Invia su WhatsApp
+              </Btn>
+              <Btn
+                v-if="hasActiveShareToken"
+                type="button"
                 color="danger"
                 variant="outline"
                 icon="block"
@@ -1150,7 +1240,7 @@ watch(() => route.params.id, loadItem)
           </p>
         </article>
 
-        <article class="laser-panel">
+        <article class="laser-panel" @click.capture="onFormInteraction" @focusin.capture="onFormInteraction">
           <h3 class="h6 mb-3">Compilazione scheda laser</h3>
 
           <section class="laser-form-section">
@@ -1179,7 +1269,13 @@ watch(() => route.params.id, loadItem)
                     <span class="material-symbols-outlined" aria-hidden="true">help</span>
                   </button>
                 </label>
-                <input v-model="form.clientAddress" type="text" class="form-control" placeholder="Indirizzo" />
+                <input
+                  v-model="form.clientAddress"
+                  type="text"
+                  class="form-control"
+                  placeholder="Indirizzo"
+                  data-skip-key="clientAddress"
+                />
               </div>
 
               <div class="col-12 col-md-6">
@@ -1210,7 +1306,7 @@ watch(() => route.params.id, loadItem)
                     <span class="material-symbols-outlined" aria-hidden="true">help</span>
                   </button>
                 </label>
-                <input v-model="form.clientAge" type="number" min="0" step="1" class="form-control">
+                <input v-model="form.clientAge" type="number" min="0" step="1" class="form-control" data-skip-key="clientAge">
               </div>
               <div class="col-12 col-md-6">
                 <label class="form-label d-block laser-form-label">
@@ -1276,6 +1372,7 @@ watch(() => route.params.id, loadItem)
                   rows="2"
                   class="form-control"
                   placeholder="Descrivi trattamenti precedenti oppure lascia vuoto"
+                  data-skip-key="epilationAlreadyDone"
                 ></textarea>
               </div>
 
@@ -1295,7 +1392,7 @@ watch(() => route.params.id, loadItem)
                       <span class="material-symbols-outlined" aria-hidden="true">help</span>
                     </button>
                   </label>
-                  <textarea v-model="form.epilationAreasDone" rows="2" class="form-control"></textarea>
+                  <textarea v-model="form.epilationAreasDone" rows="2" class="form-control" data-skip-key="epilationAreasDone"></textarea>
                 </div>
                 <div class="col-12 col-md-6">
                   <label class="form-label laser-form-label">
@@ -1312,7 +1409,7 @@ watch(() => route.params.id, loadItem)
                       <span class="material-symbols-outlined" aria-hidden="true">help</span>
                     </button>
                   </label>
-                  <textarea v-model="form.epilationResults" rows="2" class="form-control"></textarea>
+                  <textarea v-model="form.epilationResults" rows="2" class="form-control" data-skip-key="epilationResults"></textarea>
                 </div>
                 <div class="col-12">
                   <label class="form-label laser-form-label">
@@ -1329,7 +1426,12 @@ watch(() => route.params.id, loadItem)
                       <span class="material-symbols-outlined" aria-hidden="true">help</span>
                     </button>
                   </label>
-                  <textarea v-model="form.epilationCurrentMethods" rows="2" class="form-control"></textarea>
+                  <textarea
+                    v-model="form.epilationCurrentMethods"
+                    rows="2"
+                    class="form-control"
+                    data-skip-key="epilationCurrentMethods"
+                  ></textarea>
                 </div>
               </template>
               <p v-else class="small text-muted mb-0">
@@ -1460,7 +1562,7 @@ watch(() => route.params.id, loadItem)
                       <span class="material-symbols-outlined" aria-hidden="true">help</span>
                     </button>
                   </label>
-                  <input v-model="form.medsWomanAltri" type="text" class="form-control form-control-sm" />
+                  <input v-model="form.medsWomanAltri" type="text" class="form-control form-control-sm" data-skip-key="medsWomanAltri" />
                   <div class="toggle-row">
                     <span class="toggle-row__label laser-inline-label">
                       <span>Gravidanza / allattamento</span>
@@ -1651,7 +1753,7 @@ watch(() => route.params.id, loadItem)
                       <span class="material-symbols-outlined" aria-hidden="true">help</span>
                     </button>
                   </label>
-                  <input v-model="form.medsManAltri" type="text" class="form-control form-control-sm" />
+                  <input v-model="form.medsManAltri" type="text" class="form-control form-control-sm" data-skip-key="medsManAltri" />
                 </div>
               </div>
 
@@ -1779,6 +1881,7 @@ watch(() => route.params.id, loadItem)
                     type="text"
                     class="form-control form-control-sm"
                     placeholder="Es. inguine, gambe, ascelle..."
+                    data-skip-key="zonaInteresse"
                   />
                 </div>
               </div>
@@ -1840,101 +1943,17 @@ watch(() => route.params.id, loadItem)
         </article>
 
         <article class="laser-panel">
-          <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
-            <h3 class="h6 mb-0">Documenti scheda laser</h3>
-            <Btn type="button" color="dark" icon="upload_file" :loading="isUploadingDocs" @click="uploadFiles('docs')">
-              Carica documenti
-            </Btn>
-          </div>
-
-          <FieldFile
-            name="laser-documents"
-            v-model="docsFileValue"
-            multiple
-            :show-errors="false"
-            :disabled="isUploadingDocs || isDeletingFile"
-            @clear="docsFileValue = []"
-          >
-            <template #dropzone="{ open, clear, files, disabled }">
-              <div class="dropzone-wrap" :class="{ disabled }">
-                <div class="d-flex gap-2 flex-wrap">
-                  <Btn type="button" icon="upload_file" color="dark" :disabled="disabled" @click="open">
-                    Scegli file doc
-                  </Btn>
-                  <Btn type="button" icon="delete" variant="outline" color="secondary" :disabled="disabled || !files.length" @click="clear">
-                    Svuota selezione
-                  </Btn>
-                </div>
-                <small class="text-muted d-block mt-1">File selezionati: {{ files.length }}</small>
-              </div>
-            </template>
-          </FieldFile>
-
-          <div v-if="current.laserDocUrls?.length" class="vstack gap-2 mt-3">
-            <article v-for="url in current.laserDocUrls" :key="url" class="file-row">
-              <div class="min-w-0">
-                <p class="mb-0 text-truncate">{{ fileNameFromUrl(url) }}</p>
-              </div>
-              <div class="d-flex gap-2">
-                <Btn type="button" color="secondary" variant="outline" icon="download" @click="openUrl(url)">
-                  Scarica
-                </Btn>
-                <Btn type="button" color="danger" variant="outline" icon="delete" :disabled="isDeletingFile" @click="removeLaserFile('docs', url)">
-                  Elimina
-                </Btn>
-              </div>
-            </article>
-          </div>
-          <p v-else class="small text-muted mt-2 mb-0">Nessun documento scheda laser.</p>
-        </article>
-
-        <article class="laser-panel">
-          <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
-            <h3 class="h6 mb-0">Foto / altri file scheda laser</h3>
-            <Btn type="button" color="dark" icon="upload_file" :loading="isUploadingMedia" @click="uploadFiles('media')">
-              Carica foto/altri file
-            </Btn>
-          </div>
-
-          <FieldFile
-            name="laser-media"
-            v-model="mediaFileValue"
-            multiple
-            :show-errors="false"
-            :disabled="isUploadingMedia || isDeletingFile"
-            @clear="mediaFileValue = []"
-          >
-            <template #dropzone="{ open, clear, files, disabled }">
-              <div class="dropzone-wrap" :class="{ disabled }">
-                <div class="d-flex gap-2 flex-wrap">
-                  <Btn type="button" icon="upload_file" color="dark" :disabled="disabled" @click="open">
-                    Scegli foto / file
-                  </Btn>
-                  <Btn type="button" icon="delete" variant="outline" color="secondary" :disabled="disabled || !files.length" @click="clear">
-                    Svuota selezione
-                  </Btn>
-                </div>
-                <small class="text-muted d-block mt-1">File selezionati: {{ files.length }}</small>
-              </div>
-            </template>
-          </FieldFile>
-
-          <div v-if="current.laserMediaUrls?.length" class="vstack gap-2 mt-3">
-            <article v-for="url in current.laserMediaUrls" :key="url" class="file-row">
-              <div class="min-w-0">
-                <p class="mb-0 text-truncate">{{ fileNameFromUrl(url) }}</p>
-              </div>
-              <div class="d-flex gap-2">
-                <Btn type="button" color="secondary" variant="outline" icon="download" @click="openUrl(url)">
-                  Scarica
-                </Btn>
-                <Btn type="button" color="danger" variant="outline" icon="delete" :disabled="isDeletingFile" @click="removeLaserFile('media', url)">
-                  Elimina
-                </Btn>
-              </div>
-            </article>
-          </div>
-          <p v-else class="small text-muted mt-2 mb-0">Nessuna foto/allegato scheda laser.</p>
+          <ClientFilesGallery
+            section-title="Documenti scheda laser"
+            field-name="laser-documents"
+            :urls="laserDocumentUrls"
+            empty-text="Nessun documento scheda laser."
+            :is-uploading="isUploadingDocs"
+            :is-deleting="isDeletingFile"
+            :upload-files="uploadLaserDocuments"
+            :download-file="downloadFile"
+            :delete-file="removeLaserFile"
+          />
         </article>
 
         <div
@@ -2359,32 +2378,6 @@ watch(() => route.params.id, loadItem)
 .share-ttl-option__description {
   font-size: 0.72rem;
   color: #7a4958;
-}
-
-.dropzone-wrap {
-  border: 1px dashed rgba(84, 44, 58, 0.32);
-  border-radius: 0.7rem;
-  padding: 0.7rem;
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.dropzone-wrap.disabled {
-  opacity: 0.65;
-}
-
-.file-row {
-  border: 1px solid rgba(84, 44, 58, 0.2);
-  border-radius: 0.62rem;
-  padding: 0.52rem 0.62rem;
-  background: rgba(255, 255, 255, 0.88);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.55rem;
-}
-
-.min-w-0 {
-  min-width: 0;
 }
 
 @media (max-width: 767.98px) {
