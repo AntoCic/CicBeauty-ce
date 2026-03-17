@@ -103,7 +103,12 @@ function isItemActive(item: QuickNavItem) {
     return routeName === 'CalendarDayView'
   }
   if (item.id === 'clients') {
-    return routeName === 'ClientsView' || routeName === 'ClientEditView'
+    return (
+      routeName === 'ClientsView' ||
+      routeName === 'ClientEditView' ||
+      routeName === 'ClientLaserSheetView' ||
+      routeName === 'ClientLaserSheetsView'
+    )
   }
   if (item.id === 'calendar') {
     return routeName === 'home'

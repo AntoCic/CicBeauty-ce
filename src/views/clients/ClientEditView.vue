@@ -78,6 +78,7 @@ const current = ref<Client | undefined>(undefined)
 const isLoading = ref(false)
 const isDeleting = ref(false)
 const isEditMode = ref(false)
+const isDeleteClientModalOpen = ref(false)
 const isPurchaseModalOpen = ref(false)
 const purchaseDraft = ref<ClientDeposit>(emptyDeposit())
 const editingPurchaseIndex = ref(-1)
@@ -136,9 +137,21 @@ const appointmentSummary = computed(() => buildClientAppointmentSummary(clientAp
 const laserScore = computed(() => computeFitzpatrickScore(current.value?.schedaLaser))
 const laserPhototype = computed(() => resolveFitzpatrickPhototype(laserScore.value))
 const hasLaserSheet = computed(() => Boolean(current.value?.schedaLaser && Object.keys(current.value.schedaLaser).length))
+const laserClarificationCount = computed(() => normalizeStringArray(current.value?.laserShareSkippedKeys).length)
+const hasLaserClarifications = computed(() => laserClarificationCount.value > 0)
+const clientDisplayName = computed(() => {
+  const name = normalizeString(current.value?.name)
+  const surname = normalizeString(current.value?.surname)
+  return `${name} ${surname}`.trim() || 'questo cliente'
+})
 
 function normalizeString(value: unknown) {
   return String(value ?? '').trim()
+}
+
+function normalizeStringArray(value: unknown) {
+  if (!Array.isArray(value)) return []
+  return [...new Set(value.map((item) => normalizeString(item)).filter(Boolean))]
 }
 
 function onPhoneNumberInput(event: Event, setFieldValue: FormSetFieldValue) {
@@ -556,6 +569,7 @@ function defaultUpdateBy() {
 
 function enterEditMode() {
   resetPurchaseModalState()
+  isDeleteClientModalOpen.value = false
   isEditMode.value = true
 }
 
@@ -574,6 +588,7 @@ function openAppointment(appointment: AppointmentLike) {
 async function loadItem() {
   resetPurchaseModalState()
   resetClientFilesSelection()
+  isDeleteClientModalOpen.value = false
   if (isCreateMode.value) {
     current.value = undefined
     isEditMode.value = true
@@ -642,12 +657,11 @@ async function onSubmit(values: Record<string, unknown>) {
 
 async function onDeleteClient() {
   if (!current.value || isCreateMode.value || isDeleting.value) return
-  const ok = window.confirm(`Eliminare cliente "${current.value.name} ${current.value.surname}"?`)
-  if (!ok) return
 
   isDeleting.value = true
   try {
     await current.value.delete(clientStore)
+    isDeleteClientModalOpen.value = false
     toast.success('Cliente eliminato')
     await router.replace({ name: 'ClientsView' })
   } catch (error) {
@@ -656,6 +670,16 @@ async function onDeleteClient() {
   } finally {
     isDeleting.value = false
   }
+}
+
+function openDeleteClientModal() {
+  if (isCreateMode.value || !current.value || isDeleting.value) return
+  isDeleteClientModalOpen.value = true
+}
+
+function closeDeleteClientModal() {
+  if (isDeleting.value) return
+  isDeleteClientModalOpen.value = false
 }
 
 onMounted(loadItem)
@@ -780,83 +804,95 @@ watch(() => route.params.id, loadItem)
           </template>
         </div>
 
-        <div class="d-flex gap-2 mt-4 flex-wrap">
+        <div class="form-primary-actions mt-4">
           <Btn type="submit" color="dark" icon="save" :loading="isSubmitting || isDeleting">
             {{ isCreateMode ? 'Crea' : 'Salva' }}
           </Btn>
           <Btn type="button" color="secondary" variant="outline" icon="close" :disabled="isSubmitting" @click="onCancelEdit">
             Annulla
           </Btn>
+        </div>
+
+        <section v-if="!isCreateMode" class="danger-zone-card mt-4">
+          <div class="danger-zone-card__copy">
+            <h3 class="danger-zone-card__title">Elimina cliente</h3>
+            <p class="danger-zone-card__subtitle mb-0">
+              Questa azione elimina in modo definitivo il cliente e i suoi dati associati.
+            </p>
+          </div>
           <Btn
-            v-if="!isCreateMode"
             type="button"
             color="danger"
             variant="outline"
             icon="delete"
-            :loading="isDeleting"
             :disabled="isSubmitting"
-            @click="onDeleteClient"
+            @click="openDeleteClientModal"
           >
-            Elimina
+            Elimina cliente
           </Btn>
-        </div>
+        </section>
       </Form>
 
       <div v-else-if="current" class="view-shell">
-        <ClientPersonCard
-          :name="current.name"
-          :surname="current.surname"
-          :gender="current.gender"
-          :phone-number="current.phone_number"
-          :email="current.email"
-          :birthdate="current.birthdate"
-          :note="current.note"
-          :consenso-promozioni-whatsapp="current.consenso_promozioni_whatsapp"
-          :show-details="true"
-          compact
-          class="client-main-card mx-auto"
-        >
-          <template #actions>
-            <Btn
-              type="button"
-              color="dark"
-              variant="outline"
-              icon="edit"
-              title="Modifica cliente"
-              aria-label="Modifica cliente"
-              @click="enterEditMode"
-            />
-          </template>
-        </ClientPersonCard>
+        <section class="client-section-card client-section-card--hero">
+          <ClientPersonCard
+            :name="current.name"
+            :surname="current.surname"
+            :gender="current.gender"
+            :phone-number="current.phone_number"
+            :email="current.email"
+            :birthdate="current.birthdate"
+            :note="current.note"
+            :consenso-promozioni-whatsapp="current.consenso_promozioni_whatsapp"
+            :show-details="true"
+            compact
+            class="client-main-card mx-auto"
+          >
+            <template #actions>
+              <Btn
+                type="button"
+                color="dark"
+                variant="outline"
+                icon="edit"
+                title="Modifica cliente"
+                aria-label="Modifica cliente"
+                @click="enterEditMode"
+              />
+            </template>
+          </ClientPersonCard>
+        </section>
 
-        <div class="row g-2 mt-2">
-          <div class="col-12 col-md-6">
-            <ClientAppointmentCard
-              title="Prossimo appuntamento"
-              :appointment="appointmentSummary.next"
-              empty-label="Nessun prossimo appuntamento"
-              :show-today-emoji="appointmentSummary.hasTodayAppointment"
-              today-emoji-label="&#x1F4C5; Oggi c'e un appuntamento"
-            />
+        <section class="client-section-card">
+          <h2 class="client-section-card__title">Appuntamenti rapidi</h2>
+          <div class="row g-2 mt-1">
+            <div class="col-12 col-md-6">
+              <ClientAppointmentCard
+                title="Prossimo appuntamento"
+                :appointment="appointmentSummary.next"
+                empty-label="Nessun prossimo appuntamento"
+                :show-today-emoji="appointmentSummary.hasTodayAppointment"
+                today-emoji-label="&#x1F4C5; Oggi c'e un appuntamento"
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <ClientAppointmentCard
+                title="Appuntamento precedente"
+                :appointment="appointmentSummary.previous"
+                empty-label="Nessun appuntamento precedente"
+              />
+            </div>
           </div>
-          <div class="col-12 col-md-6">
-            <ClientAppointmentCard
-              title="Appuntamento precedente"
-              :appointment="appointmentSummary.previous"
-              empty-label="Nessun appuntamento precedente"
-            />
-          </div>
-        </div>
+        </section>
 
-        <div class="d-flex gap-2 mt-2 flex-wrap">
-          <Btn type="button" color="danger" variant="outline" icon="delete" :loading="isDeleting" @click="onDeleteClient">
-            Elimina cliente
-          </Btn>
-        </div>
-
-        <section class="mt-3">
+        <section class="client-section-card">
           <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
-            <h2 class="h6 mb-0">Scheda laser</h2>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <h2 class="h6 mb-0">Scheda laser</h2>
+              <span v-if="hasLaserClarifications" class="laser-clarification-badge" title="Sono presenti campi da chiarire">
+                <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                Chiarimenti: {{ laserClarificationCount }}
+              </span>
+            </div>
             <Btn type="button" color="dark" variant="outline" icon="description" @click="openLaserSheetPage">
               Apri scheda laser
             </Btn>
@@ -877,7 +913,7 @@ watch(() => route.params.id, loadItem)
           </div>
         </section>
 
-        <section class="mt-3">
+        <section class="client-section-card">
           <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
             <h2 class="h6 mb-0">File cliente</h2>
             <Btn
@@ -937,7 +973,7 @@ watch(() => route.params.id, loadItem)
           <p v-else class="text-muted small mb-0 mt-2">Nessun file cliente caricato.</p>
         </section>
 
-        <section class="mt-3">
+        <section class="client-section-card">
           <h2 class="h6 mb-2">Appuntamenti cliente</h2>
           <div class="vstack gap-2">
             <ClientAppointmentCard
@@ -953,7 +989,7 @@ watch(() => route.params.id, loadItem)
           </div>
         </section>
 
-        <section class="mt-3">
+        <section class="client-section-card">
           <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
             <h2 class="h6 mb-0">Acquisti con acconto</h2>
             <Btn type="button" color="dark" variant="outline" icon="add" @click="openPurchaseModalForCreate">
@@ -1154,7 +1190,40 @@ watch(() => route.params.id, loadItem)
         </div>
       </div>
 
-      <p v-else class="text-muted small mt-3">Cliente non trovato.</p>
+      <div
+        v-if="isDeleteClientModalOpen"
+        class="client-delete-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Conferma eliminazione cliente"
+      >
+        <div class="client-delete-modal__backdrop" @click="closeDeleteClientModal"></div>
+
+        <div class="client-delete-modal__content card border-0 shadow-lg p-3 p-md-4">
+          <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+            <div>
+              <h3 class="h6 mb-1">Conferma eliminazione</h3>
+              <p class="small text-muted mb-0">
+                Stai per eliminare <strong>{{ clientDisplayName }}</strong>. Operazione non reversibile.
+              </p>
+            </div>
+            <button type="button" class="btn-close" aria-label="Chiudi conferma eliminazione" @click="closeDeleteClientModal"></button>
+          </div>
+
+          <div class="d-flex gap-2 mt-3 flex-wrap">
+            <Btn type="button" color="danger" icon="delete" :loading="isDeleting" @click="onDeleteClient">
+              Elimina definitivamente
+            </Btn>
+            <Btn type="button" color="secondary" variant="outline" :disabled="isDeleting" @click="closeDeleteClientModal">
+              Annulla
+            </Btn>
+          </div>
+        </div>
+      </div>
+
+      <p v-if="!isLoading && !(isEditMode && (isCreateMode || current)) && !current" class="text-muted small mt-3">
+        Cliente non trovato.
+      </p>
     </div>
   </div>
 </template>
@@ -1169,8 +1238,77 @@ watch(() => route.params.id, loadItem)
   margin-inline: auto;
 }
 
+.form-primary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.danger-zone-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  border: 1px solid rgba(180, 58, 74, 0.32);
+  border-radius: 0.82rem;
+  padding: 0.9rem 1rem;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 187, 197, 0.38) 0%, transparent 48%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(254, 240, 242, 0.95));
+}
+
+.danger-zone-card__copy {
+  display: grid;
+  gap: 0.28rem;
+  max-width: 30rem;
+}
+
+.danger-zone-card__title {
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: #84253a;
+}
+
+.danger-zone-card__subtitle {
+  color: #7a4958;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.view-shell {
+  display: grid;
+  gap: 0.9rem;
+}
+
 .client-main-card {
-  max-width: 520px;
+  max-width: 100%;
+  margin: 0;
+}
+
+.client-section-card {
+  border: 1px solid rgba(84, 44, 58, 0.18);
+  border-radius: 0.95rem;
+  padding: 0.9rem;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(232, 179, 190, 0.34) 0%, transparent 52%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.95), rgba(247, 241, 242, 0.93));
+  box-shadow: 0 10px 22px rgba(45, 27, 35, 0.08);
+}
+
+.client-section-card--hero {
+  padding: 0.7rem;
+}
+
+.client-section-card__title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #643a49;
+  margin: 0;
 }
 
 .gender-switch {
@@ -1322,13 +1460,33 @@ watch(() => route.params.id, loadItem)
 }
 
 .laser-summary-card {
-  border: 1px solid rgba(84, 44, 58, 0.14);
-  border-radius: 0.6rem;
-  padding: 0.55rem 0.65rem;
-  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(84, 44, 58, 0.2);
+  border-radius: 0.75rem;
+  padding: 0.7rem 0.78rem;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(232, 179, 190, 0.28) 0%, transparent 55%),
+    rgba(255, 255, 255, 0.88);
   font-size: 0.86rem;
 }
 
+.laser-clarification-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  border: 1px solid rgba(171, 128, 26, 0.45);
+  border-radius: 999px;
+  background: rgba(253, 244, 212, 0.95);
+  color: #805d14;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.16rem 0.5rem;
+}
+
+.laser-clarification-badge .material-symbols-outlined {
+  font-size: 0.95rem;
+}
+
+.client-delete-modal,
 .client-purchase-modal {
   position: fixed;
   inset: 0;
@@ -1338,17 +1496,34 @@ watch(() => route.params.id, loadItem)
   padding: 1rem;
 }
 
+.client-delete-modal {
+  z-index: 1300;
+}
+
+.client-delete-modal__backdrop,
 .client-purchase-modal__backdrop {
   position: absolute;
   inset: 0;
   background: rgba(255, 255, 255, 0.9);
 }
 
+.client-delete-modal__content,
 .client-purchase-modal__content {
   position: relative;
   width: min(calc(100vw - 2rem), 820px);
   max-height: calc(100vh - 2rem);
   overflow: auto;
+}
+
+@media (max-width: 767.98px) {
+  .client-section-card {
+    padding: 0.72rem;
+    border-radius: 0.82rem;
+  }
+
+  .danger-zone-card {
+    padding: 0.75rem;
+  }
 }
 </style>
 

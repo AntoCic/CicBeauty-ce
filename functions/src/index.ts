@@ -6,6 +6,12 @@ import { publishProjectMessage, relayProjectMessage } from './agents/projectMess
 import { availabilityAgent } from './agents/availabilityAgent.js';
 import { syncAppointmentGoogleCalendar, syncGoogleCalendarAcl } from './agents/googleCalendarSync.js';
 import { legacyTreatmentMapper } from './agents/legacyTreatmentMapper.js';
+import {
+  createClientLaserShareToken,
+  revokeClientLaserShareToken,
+  getClientLaserShareSession,
+  saveClientLaserShareSession,
+} from './agents/clientLaserShareToken.js';
 import { REGION } from './config/runtime.js';
 
 const { sendUserPush, syncPublicUser } = cicInit({
@@ -25,4 +31,8 @@ export {
   syncAppointmentGoogleCalendar,
   syncGoogleCalendarAcl,
   legacyTreatmentMapper,
+  createClientLaserShareToken,
+  revokeClientLaserShareToken,
+  getClientLaserShareSession,
+  saveClientLaserShareSession,
 };

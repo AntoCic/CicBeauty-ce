@@ -52,6 +52,11 @@ function normalizeUrlList(value: unknown) {
     .filter(Boolean)
 }
 
+function normalizeStringList(value: unknown) {
+  if (!Array.isArray(value)) return []
+  return [...new Set(value.map((item) => normalizeString(item)).filter(Boolean))]
+}
+
 function normalizePositiveInteger(value: unknown) {
   const next = Number(value)
   if (!Number.isFinite(next)) return undefined
@@ -117,6 +122,12 @@ export interface ClientData extends Partial<Timestampble> {
   schedaLaserNumber?: number
   laserDocUrls?: string[]
   laserMediaUrls?: string[]
+  laserShareToken?: string
+  laserShareTokenHash?: string
+  laserShareTokenExpiresAt?: Timestamp | null
+  laserShareTokenCreatedAt?: Timestamp | null
+  laserShareTokenOperatorFirstName?: string
+  laserShareSkippedKeys?: string[]
   updateBy: string
 }
 
@@ -144,6 +155,12 @@ export class Client extends FirestoreModel<ClientData> {
   schedaLaserNumber?: number
   laserDocUrls: string[]
   laserMediaUrls: string[]
+  laserShareToken?: string
+  laserShareTokenHash?: string
+  laserShareTokenExpiresAt?: Timestamp
+  laserShareTokenCreatedAt?: Timestamp
+  laserShareTokenOperatorFirstName?: string
+  laserShareSkippedKeys: string[]
   updateBy: string
 
   constructor(data: ClientData) {
@@ -169,6 +186,12 @@ export class Client extends FirestoreModel<ClientData> {
     this.schedaLaserNumber = normalizePositiveInteger(data.schedaLaserNumber)
     this.laserDocUrls = normalizeUrlList(data.laserDocUrls)
     this.laserMediaUrls = normalizeUrlList(data.laserMediaUrls)
+    this.laserShareToken = normalizeString(data.laserShareToken)
+    this.laserShareTokenHash = normalizeString(data.laserShareTokenHash)
+    this.laserShareTokenExpiresAt = normalizeOptionalTimestamp(data.laserShareTokenExpiresAt)
+    this.laserShareTokenCreatedAt = normalizeOptionalTimestamp(data.laserShareTokenCreatedAt)
+    this.laserShareTokenOperatorFirstName = normalizeString(data.laserShareTokenOperatorFirstName)
+    this.laserShareSkippedKeys = normalizeStringList(data.laserShareSkippedKeys)
     this.updateBy = data.updateBy
   }
 
@@ -196,6 +219,12 @@ export class Client extends FirestoreModel<ClientData> {
       schedaLaserNumber: this.schedaLaserNumber,
       laserDocUrls: this.laserDocUrls,
       laserMediaUrls: this.laserMediaUrls,
+      laserShareToken: this.laserShareToken,
+      laserShareTokenHash: this.laserShareTokenHash,
+      laserShareTokenExpiresAt: this.laserShareTokenExpiresAt,
+      laserShareTokenCreatedAt: this.laserShareTokenCreatedAt,
+      laserShareTokenOperatorFirstName: this.laserShareTokenOperatorFirstName,
+      laserShareSkippedKeys: this.laserShareSkippedKeys,
       updateBy: this.updateBy,
       ...this.timestampbleProps()
     }

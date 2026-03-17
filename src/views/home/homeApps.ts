@@ -40,6 +40,14 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     permission: UserPermission.OPERATORE,
   },
   {
+    id: 'laser-sheets',
+    title: 'Schede Laser',
+    to: { name: 'ClientLaserSheetsView' },
+    icon: 'description',
+    iconClass: 'app-icon-rose',
+    permission: UserPermission.OPERATORE,
+  },
+  {
     id: 'products-manage',
     title: 'Prodotti',
     to: { name: 'ProductsManageView' },

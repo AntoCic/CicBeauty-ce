@@ -36,6 +36,8 @@ import CalendarRecurrenceRulesView from './views/calendar/CalendarRecurrenceRule
 import ClientsView from './views/clients/ClientsView.vue';
 import ClientEditView from './views/clients/ClientEditView.vue';
 import ClientLaserSheetView from './views/clients/ClientLaserSheetView.vue';
+import ClientLaserSheetsView from './views/clients/ClientLaserSheetsView.vue';
+import PublicLaserSheetFormView from './views/clients/PublicLaserSheetFormView.vue';
 import ExpensesView from './views/expenses/ExpensesView.vue';
 import CouponsView from './views/coupons/CouponsView.vue';
 import StatsView from './views/stats/StatsView.vue';
@@ -68,6 +70,18 @@ export const routes: RouteRecordRaw[] = [
       loginStatus: true,
       publicRoute: true,
       robots: 'noindex,nofollow',
+    },
+  },
+  {
+    path: '/laser-share/:token',
+    name: 'PublicLaserSheetFormView',
+    component: PublicLaserSheetFormView,
+    meta: {
+      publicRoute: true,
+      publicDepth: 0,
+      robots: 'noindex,nofollow',
+      title: 'Compilazione Scheda Laser | CNC Beauty',
+      description: 'Compilazione guidata della scheda laser condivisa con operatore.',
     },
   },
   {
@@ -155,6 +169,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/clients', name: 'ClientsView', component: ClientsView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/clients/:id', name: 'ClientEditView', component: ClientEditView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/clients/:id/laser', name: 'ClientLaserSheetView', component: ClientLaserSheetView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
+  { path: '/laser-sheets', name: 'ClientLaserSheetsView', component: ClientLaserSheetsView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/expenses', name: 'ExpensesView', component: ExpensesView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/bonifico-app', name: 'BonificoView', component: BonificoView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/coupons', name: 'CouponsView', component: CouponsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
