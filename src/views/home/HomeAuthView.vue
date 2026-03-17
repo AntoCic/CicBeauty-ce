@@ -20,7 +20,6 @@ const SETTINGS_APP_ORDER = [
   'treatment-categories-manage',
   'type-expenses',
   'type-coupons',
-  'relations',
   'test-playground',
   'catalog-backup',
   'migration-import',

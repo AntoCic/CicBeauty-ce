@@ -14,11 +14,12 @@ import type {
   PriceListSectionKey,
 } from './priceListData'
 
-export type PriceListPdfAudience = 'operator' | 'client'
+type PriceListPdfAudience = 'operator' | 'client'
+export type PriceListPdfVariant = 'operator-basic' | 'client-standard' | 'client-large-text'
 
 type GeneratePriceListPdfOptions = {
   logoUrls?: string[]
-  audience?: PriceListPdfAudience
+  variant?: PriceListPdfVariant
   separateSectionsByPage?: boolean
 }
 
@@ -44,6 +45,10 @@ type PdfContext = {
   theme: PdfTheme
   generatedDateLabel: string
   audience: PriceListPdfAudience
+  showItemSubtitle: boolean
+  showItemDescription: boolean
+  showItemAvailabilityNote: boolean
+  contentScale: number
 }
 
 type PageState = {
@@ -72,6 +77,63 @@ const THEME: PdfTheme = {
   line: rgb(0.87, 0.79, 0.822),
   muted: rgb(0.435, 0.355, 0.392),
   danger: rgb(0.63, 0.24, 0.3),
+}
+
+const THEME_MONO: PdfTheme = {
+  ink: rgb(0.1, 0.1, 0.1),
+  inkSoft: rgb(0.23, 0.23, 0.23),
+  accent: rgb(0.76, 0.76, 0.76),
+  accentSoft: rgb(0.93, 0.93, 0.93),
+  paper: rgb(1, 1, 1),
+  line: rgb(0.72, 0.72, 0.72),
+  muted: rgb(0.36, 0.36, 0.36),
+  danger: rgb(0.22, 0.22, 0.22),
+}
+
+type PdfVariantConfig = {
+  variant: PriceListPdfVariant
+  audience: PriceListPdfAudience
+  theme: PdfTheme
+  showItemSubtitle: boolean
+  showItemDescription: boolean
+  showItemAvailabilityNote: boolean
+  contentScale: number
+}
+
+function resolveVariantConfig(variant: PriceListPdfVariant): PdfVariantConfig {
+  if (variant === 'operator-basic') {
+    return {
+      variant,
+      audience: 'operator',
+      theme: THEME_MONO,
+      showItemSubtitle: false,
+      showItemDescription: false,
+      showItemAvailabilityNote: false,
+      contentScale: 1,
+    }
+  }
+
+  if (variant === 'client-large-text') {
+    return {
+      variant,
+      audience: 'client',
+      theme: THEME,
+      showItemSubtitle: true,
+      showItemDescription: true,
+      showItemAvailabilityNote: true,
+      contentScale: 1.2,
+    }
+  }
+
+  return {
+    variant,
+    audience: 'client',
+    theme: THEME,
+    showItemSubtitle: true,
+    showItemDescription: true,
+    showItemAvailabilityNote: true,
+    contentScale: 1,
+  }
 }
 
 function toIsoDateSafe(value: string): string {
@@ -165,6 +227,10 @@ function wrapText(text: string, maxWidth: number, font: PDFFont, fontSize: numbe
 
   flushCurrentLine()
   return lines
+}
+
+function scaleValue(context: PdfContext, baseSize: number): number {
+  return baseSize * context.contentScale
 }
 
 function resolveToneFromSectionKey(sectionKey: PriceListSectionKey): PageTone {
@@ -584,13 +650,18 @@ function drawSectionHeader(
   context: PdfContext,
   pageCounter: { value: number },
 ): PageState {
-  let nextState = ensureSpace(state, 86, context, pageCounter)
+  const titleSize = scaleValue(context, 14)
+  const descriptionSize = scaleValue(context, 9.5)
+  const descriptionLineHeight = scaleValue(context, 12)
+  const panelHeight = Math.max(56, scaleValue(context, 56))
+  const headerNeededHeight = panelHeight + scaleValue(context, 30)
+  let nextState = ensureSpace(state, headerNeededHeight, context, pageCounter)
 
   nextState.page.drawRectangle({
     x: PAGE_MARGIN_X,
-    y: nextState.cursorY - 56,
+    y: nextState.cursorY - panelHeight,
     width: CONTENT_WIDTH,
-    height: 56,
+    height: panelHeight,
     color: context.theme.accentSoft,
     borderColor: context.theme.line,
     borderWidth: 1,
@@ -598,26 +669,26 @@ function drawSectionHeader(
 
   nextState.page.drawText(section.title.toUpperCase(), {
     x: PAGE_MARGIN_X + 14,
-    y: nextState.cursorY - 22,
-    size: 14,
+    y: nextState.cursorY - scaleValue(context, 22),
+    size: titleSize,
     font: context.boldFont,
     color: context.theme.ink,
   })
 
-  const descriptionLines = wrapText(section.description, CONTENT_WIDTH - 28, context.regularFont, 9.5).slice(0, 2)
-  let descriptionY = nextState.cursorY - 38
+  const descriptionLines = wrapText(section.description, CONTENT_WIDTH - 28, context.regularFont, descriptionSize).slice(0, 2)
+  let descriptionY = nextState.cursorY - scaleValue(context, 38)
   for (const line of descriptionLines) {
     nextState.page.drawText(line, {
       x: PAGE_MARGIN_X + 14,
       y: descriptionY,
-      size: 9.5,
+      size: descriptionSize,
       font: context.regularFont,
       color: context.theme.muted,
     })
-    descriptionY -= 12
+    descriptionY -= descriptionLineHeight
   }
 
-  nextState.cursorY -= 70
+  nextState.cursorY -= panelHeight + scaleValue(context, 14)
   return nextState
 }
 
@@ -627,13 +698,17 @@ function drawCategoryHeader(
   context: PdfContext,
   pageCounter: { value: number },
 ): PageState {
-  let nextState = ensureSpace(state, 44, context, pageCounter)
+  const titleSize = scaleValue(context, 10.5)
+  const metaSize = scaleValue(context, 8.5)
+  const barHeight = Math.max(22, scaleValue(context, 22))
+  const requiredHeight = barHeight + scaleValue(context, 22)
+  let nextState = ensureSpace(state, requiredHeight, context, pageCounter)
 
   nextState.page.drawRectangle({
     x: PAGE_MARGIN_X,
-    y: nextState.cursorY - 22,
+    y: nextState.cursorY - barHeight,
     width: CONTENT_WIDTH,
-    height: 22,
+    height: barHeight,
     color: context.theme.accent,
     opacity: 0.45,
   })
@@ -641,47 +716,63 @@ function drawCategoryHeader(
   const categoryTitle = sanitizePdfText(category.title, context.boldFont) || 'Categoria'
   nextState.page.drawText(categoryTitle, {
     x: PAGE_MARGIN_X + 12,
-    y: nextState.cursorY - 15,
-    size: 10.5,
+    y: nextState.cursorY - (barHeight - scaleValue(context, 7)),
+    size: titleSize,
     font: context.boldFont,
     color: context.theme.ink,
   })
 
   const countLabel = `${category.items.length} voci`
-  const countLabelWidth = context.regularFont.widthOfTextAtSize(countLabel, 8.5)
+  const countLabelWidth = context.regularFont.widthOfTextAtSize(countLabel, metaSize)
   nextState.page.drawText(countLabel, {
     x: PAGE_MARGIN_X + CONTENT_WIDTH - 12 - countLabelWidth,
-    y: nextState.cursorY - 15,
-    size: 8.5,
+    y: nextState.cursorY - (barHeight - scaleValue(context, 7)),
+    size: metaSize,
     font: context.regularFont,
     color: context.theme.inkSoft,
   })
 
-  nextState.cursorY -= 30
+  nextState.cursorY -= barHeight + scaleValue(context, 8)
   return nextState
 }
 
 function measureRowHeight(item: PriceListItem, context: PdfContext) {
   const textMaxWidth = CONTENT_WIDTH - 24 - PRICE_COLUMN_WIDTH
-  const titleLines = wrapText(item.title, textMaxWidth, context.boldFont, 10.5).slice(0, 2)
-  const subtitleLines = item.subtitle
-    ? wrapText(item.subtitle, textMaxWidth, context.regularFont, 8.5).slice(0, 2)
+  const titleSize = scaleValue(context, 10.5)
+  const subtitleSize = scaleValue(context, 8.5)
+  const descriptionSize = scaleValue(context, 7.6)
+  const noteSize = scaleValue(context, 8)
+  const titleLineHeight = scaleValue(context, 12)
+  const subtitleLineHeight = scaleValue(context, 10)
+  const descriptionLineHeight = scaleValue(context, 9)
+  const noteLineHeight = scaleValue(context, 9)
+  const titleLines = wrapText(item.title, textMaxWidth, context.boldFont, titleSize).slice(0, 2)
+  const subtitleLines = context.showItemSubtitle && item.subtitle
+    ? wrapText(item.subtitle, textMaxWidth, context.regularFont, subtitleSize).slice(0, 2)
     : []
-  const descriptionLines = item.description
-    ? wrapText(item.description, textMaxWidth, context.regularFont, 7.6).slice(0, 2)
+  const descriptionLines = context.showItemDescription && item.description
+    ? wrapText(item.description, textMaxWidth, context.regularFont, descriptionSize).slice(0, 2)
     : []
-  const disabledLines = item.storeDisabledReason
-    ? wrapText(`Non disponibile: ${item.storeDisabledReason}`, textMaxWidth, context.italicFont, 8)
+  const disabledLines = context.showItemAvailabilityNote && item.storeDisabledReason
+    ? wrapText(`Non disponibile: ${item.storeDisabledReason}`, textMaxWidth, context.italicFont, noteSize)
     : []
 
-  const titleHeight = titleLines.length * 12
-  const subtitleHeight = subtitleLines.length * 10
-  const descriptionHeight = descriptionLines.length * 9
-  const disabledHeight = disabledLines.length * 9
+  const titleHeight = titleLines.length * titleLineHeight
+  const subtitleHeight = subtitleLines.length * subtitleLineHeight
+  const descriptionHeight = descriptionLines.length * descriptionLineHeight
+  const disabledHeight = disabledLines.length * noteLineHeight
   const innerHeight = titleHeight + subtitleHeight + descriptionHeight + disabledHeight
 
   return {
-    height: Math.max(36, innerHeight + 16),
+    height: Math.max(scaleValue(context, 36), innerHeight + scaleValue(context, 16)),
+    titleSize,
+    subtitleSize,
+    descriptionSize,
+    noteSize,
+    titleLineHeight,
+    subtitleLineHeight,
+    descriptionLineHeight,
+    noteLineHeight,
     titleLines,
     subtitleLines,
     descriptionLines,
@@ -696,7 +787,7 @@ function drawItemRow(
   pageCounter: { value: number },
 ): PageState {
   const rowMeta = measureRowHeight(item, context)
-  let nextState = ensureSpace(state, rowMeta.height + 8, context, pageCounter)
+  let nextState = ensureSpace(state, rowMeta.height + scaleValue(context, 8), context, pageCounter)
   const rowTop = nextState.cursorY
   const rowBottom = rowTop - rowMeta.height
   const rowX = PAGE_MARGIN_X
@@ -721,62 +812,62 @@ function drawItemRow(
     color: context.theme.line,
   })
 
-  let textY = rowTop - 14
+  let textY = rowTop - scaleValue(context, 14)
   for (const line of rowMeta.titleLines) {
     nextState.page.drawText(line, {
       x: rowInnerX,
       y: textY,
-      size: 10.5,
+      size: rowMeta.titleSize,
       font: context.boldFont,
       color: context.theme.ink,
     })
-    textY -= 12
+    textY -= rowMeta.titleLineHeight
   }
 
   for (const line of rowMeta.subtitleLines) {
     nextState.page.drawText(line, {
       x: rowInnerX,
       y: textY,
-      size: 8.5,
+      size: rowMeta.subtitleSize,
       font: context.regularFont,
       color: context.theme.muted,
     })
-    textY -= 10
+    textY -= rowMeta.subtitleLineHeight
   }
 
   for (const line of rowMeta.descriptionLines) {
     nextState.page.drawText(line, {
       x: rowInnerX,
       y: textY,
-      size: 7.6,
+      size: rowMeta.descriptionSize,
       font: context.regularFont,
       color: context.theme.muted,
     })
-    textY -= 9
+    textY -= rowMeta.descriptionLineHeight
   }
 
   for (const line of rowMeta.disabledLines) {
     nextState.page.drawText(line, {
       x: rowInnerX,
       y: textY,
-      size: 8,
+      size: rowMeta.noteSize,
       font: context.italicFont,
       color: context.theme.danger,
     })
-    textY -= 9
+    textY -= rowMeta.noteLineHeight
   }
 
-  const priceSize = 11
+  const priceSize = scaleValue(context, 11)
   const priceWidth = context.boldFont.widthOfTextAtSize(item.formattedPrice, priceSize)
   nextState.page.drawText(item.formattedPrice, {
     x: rowX + CONTENT_WIDTH - 12 - priceWidth,
-    y: rowTop - 16,
+    y: rowTop - scaleValue(context, 16),
     size: priceSize,
     font: context.boldFont,
     color: context.theme.ink,
   })
 
-  nextState.cursorY = rowBottom - 8
+  nextState.cursorY = rowBottom - scaleValue(context, 8)
   return nextState
 }
 
@@ -785,12 +876,14 @@ function drawEmptyCategoryState(
   context: PdfContext,
   pageCounter: { value: number },
 ): PageState {
-  const nextState = ensureSpace(state, 34, context, pageCounter)
+  const boxHeight = Math.max(28, scaleValue(context, 28))
+  const messageSize = scaleValue(context, 9)
+  const nextState = ensureSpace(state, boxHeight + scaleValue(context, 8), context, pageCounter)
   nextState.page.drawRectangle({
     x: PAGE_MARGIN_X,
-    y: nextState.cursorY - 28,
+    y: nextState.cursorY - boxHeight,
     width: CONTENT_WIDTH,
-    height: 28,
+    height: boxHeight,
     color: rgb(1, 1, 1),
     borderColor: context.theme.line,
     borderWidth: 0.9,
@@ -798,13 +891,13 @@ function drawEmptyCategoryState(
 
   nextState.page.drawText('Nessuna voce disponibile al momento.', {
     x: PAGE_MARGIN_X + 12,
-    y: nextState.cursorY - 18,
-    size: 9,
+    y: nextState.cursorY - (boxHeight - scaleValue(context, 10)),
+    size: messageSize,
     font: context.regularFont,
     color: context.theme.muted,
   })
 
-  nextState.cursorY -= 36
+  nextState.cursorY -= boxHeight + scaleValue(context, 8)
   return nextState
 }
 
@@ -833,7 +926,8 @@ function drawSection(
 }
 
 export async function generatePriceListPdf(data: PriceListData, options?: GeneratePriceListPdfOptions): Promise<Uint8Array> {
-  const audience: PriceListPdfAudience = options?.audience ?? 'operator'
+  const variant = options?.variant ?? 'client-standard'
+  const variantConfig = resolveVariantConfig(variant)
   const separateSectionsByPage = options?.separateSectionsByPage ?? true
 
   const pdfDoc = await PDFDocument.create()
@@ -848,15 +942,19 @@ export async function generatePriceListPdf(data: PriceListData, options?: Genera
     boldFont,
     italicFont,
     logoImage,
-    theme: THEME,
+    theme: variantConfig.theme,
     generatedDateLabel,
-    audience,
+    audience: variantConfig.audience,
+    showItemSubtitle: variantConfig.showItemSubtitle,
+    showItemDescription: variantConfig.showItemDescription,
+    showItemAvailabilityNote: variantConfig.showItemAvailabilityNote,
+    contentScale: variantConfig.contentScale,
   }
 
   const creationDate = new Date(toIsoDateSafe(data.generatedAtIso))
-  const title = audience === 'client'
+  const title = variantConfig.audience === 'client'
     ? 'Trattamenti e prodotti CNC Beauty'
-    : 'Listino Prezzi CNC Beauty'
+    : 'Listino Prezzi Operatore CNC Beauty'
   pdfDoc.setTitle(title)
   pdfDoc.setAuthor('CNC Beauty')
   pdfDoc.setSubject('Listino trattamenti e prodotti')
@@ -870,7 +968,7 @@ export async function generatePriceListPdf(data: PriceListData, options?: Genera
   const productSection = data.sections.find((section) => section.key === 'products')
 
   const coverPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT])
-  if (audience === 'client') {
+  if (variantConfig.audience === 'client') {
     drawClientCoverPage(coverPage, context)
   } else {
     drawOperatorCoverPage(coverPage, context, data, treatmentSection, productSection)

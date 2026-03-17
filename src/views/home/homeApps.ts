@@ -68,6 +68,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     icon: 'picture_as_pdf',
     iconClass: 'app-icon-rose',
     permission: UserPermission.OPERATORE,
+    group: 'settings',
   },
   {
     id: 'coupons',
@@ -100,15 +101,6 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     icon: 'bar_chart',
     iconClass: 'app-icon-sky',
     permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
-  },
-  {
-    id: 'relations',
-    title: 'Relazioni',
-    to: { name: 'RelationsView' },
-    icon: 'schema',
-    iconClass: 'app-icon-night',
-    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
-    group: 'settings',
   },
   {
     id: 'type-expenses',
