@@ -28,6 +28,7 @@ const props = withDefaults(defineProps<{
 })
 
 const palette = ['#4b2935', '#198754', '#0d6efd', '#d63384', '#f59e0b', '#0f766e']
+const defaultPaletteColor = '#4b2935'
 const chartRef = ref<HTMLCanvasElement | null>(null)
 let chartInstance: Chart | null = null
 
@@ -72,7 +73,7 @@ function renderChart() {
     data: {
       labels: props.labels,
       datasets: props.datasets.map((dataset, index) => {
-        const color = dataset.color ?? palette[index % palette.length]
+        const color = dataset.color ?? palette[index % palette.length] ?? defaultPaletteColor
         return {
           label: dataset.label,
           data: dataset.data,

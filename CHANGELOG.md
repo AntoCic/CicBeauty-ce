@@ -1,3 +1,9 @@
+## v0.0.54 - 2026-03-18
+
+fix appointment and scheda laser and statistiche
+
+---
+
 ## v0.0.52 - 2026-03-17
 
 add listini pdf

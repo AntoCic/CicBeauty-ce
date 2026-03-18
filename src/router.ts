@@ -187,7 +187,7 @@ export const routes: RouteRecordRaw[] = [
     path: '/stats',
     name: 'StatsView',
     component: StatisticheAppView,
-    meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] },
+    meta: { loginStatus: true, permission: [UserPermission.OPERATORE] },
     children: [
       {
         path: '',
@@ -197,19 +197,19 @@ export const routes: RouteRecordRaw[] = [
         path: 'guadagni',
         name: 'StatsGuadagniView',
         component: StatisticheGuadagniView,
-        meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] },
+        meta: { loginStatus: true, permission: [UserPermission.OPERATORE] },
       },
       {
         path: 'clienti',
         name: 'StatsClientiView',
         component: StatisticheClientiView,
-        meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] },
+        meta: { loginStatus: true, permission: [UserPermission.OPERATORE] },
       },
       {
         path: 'trattamenti',
         name: 'StatsTrattamentiView',
         component: StatisticheTrattamentiView,
-        meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] },
+        meta: { loginStatus: true, permission: [UserPermission.OPERATORE] },
       },
     ],
   },

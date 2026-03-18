@@ -100,7 +100,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'StatsGuadagniView' },
     icon: 'bar_chart',
     iconClass: 'app-icon-sky',
-    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
+    permission: [UserPermission.OPERATORE],
   },
   {
     id: 'type-expenses',
