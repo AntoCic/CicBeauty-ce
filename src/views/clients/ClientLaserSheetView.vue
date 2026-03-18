@@ -1047,15 +1047,15 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
   drawTextFromTop(page3, 'X', consensoFoto ? 216 : 241, 477, 12, boldFont)
   drawTextFromTop(page3, officeAddress.value, 106, 527, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
   drawTextFromTop(page3, documentDate, 106, 535, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
-  drawTextFromTop(page3, `(${fullName})`, 500, 535, 8, baseFont)
+  drawTextFromTop(page3, `(${fullName})`, 500, 535, 8, baseFont, rgb(0.5, 0.5, 0.5))
   
   drawTextFromTop(page3, officeAddress.value, 106, 594, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
   drawTextFromTop(page3, documentDate, 106, 601, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
-  drawTextFromTop(page3, `(${fullName})`, 500, 600, 8, baseFont)
+  drawTextFromTop(page3, `(${fullName})`, 500, 600, 8, baseFont, rgb(0.5, 0.5, 0.5))
   
   drawTextFromTop(page3, `${officeAddress.value} - ${documentDate}`, 240, 655, 9, baseFont)
   drawTextFromTop(page3, legalEntity.value, 204, 675, 9, baseFont)
-  drawTextFromTop(page3, `(${fullName})`, 500, 677, 8, baseFont,  rgb(0.08, 0.08, 0.08))
+  drawTextFromTop(page3, `(${fullName})`, 500, 677, 8, baseFont, rgb(0.5, 0.5, 0.5))
 
   drawTextFromTop(page3, officeAddress.value, 128, 754, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
   drawTextFromTop(page3, documentDate, 128, 761, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)

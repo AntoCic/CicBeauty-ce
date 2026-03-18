@@ -172,7 +172,13 @@ const currentStep = computed<StepDefinition>(() => steps.value[currentStepIndex.
 const totalSteps = computed(() => steps.value.length || 1)
 const currentStepNumber = computed(() => Math.min(currentStepIndex.value + 1, totalSteps.value))
 const progressValue = computed(() => Math.round((currentStepNumber.value / totalSteps.value) * 100))
-const operatorFirstName = computed(() => String(session.value?.operatorFirstName ?? 'operatore').trim() || 'operatore')
+const operatorFullName = computed(() => normalizeString(session.value?.operatorFirstName))
+const operatorFirstName = computed(() => {
+  const fullName = operatorFullName.value
+  if (!fullName) return 'operatore'
+  const [firstName] = fullName.split(/\s+/)
+  return normalizeString(firstName) || 'operatore'
+})
 const canSkipCurrentStep = computed(() => currentStep.value.fields.length > 0 && currentStep.value.id !== 'done')
 const isCurrentStepSkipped = computed(() => currentStep.value.fields.some((field) => skippedKeys.value.includes(field)))
 const fitzQuestionForStep = computed(() => {
@@ -290,6 +296,9 @@ function buildStepUpdates(fields: string[]) {
     }
     updates[field] = raw ?? ''
   }
+  if (operatorFullName.value) {
+    updates.operatorName = operatorFullName.value
+  }
   return updates
 }
 
@@ -335,7 +344,7 @@ async function onSkipCurrentStep() {
   try {
     const response = await savePublicLaserShareSessionStep({
       token: token.value,
-      updates: {},
+      updates: buildStepUpdates([]),
       skippedKeys: currentStep.value.fields,
     })
     skippedKeys.value = response.skippedKeys
