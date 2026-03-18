@@ -11,7 +11,6 @@ import { clientStore } from '../../stores/clientStore'
 import { couponStore } from '../../stores/couponStore'
 import { publicUserStore } from '../../stores/publicUser'
 import { treatmentStore } from '../../stores/treatmentStore'
-import { typeCouponStore } from '../../stores/typeCouponStore'
 
 useChangeHeader('Test Playground', { name: 'home' })
 
@@ -436,25 +435,6 @@ async function ensureActiveCouponId() {
   return created.id
 }
 
-async function ensureTypeCouponId() {
-  const validTypes = typeCouponStore.itemsActiveArray.filter((item) => item.valid)
-  const existingId = normalizeString(randomFrom(validTypes)?.id)
-  if (existingId) return existingId
-
-  const now = Date.now()
-  const created = await typeCouponStore.add({
-    name: `Tipo coupon test ${randomToken(4)}`,
-    usage_limit: randomInt(1, 10),
-    price: randomInt(10, 40),
-    valid: true,
-    note: 'Tipo coupon generato dal playground',
-    imgUrls: [],
-    meta: { source: 'playground', seed: now },
-    updateBy: defaultUpdateBy(),
-  })
-  return created.id
-}
-
 async function createRandomClient(variant: ClientVariant) {
   const baseGender = variant === 'male' ? 'm' : (randomFrom(['f', 'f', 'o'] as const) ?? 'f')
   const name = variant === 'male'
@@ -498,49 +478,41 @@ async function createRandomCoupon(variant: CouponVariant) {
   validTo.setDate(validTo.getDate() + randomInt(10, 45))
   validTo.setHours(23, 59, 59, 0)
 
-  const typeCouponId = await ensureTypeCouponId()
-  let usage = randomInt(1, 5)
-  let title = 'Coupon test'
+  let from = 'Playground test'
   let note = 'Coupon generato da playground'
   let clientId: string | undefined
 
   if (variant === 'premium') {
-    title = 'Coupon premium'
+    from = 'Cliente premium'
     note = 'Valido su appuntamenti premium test'
-    usage = randomInt(3, 12)
   }
 
   if (variant === 'dedicated') {
     clientId = await ensureClientId()
-    title = 'Coupon cliente dedicato'
+    from = 'Cliente dedicato'
     note = 'Uso singolo su cliente specifico'
-    usage = 1
   }
 
   if (variant === 'flash') {
-    title = 'Flash coupon giornata'
+    from = 'Flash coupon giornata'
     note = 'Scade rapidamente'
-    usage = randomInt(1, 2)
     validTo.setDate(validFrom.getDate() + randomInt(1, 4))
   }
 
   const codePrefix = variant === 'premium' ? 'P' : variant === 'dedicated' ? 'D' : variant === 'flash' ? 'F' : 'X'
   const code = `${codePrefix}${Date.now().toString().slice(-5)}${randomToken(3)}`
+  const treatmentIds = pickTreatments(1, 2)
 
   return couponStore.add({
     code,
-    title,
+    from,
     note,
     active: true,
     valid_from: Timestamp.fromDate(validFrom),
     valid_to: Timestamp.fromDate(validTo),
-    usage,
+    max_usage: 1,
     client_id: clientId,
-    treatment_ids: [],
-    product_ids: [],
-    type_coupon_id: typeCouponId,
-    fileUrls: [],
-    meta: { source: 'playground', variant },
+    trattamenti: treatmentIds,
     updateBy: defaultUpdateBy(),
   })
 }

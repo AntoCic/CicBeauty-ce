@@ -5,10 +5,12 @@ import { useRouter } from 'vue-router'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
+import { couponStore } from '../../stores/couponStore'
 import ClientPersonCard from './components/ClientPersonCard.vue'
 import { appointmentClientId, buildClientAppointmentSummary } from './clientAppointmentUtils'
 import { asDate } from '../../utils/date'
 import { matchesPhoneSearch } from '../../utils/phone'
+import { couponGiftedByName } from '../../utils/couponUtils'
 
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
@@ -36,6 +38,32 @@ const appointmentSummaryByClient = computed(() => {
   return map
 })
 
+const couponSummaryByClient = computed(() => {
+  const summary = new Map<string, { received: number; gifted: number }>()
+
+  for (const client of clientStore.itemsActiveArray) {
+    summary.set(client.id, { received: 0, gifted: 0 })
+  }
+
+  for (const coupon of couponStore.itemsActiveArray) {
+    const recipientId = String(coupon.client_id ?? '').trim()
+    if (recipientId && summary.has(recipientId)) {
+      const current = summary.get(recipientId)
+      if (current) current.received += 1
+    }
+  }
+
+  for (const client of clientStore.itemsActiveArray) {
+    const fullName = `${String(client.name ?? '').trim()} ${String(client.surname ?? '').trim()}`.trim()
+    if (!fullName) continue
+    const gifted = couponStore.itemsActiveArray.filter((coupon) => couponGiftedByName(coupon, fullName)).length
+    const current = summary.get(client.id)
+    if (current) current.gifted = gifted
+  }
+
+  return summary
+})
+
 const filteredClientCards = computed(() => {
   const term = search.value.trim().toLowerCase()
   const source = [...clientStore.itemsActiveArray].sort((a, b) =>
@@ -54,6 +82,7 @@ const filteredClientCards = computed(() => {
   return filtered.map((client) => ({
     client,
     summary: appointmentSummaryByClient.value.get(client.id),
+    couponSummary: couponSummaryByClient.value.get(client.id) ?? { received: 0, gifted: 0 },
   }))
 })
 
@@ -106,10 +135,12 @@ function appointmentMiniLabel(appointment?: { date_time?: unknown }) {
           <span>&#x25B6; prossimo</span>
           <span>&#x1F4C5; oggi</span>
           <span>&#x2705; consenso WA</span>
+          <span>&#x1F381; ricevuti</span>
+          <span>&#x1F4DD; regalati</span>
         </p>
 
         <article
-          v-for="{ client, summary } in filteredClientCards"
+          v-for="{ client, summary, couponSummary } in filteredClientCards"
           :key="client.id"
           class="client-row"
           @click="openClientEditor(client.id)"
@@ -138,6 +169,22 @@ function appointmentMiniLabel(appointment?: { date_time?: unknown }) {
                 aria-label="Appuntamento oggi"
               >
                 <span aria-hidden="true">&#x1F4C5;</span>
+              </span>
+              <span
+                v-if="couponSummary.received > 0"
+                class="client-row__appointment client-row__appointment--coupon-received"
+                title="Coupon ricevuti"
+              >
+                <span aria-hidden="true">&#x1F381;</span>
+                <span>{{ couponSummary.received }}</span>
+              </span>
+              <span
+                v-if="couponSummary.gifted > 0"
+                class="client-row__appointment client-row__appointment--coupon-gifted"
+                title="Coupon regalati"
+              >
+                <span aria-hidden="true">&#x1F4DD;</span>
+                <span>{{ couponSummary.gifted }}</span>
               </span>
             </div>
           </ClientPersonCard>
@@ -197,6 +244,16 @@ function appointmentMiniLabel(appointment?: { date_time?: unknown }) {
   padding: 0;
   border-radius: 0;
   background: transparent;
+}
+
+.client-row__appointment--coupon-received {
+  background: #fff7db;
+  color: #8d6400;
+}
+
+.client-row__appointment--coupon-gifted {
+  background: #f4ecff;
+  color: #5e3b94;
 }
 </style>
 

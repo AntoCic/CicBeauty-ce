@@ -17,18 +17,14 @@ function normalizeOptionalTimestamp(value: unknown) {
 export interface CouponData extends Partial<Timestampble> {
   id: string
   code: string
-  title: string
+  from: string
   note?: string
   active: boolean
   valid_from?: Timestamp
   valid_to?: Timestamp
-  usage: number
+  max_usage?: number
   client_id?: string
-  treatment_ids?: string[]
-  product_ids?: string[]
-  type_coupon_id?: string
-  fileUrls?: string[]
-  meta: Record<string, any>
+  trattamenti?: string[]
   updateBy: string
 }
 
@@ -36,46 +32,45 @@ export class Coupon extends FirestoreModel<CouponData> {
   static collectionName = 'coupons'
 
   code: string
-  title: string
+  from: string
   note?: string
   active: boolean
   valid_from?: Timestamp
   valid_to?: Timestamp
-  usage: number
+  max_usage: number
   client_id?: string
-  treatment_ids: string[]
-  product_ids: string[]
-  type_coupon_id?: string
-  fileUrls: string[]
-  meta: Record<string, any>
+  trattamenti: string[]
   updateBy: string
 
   constructor(data: CouponData) {
     super(data)
     const legacy = data as unknown as {
+      from_name?: string
       description?: string
       usage_count?: number
       usage_limit?: number
-      meta?: Record<string, any>
       valid_from?: unknown
       valid_to?: unknown
+      title?: string
+      treatment_ids?: string[]
+      max_usage?: number
     }
 
     this.code = data.code
-    this.title = data.title
+    this.from = normalizeString(data.from ?? legacy.from_name ?? legacy.title)
     this.note = data.note ?? legacy.description
-    this.active = data.active
+    this.active = data.active ?? true
     this.valid_from = normalizeOptionalTimestamp(data.valid_from ?? legacy.valid_from)
     this.valid_to = normalizeOptionalTimestamp(data.valid_to ?? legacy.valid_to)
-    this.usage = toFiniteNumber(data.usage, toFiniteNumber(legacy.usage_count, 0))
+    this.max_usage = Math.max(
+      1,
+      toFiniteNumber(
+        data.max_usage,
+        toFiniteNumber(legacy.max_usage, toFiniteNumber(legacy.usage_limit, 1)),
+      ),
+    )
     this.client_id = data.client_id
-    this.treatment_ids = normalizeIds(data.treatment_ids)
-    this.product_ids = normalizeIds(data.product_ids)
-    this.type_coupon_id = data.type_coupon_id
-    this.fileUrls = Array.isArray(data.fileUrls)
-      ? data.fileUrls.map((value) => String(value ?? '').trim()).filter(Boolean)
-      : []
-    this.meta = normalizeMeta(data.meta ?? legacy.meta)
+    this.trattamenti = normalizeIds(data.trattamenti ?? legacy.treatment_ids)
     this.updateBy = data.updateBy
   }
 
@@ -83,18 +78,14 @@ export class Coupon extends FirestoreModel<CouponData> {
     return {
       id: this.id,
       code: this.code,
-      title: this.title,
+      from: this.from,
       note: this.note,
       active: this.active,
       valid_from: this.valid_from,
       valid_to: this.valid_to,
-      usage: this.usage,
+      max_usage: this.max_usage,
       client_id: this.client_id,
-      treatment_ids: this.treatment_ids,
-      product_ids: this.product_ids,
-      type_coupon_id: this.type_coupon_id,
-      fileUrls: this.fileUrls,
-      meta: this.meta,
+      trattamenti: this.trattamenti,
       updateBy: this.updateBy,
       ...this.timestampbleProps()
     }
@@ -111,7 +102,6 @@ function toFiniteNumber(value: unknown, fallback = 0) {
   return Number.isFinite(next) ? next : fallback
 }
 
-function normalizeMeta(value: unknown): Record<string, any> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
-  return value as Record<string, any>
+function normalizeString(value: unknown) {
+  return String(value ?? '').trim()
 }

@@ -16,7 +16,6 @@ import { productCategoryStore } from './stores/productCategoryStore';
 import { typeExpenseStore } from './stores/typeExpenseStore';
 import { clientStore } from './stores/clientStore';
 import { couponStore } from './stores/couponStore';
-import { typeCouponStore } from './stores/typeCouponStore';
 import { calendarRecurrenceStore } from './stores/calendarRecurrenceStore';
 import { whatsAppTemplateStore } from './stores/whatsAppTemplateStore';
 import { ensureAppointmentWatchRunning } from './composables/useAppointmentWatchManager';
@@ -50,7 +49,6 @@ useStoreWatch([
   { store: clientStore },
   { store: publicUserStore },
   { store: typeExpenseStore },
-  { store: typeCouponStore },
   { store: calendarRecurrenceStore },
   { store: couponStore },
   { store: whatsAppTemplateStore },

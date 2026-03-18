@@ -21,6 +21,7 @@ import { clientStore } from '../../stores/clientStore'
 import { couponStore } from '../../stores/couponStore'
 import { expenseStore } from '../../stores/expenseStore'
 import { typeExpenseStore } from '../../stores/typeExpenseStore'
+import { couponDisplayTitle } from '../../utils/couponUtils'
 import { asDate } from '../../utils/date'
 
 type ExpenseForm = {
@@ -251,7 +252,7 @@ function formatMoney(value: number | undefined) {
             <Field name="coupon_id" as="select" class="form-select">
               <option value="">Nessuno</option>
               <option v-for="coupon in couponStore.itemsActiveArray" :key="coupon.id" :value="coupon.id">
-                {{ coupon.code }} - {{ coupon.title }}
+                {{ couponDisplayTitle(coupon) }}
               </option>
             </Field>
             <ErrorMessage name="coupon_id" class="text-danger small" />

@@ -111,15 +111,6 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     group: 'settings',
   },
   {
-    id: 'type-coupons',
-    title: 'Tipi Coupon',
-    to: { name: 'TypeCouponsView' },
-    icon: 'sell',
-    iconClass: 'app-icon-soft',
-    permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
-    group: 'settings',
-  },
-  {
     id: 'ai-beauty-chat',
     title: 'Chat AI Beauty',
     to: { name: 'AiBeautyChatView' },
@@ -211,6 +202,15 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     icon: 'science',
     iconClass: 'app-icon-night',
     permission: defaultUserPermission.BETA_FEATURES,
+    group: 'settings',
+  },
+  {
+    id: 'clear-client-emails',
+    title: 'Reset Email',
+    to: { name: 'ClearClientEmailsView' },
+    icon: 'email_off',
+    iconClass: 'app-icon-night',
+    permission: defaultUserPermission.ADMIN,
     group: 'settings',
   },
   {
