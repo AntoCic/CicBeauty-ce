@@ -27,6 +27,11 @@ type WatchRequest = {
   updatedAt: number
 }
 
+type ActivateCalendarMonthWatchInput = {
+  reason?: string
+  prefetchMonths?: number
+}
+
 export type ActivateRangeWatchInput = {
   from: Date
   to?: Date
@@ -38,6 +43,7 @@ const watchRequests = new Map<string, WatchRequest>()
 const suspendedReasons = new Set<string>()
 const calendarVisibleMonthByReason = new Map<string, string>()
 const calendarFromByReason = new Map<string, Date>()
+const calendarToByReason = new Map<string, Date>()
 const activeMonthKeys = new Set<string>()
 const loadedMonthKeys = new Set<string>()
 const WATCH_HEALTH_CHECK_MS = 4000
@@ -389,26 +395,27 @@ export function buildDefaultAppointmentWatchRange(referenceDate = new Date()) {
   return { from, to: undefined as Date | undefined }
 }
 
-export function activateCalendarMonthWatch(monthDate: Date, reason = DEFAULT_REASON_CALENDAR) {
-  const normalizedReason = normalizeReason(reason)
+export function activateCalendarMonthWatch(monthDate: Date, input: string | ActivateCalendarMonthWatchInput = DEFAULT_REASON_CALENDAR) {
+  const normalizedReason = normalizeReason(typeof input === 'string' ? input : input.reason)
   if (!normalizedReason) return () => undefined
 
   const visibleMonth = startOfMonth(cloneDate(monthDate))
   if (!isValidDate(visibleMonth)) return () => undefined
 
-  const targetFrom = addMonths(visibleMonth, -1)
-  const previousFrom = calendarFromByReason.get(normalizedReason)
-  const nextFrom =
-    previousFrom && previousFrom.getTime() <= targetFrom.getTime()
-      ? previousFrom
-      : targetFrom
+  const rawPrefetchMonths = typeof input === 'string' ? 1 : Number(input.prefetchMonths ?? 1)
+  const prefetchMonths = Number.isFinite(rawPrefetchMonths)
+    ? Math.max(0, Math.min(6, Math.trunc(rawPrefetchMonths)))
+    : 1
+  const nextFrom = addMonths(visibleMonth, -1)
+  const nextTo = addMonths(visibleMonth, prefetchMonths + 1)
 
   calendarFromByReason.set(normalizedReason, nextFrom)
+  calendarToByReason.set(normalizedReason, nextTo)
   calendarVisibleMonthByReason.set(normalizedReason, monthKey(visibleMonth))
   rebuildActiveMonthKeys()
-  addLoadedMonths(nextFrom, visibleMonth)
+  addLoadedMonths(nextFrom, addMonths(visibleMonth, prefetchMonths))
 
-  setWatchRequest(normalizedReason, 'calendar-month', nextFrom, undefined, WATCH_PRIORITY.calendarMonth)
+  setWatchRequest(normalizedReason, 'calendar-month', nextFrom, nextTo, WATCH_PRIORITY.calendarMonth)
   return () => releaseAppointmentWatch(normalizedReason)
 }
 
@@ -475,6 +482,7 @@ export function releaseAppointmentWatch(reason: string) {
   if (suspendedReasons.delete(normalizedReason)) changed = true
   if (calendarVisibleMonthByReason.delete(normalizedReason)) changed = true
   if (calendarFromByReason.delete(normalizedReason)) changed = true
+  if (calendarToByReason.delete(normalizedReason)) changed = true
 
   if (!changed) {
     syncMetaCollections()

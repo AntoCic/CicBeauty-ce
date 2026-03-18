@@ -64,6 +64,7 @@ export const routes: RouteRecordRaw[] = [
     meta: {
       publicRoute: true,
       publicDepth: 0,
+      keepAlive: true,
       title: 'CNC Beauty | Trattamenti, prodotti e benessere',
       description: 'Centro estetico CNC Beauty: trattamenti professionali, prodotti selezionati e consulenza personalizzata.',
     },
