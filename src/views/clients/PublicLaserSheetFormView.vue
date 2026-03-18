@@ -42,10 +42,11 @@ const yesNoOptions = [
 ]
 
 const form = ref<Record<string, string>>({
-  clientAddress: '',
+  clientResidenceCity: '',
+  clientStreet: '',
   clientAge: '',
   clientGender: '',
-  epilationAlreadyDone: '',
+  epilationAlreadyDone: 'no',
   epilationAreasDone: '',
   epilationResults: '',
   epilationCurrentMethods: '',
@@ -60,7 +61,7 @@ const form = ref<Record<string, string>>({
   gravidanzaAllattamento: 'no',
   pacemaker: 'no',
   epilessia: 'no',
-  cicloRegolare: 'no',
+  cicloRegolare: 'si',
   zonaInteresse: '',
   consensoFoto: 'si',
   fitzpatrick_q1: '',
@@ -77,7 +78,7 @@ const form = ref<Record<string, string>>({
 
 const steps = computed<StepDefinition[]>(() => {
   const gender = String(form.value.clientGender ?? '').toUpperCase()
-  const hasEpilationDetails = Boolean(String(form.value.epilationAlreadyDone ?? '').trim())
+  const hasEpilationDetails = normalizeString(form.value.epilationAlreadyDone).toLowerCase() === 'si'
   const includeWomanStep = gender !== 'M'
   const includeManStep = gender !== 'F'
 
@@ -91,7 +92,7 @@ const steps = computed<StepDefinition[]>(() => {
       id: 'profile',
       title: 'Dati base',
       subtitle: 'Compila i dati principali per la scheda 👇',
-      fields: ['clientAddress', 'clientAge', 'clientGender'],
+      fields: ['clientResidenceCity', 'clientStreet', 'clientAge', 'clientGender'],
     },
     {
       id: 'epilation-base',
@@ -184,6 +185,33 @@ function normalizeString(value: unknown) {
   return String(value ?? '').trim()
 }
 
+function normalizeYesNo(value: unknown, fallback: 'si' | 'no') {
+  const normalized = normalizeString(value).toLowerCase()
+  if (normalized === 'si' || normalized === 'no') return normalized
+  return fallback
+}
+
+function normalizeEpilationAlreadyDone(value: unknown, fallback: 'si' | 'no' = 'no') {
+  const normalized = normalizeString(value).toLowerCase()
+  if (normalized === 'si' || normalized === 'no') return normalized
+  if (normalized) return 'si'
+  return fallback
+}
+
+function splitLegacyClientAddress(value: unknown) {
+  const normalized = normalizeString(value)
+  if (!normalized) {
+    return { city: '', street: '' }
+  }
+  const chunks = normalized.split(',').map((item) => normalizeString(item)).filter(Boolean)
+  if (chunks.length < 2) {
+    return { city: '', street: normalized }
+  }
+  const city = chunks[chunks.length - 1] ?? ''
+  const street = chunks.slice(0, -1).join(', ')
+  return { city, street }
+}
+
 function setYesNo(field: string, value: string) {
   form.value[field] = value
 }
@@ -196,11 +224,12 @@ function validateCurrentStep() {
   stepValidationError.value = ''
   if (!currentStep.value || !currentStep.value.fields.length) return true
   if (currentStep.value.id === 'profile') {
-    const address = normalizeString(form.value.clientAddress)
+    const residenceCity = normalizeString(form.value.clientResidenceCity)
+    const street = normalizeString(form.value.clientStreet)
     const age = Number(form.value.clientAge)
     const gender = normalizeString(form.value.clientGender).toUpperCase()
-    if (!address || !Number.isFinite(age) || age <= 0 || (gender !== 'F' && gender !== 'M')) {
-      stepValidationError.value = 'Compila indirizzo, eta e sesso oppure usa "Salta".'
+    if (!residenceCity || !street || !Number.isFinite(age) || age <= 0 || (gender !== 'F' && gender !== 'M')) {
+      stepValidationError.value = 'Compila residente a, via, eta e sesso oppure usa "Salta".'
       return false
     }
     return true
@@ -231,6 +260,15 @@ function hydrateFormFromSession(nextSession: PublicLaserShareSession) {
   for (const [key, value] of Object.entries(nextSession.answers ?? {})) {
     nextForm[key] = String(value ?? '')
   }
+  const legacyAddress = splitLegacyClientAddress(nextForm.clientAddress)
+  if (!normalizeString(nextForm.clientResidenceCity)) {
+    nextForm.clientResidenceCity = legacyAddress.city
+  }
+  if (!normalizeString(nextForm.clientStreet)) {
+    nextForm.clientStreet = legacyAddress.street
+  }
+  nextForm.epilationAlreadyDone = normalizeEpilationAlreadyDone(nextForm.epilationAlreadyDone, 'no')
+  nextForm.cicloRegolare = normalizeYesNo(nextForm.cicloRegolare, 'si')
   const consensoFotoValue = normalizeString(nextForm.consensoFoto).toLowerCase()
   if (consensoFotoValue !== 'si' && consensoFotoValue !== 'no') {
     nextForm.consensoFoto = 'si'
@@ -341,6 +379,16 @@ function onPrevStep() {
   }
 }
 
+watch(
+  () => form.value.epilationAlreadyDone,
+  (value) => {
+    if (normalizeString(value).toLowerCase() === 'si') return
+    form.value.epilationAreasDone = ''
+    form.value.epilationResults = ''
+    form.value.epilationCurrentMethods = ''
+  },
+)
+
 watch(steps, (value) => {
   if (currentStepIndex.value > value.length - 1) {
     currentStepIndex.value = Math.max(0, value.length - 1)
@@ -408,9 +456,13 @@ onMounted(loadSession)
           </section>
 
           <section v-else-if="currentStep.id === 'profile'" class="step-body row g-3">
-            <div class="col-12">
-              <label class="form-label">Indirizzo</label>
-              <input v-model="form.clientAddress" type="text" class="form-control" placeholder="Via, citta..." />
+            <div class="col-12 col-md-6">
+              <label class="form-label">Residente a</label>
+              <input v-model="form.clientResidenceCity" type="text" class="form-control" placeholder="Citta" />
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">Via</label>
+              <input v-model="form.clientStreet" type="text" class="form-control" placeholder="Via e numero civico" />
             </div>
             <div class="col-12 col-md-6">
               <label class="form-label">Eta</label>
@@ -432,8 +484,13 @@ onMounted(loadSession)
           </section>
 
           <section v-else-if="currentStep.id === 'epilation-base'" class="step-body">
-            <label class="form-label">Risposta</label>
-            <textarea v-model="form.epilationAlreadyDone" rows="4" class="form-control"></textarea>
+            <label class="form-label d-block">Risposta</label>
+            <div class="yes-no-switch">
+              <label v-for="option in yesNoOptions" :key="`epilationAlreadyDone-${option.value}`" class="yes-no-switch__option" :class="{ 'is-active': form.epilationAlreadyDone === option.value }">
+                <input class="yes-no-switch__input" type="radio" name="epilationAlreadyDone" :value="option.value" :checked="form.epilationAlreadyDone === option.value" @change="setYesNo('epilationAlreadyDone', option.value)" />
+                <span>{{ option.label }}</span>
+              </label>
+            </div>
           </section>
 
           <section v-else-if="currentStep.id === 'epilation-details'" class="step-body row g-3">

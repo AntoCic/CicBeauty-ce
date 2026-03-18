@@ -34,6 +34,7 @@ import { clientStore } from '../../stores/clientStore'
 import { publicUserStore } from '../../stores/publicUser'
 import { asDate } from '../../utils/date'
 import { normalizeWhatsAppPhoneNumber, sendWhatsAppMessage } from '../../utils/whatsapp'
+import { appConfigStore } from '../../stores/appConfigStore'
 
 type YesNoValue = '' | 'si' | 'no'
 type FtzValue = '' | '0' | '1' | '2' | '3' | '4'
@@ -42,10 +43,11 @@ type LaserSheetForm = {
   [key: string]: string
   documentDate: string
   operatorName: string
-  clientAddress: string
+  clientResidenceCity: string
+  clientStreet: string
   clientAge: string
   clientGender: string
-  epilationAlreadyDone: string
+  epilationAlreadyDone: YesNoValue
   epilationAreasDone: string
   epilationResults: string
   epilationCurrentMethods: string
@@ -77,6 +79,9 @@ type LaserSheetForm = {
 
 const route = useRoute()
 const router = useRouter()
+const currentConfig = computed(() => appConfigStore.getConfig())
+const legalEntity = computed(() => currentConfig.value?.legalEntity ?? 'Carla Ciancimino')
+const officeAddress = computed(() => currentConfig.value?.officeAddress ?? 'Via Enrico de Nicola, 16, 92019 Sciacca AG')
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const current = ref<Client | undefined>(undefined)
 const isLoading = ref(false)
@@ -138,7 +143,7 @@ const currentGender = computed<'F' | 'M' | ''>(() => {
 
 const isWomanFlow = computed(() => currentGender.value !== 'M')
 const isManFlow = computed(() => currentGender.value !== 'F')
-const showEpilationDetails = computed(() => Boolean(normalizeString(form.value.epilationAlreadyDone)))
+const showEpilationDetails = computed(() => form.value.epilationAlreadyDone === 'si')
 
 const shareToken = computed(() => normalizeString(current.value?.laserShareToken))
 const shareTokenExpiresAt = computed(() => asDate(current.value?.laserShareTokenExpiresAt))
@@ -241,10 +246,11 @@ function emptyForm(): LaserSheetForm {
   return {
     documentDate: todayIsoDate(),
     operatorName: operatorNameFromLogin.value,
-    clientAddress: '',
+    clientResidenceCity: '',
+    clientStreet: '',
     clientAge: '',
     clientGender: '',
-    epilationAlreadyDone: '',
+    epilationAlreadyDone: 'no',
     epilationAreasDone: '',
     epilationResults: '',
     epilationCurrentMethods: '',
@@ -259,7 +265,7 @@ function emptyForm(): LaserSheetForm {
     gravidanzaAllattamento: 'no',
     pacemaker: 'no',
     epilessia: 'no',
-    cicloRegolare: 'no',
+    cicloRegolare: 'si',
     zonaInteresse: '',
     consensoFoto: 'si',
     fitzpatrick_q1: '',
@@ -295,18 +301,56 @@ function normalizeYesNo(value: unknown, fallback: Exclude<YesNoValue, ''> = 'no'
   return fallback
 }
 
+function normalizeEpilationAlreadyDone(value: unknown, fallback: Exclude<YesNoValue, ''> = 'no') {
+  const normalized = normalizeString(value).toLowerCase()
+  if (normalized === 'si' || normalized === 'no') return normalized
+  if (normalized) return 'si'
+  return fallback
+}
+
+function splitLegacyClientAddress(value: unknown) {
+  const normalized = normalizeString(value)
+  if (!normalized) {
+    return { city: '', street: '' }
+  }
+  const chunks = normalized.split(',').map((item) => normalizeString(item)).filter(Boolean)
+  if (chunks.length < 2) {
+    return { city: '', street: normalized }
+  }
+  const city = chunks[chunks.length - 1] ?? ''
+  const street = chunks.slice(0, -1).join(', ')
+  return { city, street }
+}
+
+function composeLegacyClientAddress(city: unknown, street: unknown) {
+  const normalizedCity = normalizeString(city)
+  const normalizedStreet = normalizeString(street)
+  if (normalizedCity && normalizedStreet) {
+    return `${normalizedStreet}, ${normalizedCity}`
+  }
+  return normalizedStreet || normalizedCity
+}
+
+function formatAddressForPrint(values: Pick<LaserSheetForm, 'clientResidenceCity' | 'clientStreet'>) {
+  const city = normalizeString(values.clientResidenceCity)
+  const street = normalizeString(values.clientStreet)
+  return `${street}, ${city}`
+}
+
 function setFormFromClient(client: CurrentClient) {
   const scheda = client.schedaLaser
   const dataDoc = normalizeDateInput(client.dataSchiedaLaser)
+  const legacyAddress = splitLegacyClientAddress(readLaserSheetString(scheda, 'clientAddress'))
   isHydratingForm.value = true
   form.value = {
     ...emptyForm(),
     documentDate: dataDoc || readLaserSheetString(scheda, 'documentDate', todayIsoDate()),
     operatorName: readLaserSheetString(scheda, 'operatorName', operatorNameFromLogin.value),
-    clientAddress: readLaserSheetString(scheda, 'clientAddress'),
+    clientResidenceCity: readLaserSheetString(scheda, 'clientResidenceCity', legacyAddress.city),
+    clientStreet: readLaserSheetString(scheda, 'clientStreet', legacyAddress.street),
     clientAge: readLaserSheetString(scheda, 'clientAge', ageFromBirthdate(client.birthdate)),
     clientGender: readLaserSheetString(scheda, 'clientGender', normalizeGenderForLaser(client.gender)),
-    epilationAlreadyDone: readLaserSheetString(scheda, 'epilationAlreadyDone'),
+    epilationAlreadyDone: normalizeEpilationAlreadyDone(readLaserSheetString(scheda, 'epilationAlreadyDone'), 'no'),
     epilationAreasDone: readLaserSheetString(scheda, 'epilationAreasDone'),
     epilationResults: readLaserSheetString(scheda, 'epilationResults'),
     epilationCurrentMethods: readLaserSheetString(scheda, 'epilationCurrentMethods'),
@@ -321,7 +365,7 @@ function setFormFromClient(client: CurrentClient) {
     gravidanzaAllattamento: normalizeYesNo(readLaserSheetString(scheda, 'gravidanzaAllattamento')),
     pacemaker: normalizeYesNo(readLaserSheetString(scheda, 'pacemaker')),
     epilessia: normalizeYesNo(readLaserSheetString(scheda, 'epilessia')),
-    cicloRegolare: normalizeYesNo(readLaserSheetString(scheda, 'cicloRegolare')),
+    cicloRegolare: normalizeYesNo(readLaserSheetString(scheda, 'cicloRegolare'), 'si'),
     zonaInteresse: readLaserSheetString(scheda, 'zonaInteresse'),
     consensoFoto: normalizeYesNo(readLaserSheetString(scheda, 'consensoFoto'), 'si'),
     fitzpatrick_q1: toFitzValue(readLaserSheetNumber(scheda, 'fitzpatrick_q1')),
@@ -359,7 +403,9 @@ function buildRecordFromForm(values: LaserSheetForm) {
 
   upsertString(record, 'documentDate', values.documentDate)
   upsertString(record, 'operatorName', values.operatorName)
-  upsertString(record, 'clientAddress', values.clientAddress)
+  upsertString(record, 'clientResidenceCity', values.clientResidenceCity)
+  upsertString(record, 'clientStreet', values.clientStreet)
+  upsertString(record, 'clientAddress', composeLegacyClientAddress(values.clientResidenceCity, values.clientStreet))
   upsertString(record, 'clientGender', values.clientGender)
   upsertString(record, 'epilationAlreadyDone', values.epilationAlreadyDone)
   upsertString(record, 'epilationAreasDone', values.epilationAreasDone)
@@ -678,13 +724,25 @@ function sendShareLinkOnWhatsApp() {
   toast.success('Messaggio WhatsApp pronto')
 }
 
+const skippedKeyAliases: Record<string, string[]> = {
+  clientResidenceCity: ['clientAddress'],
+  clientStreet: ['clientAddress'],
+}
+
+function resolveSkippedKeysForField(key: string) {
+  if (!key) return [] as string[]
+  const aliases = skippedKeyAliases[key] ?? []
+  return [...new Set([key, ...aliases].filter(Boolean))]
+}
+
 function hasSkippedQuestion(key: string) {
   if (!key) return false
-  return normalizeStringArray(current.value?.laserShareSkippedKeys).includes(key)
+  const skipped = normalizeStringArray(current.value?.laserShareSkippedKeys)
+  return resolveSkippedKeysForField(key).some((entry) => skipped.includes(entry))
 }
 
 function isClearingSkippedKey(key: string) {
-  return clearingSkippedKeys.value.includes(key)
+  return resolveSkippedKeysForField(key).some((entry) => clearingSkippedKeys.value.includes(entry))
 }
 
 function fieldKeyFromControl(control: Element | null) {
@@ -725,10 +783,11 @@ function onFormInteraction(event: Event) {
 async function clearSkippedQuestion(key: string, options?: { silent?: boolean }) {
   if (!current.value || !key || isClearingSkippedKey(key)) return
   const skipped = normalizeStringArray(current.value.laserShareSkippedKeys)
-  if (!skipped.includes(key)) return
+  const keysToClear = resolveSkippedKeysForField(key)
+  if (!keysToClear.some((entry) => skipped.includes(entry))) return
 
-  const nextSkipped = skipped.filter((item) => item !== key)
-  clearingSkippedKeys.value = [...clearingSkippedKeys.value, key]
+  const nextSkipped = skipped.filter((item) => !keysToClear.includes(item))
+  clearingSkippedKeys.value = [...new Set([...clearingSkippedKeys.value, ...keysToClear])]
   current.value.laserShareSkippedKeys = nextSkipped
 
   try {
@@ -746,7 +805,7 @@ async function clearSkippedQuestion(key: string, options?: { silent?: boolean })
       toast.error('Errore aggiornamento chiarimenti')
     }
   } finally {
-    clearingSkippedKeys.value = clearingSkippedKeys.value.filter((item) => item !== key)
+    clearingSkippedKeys.value = clearingSkippedKeys.value.filter((item) => !keysToClear.includes(item))
   }
 }
 
@@ -903,7 +962,9 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
   const fullName = `${normalizeString(client.name)} ${normalizeString(client.surname)}`.trim()
   const primaryPhone = fillOrFallback(client.phone_number)
   const email = fillOrFallback(client.email)
-  const address = fillOrFallback(values.clientAddress)
+  const city = normalizeString(values.clientResidenceCity)
+  const street = normalizeString(values.clientStreet)
+  const address = fillOrFallback(formatAddressForPrint(values))
   const operatorName = fillOrFallback(values.operatorName)
   const documentDate = fillOrFallback(values.documentDate)
   const age = fillOrFallback(values.clientAge || ageFromBirthdate(client.birthdate))
@@ -977,17 +1038,31 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
   drawTextFromTop(page2, String(score), 537, 710 + page2FitzShift, 10, boldFont)
 
   drawTextFromTop(page3, `Scheda n. ${schedaNumber}`, 500, schedaNumberPositionY, 10, boldFont)
-  drawTextFromTop(page3, fullName, 65, 110, 9, baseFont, rgb(0.08, 0.08, 0.08), 220)
-  drawTextFromTop(page3, fillOrFallback(values.clientAddress), 65, 134, 9, baseFont, rgb(0.08, 0.08, 0.08), 220)
-  drawTextFromTop(page3, fillOrFallback(values.consensoFoto).toUpperCase(), 382, 516, 9, boldFont)
-  drawTextFromTop(page3, documentDate, 69, 551, 9, baseFont)
-  drawTextFromTop(page3, fullName, 286, 551, 9, baseFont)
-  drawTextFromTop(page3, documentDate, 69, 595, 9, baseFont)
-  drawTextFromTop(page3, fullName, 286, 595, 9, baseFont)
-  drawTextFromTop(page3, documentDate, 77, 696, 9, baseFont)
-  drawTextFromTop(page3, fullName, 493, 696, 9, baseFont)
-  drawTextFromTop(page3, documentDate, 88, 792, 9, baseFont)
-  drawTextFromTop(page3, fullName, 286, 792, 9, baseFont)
+  drawTextFromTop(page3, legalEntity.value, 386, 44, 9, baseFont, rgb(0.08, 0.08, 0.08), 220)
+  drawTextFromTop(page3, normalizeString(client.name), 72, 72, 9, baseFont, rgb(0.08, 0.08, 0.08), 220)
+  drawTextFromTop(page3, normalizeString(client.surname), 372, 72, 9, baseFont, rgb(0.08, 0.08, 0.08), 220)
+  drawTextFromTop(page3, city, 98, 88, 9, baseFont, rgb(0.08, 0.08, 0.08), 220)
+  drawTextFromTop(page3, street, 345, 88, 9, baseFont, rgb(0.08, 0.08, 0.08), 220)
+  const consensoFoto = values.consensoFoto === 'si'
+  drawTextFromTop(page3, 'X', consensoFoto ? 216 : 241, 477, 12, boldFont)
+  drawTextFromTop(page3, officeAddress.value, 106, 527, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
+  drawTextFromTop(page3, documentDate, 106, 535, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
+  drawTextFromTop(page3, `(${fullName})`, 500, 535, 8, baseFont)
+  
+  drawTextFromTop(page3, officeAddress.value, 106, 594, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
+  drawTextFromTop(page3, documentDate, 106, 601, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
+  drawTextFromTop(page3, `(${fullName})`, 500, 600, 8, baseFont)
+  
+  drawTextFromTop(page3, `${officeAddress.value} - ${documentDate}`, 240, 655, 9, baseFont)
+  drawTextFromTop(page3, legalEntity.value, 204, 675, 9, baseFont)
+  drawTextFromTop(page3, `(${fullName})`, 500, 677, 8, baseFont,  rgb(0.08, 0.08, 0.08))
+
+  drawTextFromTop(page3, officeAddress.value, 128, 754, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
+  drawTextFromTop(page3, documentDate, 128, 761, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
+  drawTextFromTop(page3, fullName, 398, 758, 9, baseFont)
+  
+  drawTextFromTop(page3, documentDate, 65, 778, 9, baseFont)
+
 
   drawTextFromTop(page4, `Scheda n. ${schedaNumber}`, 500, schedaNumberPositionY, 10, boldFont)
   drawTextFromTop(page4, `Punteggio questionario: ${score}`, 439, 30, 9, boldFont)
@@ -1061,7 +1136,7 @@ function setFitzpatrickValue(questionId: string, value: string) {
 watch(
   () => form.value.epilationAlreadyDone,
   (value) => {
-    if (normalizeString(value)) return
+    if (normalizeYesNo(value, 'no') === 'si') return
     form.value.epilationAreasDone = ''
     form.value.epilationResults = ''
     form.value.epilationCurrentMethods = ''
@@ -1234,22 +1309,35 @@ watch(() => route.params.id, loadItem)
                 <label class="form-label">Data documento</label>
                 <input v-model="form.documentDate" type="date" class="form-control">
               </div>
-              <div class="col-12 col-md-5">
+              <div class="col-12 col-md-3">
                 <label class="form-label">Operatrice / Operatore</label>
                 <input v-model="form.operatorName" type="text" class="form-control" placeholder="Nome operatrice" />
               </div>
-              <div class="col-12 col-md-4">
+              <div class="col-12 col-md-3">
                 <label class="form-label laser-form-label">
-                  <span>Indirizzo cliente</span>
-                  <button v-if="hasSkippedQuestion('clientAddress')" type="button" class="skip-flag-btn"
-                    :disabled="isClearingSkippedKey('clientAddress')"
+                  <span>Residente a</span>
+                  <button v-if="hasSkippedQuestion('clientResidenceCity')" type="button" class="skip-flag-btn"
+                    :disabled="isClearingSkippedKey('clientResidenceCity')"
                     title="Campo da chiarire: clicca per segnare come gestito"
-                    aria-label="Segna chiarito indirizzo cliente" @click="clearSkippedQuestion('clientAddress')">
+                    aria-label="Segna chiarito citta di residenza" @click="clearSkippedQuestion('clientResidenceCity')">
                     <span class="material-symbols-outlined" aria-hidden="true">help</span>
                   </button>
                 </label>
-                <input v-model="form.clientAddress" type="text" class="form-control" placeholder="Indirizzo"
-                  data-skip-key="clientAddress" />
+                <input v-model="form.clientResidenceCity" type="text" class="form-control" placeholder="Citta"
+                  data-skip-key="clientResidenceCity" />
+              </div>
+              <div class="col-12 col-md-3">
+                <label class="form-label laser-form-label">
+                  <span>Via</span>
+                  <button v-if="hasSkippedQuestion('clientStreet')" type="button" class="skip-flag-btn"
+                    :disabled="isClearingSkippedKey('clientStreet')"
+                    title="Campo da chiarire: clicca per segnare come gestito" aria-label="Segna chiarito via"
+                    @click="clearSkippedQuestion('clientStreet')">
+                    <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                  </button>
+                </label>
+                <input v-model="form.clientStreet" type="text" class="form-control" placeholder="Via e numero civico"
+                  data-skip-key="clientStreet" />
               </div>
 
               <div class="col-12 col-md-6">
@@ -1318,9 +1406,15 @@ watch(() => route.params.id, loadItem)
                     <span class="material-symbols-outlined" aria-hidden="true">help</span>
                   </button>
                 </label>
-                <textarea v-model="form.epilationAlreadyDone" rows="2" class="form-control"
-                  placeholder="Descrivi trattamenti precedenti oppure lascia vuoto"
-                  data-skip-key="epilationAlreadyDone"></textarea>
+                <div class="yes-no-switch">
+                  <label v-for="option in yesNoOptions" :key="`epilationAlreadyDone-${option.value}`"
+                    class="yes-no-switch__option" :class="{ 'is-active': form.epilationAlreadyDone === option.value }">
+                    <input class="yes-no-switch__input" type="radio" name="epilationAlreadyDone" :value="option.value"
+                      :checked="form.epilationAlreadyDone === option.value" data-skip-key="epilationAlreadyDone"
+                      @change="setYesNo('epilationAlreadyDone', option.value)">
+                    <span>{{ option.label }}</span>
+                  </label>
+                </div>
               </div>
 
               <template v-if="showEpilationDetails">
@@ -1367,7 +1461,7 @@ watch(() => route.params.id, loadItem)
                 </div>
               </template>
               <p v-else class="small text-muted mb-0">
-                Compila la prima domanda per mostrare le domande successive del questionario epilazione.
+                Le domande successive compaiono quando selezioni "Si".
               </p>
             </div>
           </section>

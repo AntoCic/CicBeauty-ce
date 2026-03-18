@@ -21,7 +21,8 @@ const MAX_TEXT_LENGTH = 1500;
 
 const PUBLIC_TEXT_KEYS = new Set([
   'clientAddress',
-  'epilationAlreadyDone',
+  'clientResidenceCity',
+  'clientStreet',
   'epilationAreasDone',
   'epilationResults',
   'epilationCurrentMethods',
@@ -31,6 +32,7 @@ const PUBLIC_TEXT_KEYS = new Set([
 ]);
 
 const PUBLIC_YES_NO_KEYS = new Set([
+  'epilationAlreadyDone',
   'medsWomanAnticoncezionali',
   'medsWomanAnabolizzanti',
   'medsWomanCortisonici',
@@ -304,9 +306,11 @@ function buildInitialLaserSheet(clientData: Record<string, unknown>, operatorFir
     documentDate: toIsoDate(now),
     operatorName: operatorFirstName,
     clientAddress: '',
+    clientResidenceCity: '',
+    clientStreet: '',
     clientAge: resolveClientAge(clientData.birthdate),
     clientGender: normalizeGenderForSheet(clientData.gender),
-    epilationAlreadyDone: '',
+    epilationAlreadyDone: 'no',
     epilationAreasDone: '',
     epilationResults: '',
     epilationCurrentMethods: '',
@@ -321,9 +325,9 @@ function buildInitialLaserSheet(clientData: Record<string, unknown>, operatorFir
     gravidanzaAllattamento: 'no',
     pacemaker: 'no',
     epilessia: 'no',
-    cicloRegolare: 'no',
+    cicloRegolare: 'si',
     zonaInteresse: '',
-    consensoFoto: 'no',
+    consensoFoto: 'si',
   };
 }
 
@@ -375,8 +379,9 @@ function sanitizeValue(key: string, rawValue: unknown) {
 
   if (PUBLIC_YES_NO_KEYS.has(key)) {
     const normalized = normalizeString(rawValue).toLowerCase();
-    if (normalized !== 'si' && normalized !== 'no') return undefined;
-    return normalized;
+    if (normalized === 'si' || normalized === 'no') return normalized;
+    if (key === 'epilationAlreadyDone' && normalized) return 'si';
+    return undefined;
   }
 
   if (PUBLIC_GENDER_KEYS.has(key)) {
