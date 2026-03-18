@@ -1,5 +1,4 @@
 import type { GetProps } from 'cic-kit'
-import { Timestamp, where, type QueryConstraint } from 'firebase/firestore'
 import { UserPermission } from '../enums/UserPermission'
 import { Auth } from '../main'
 import { appointmentStore } from '../stores/appointmentStore'
@@ -163,28 +162,20 @@ function addLoadedMonths(from: Date, untilMonth: Date) {
 }
 
 function buildRangeOpts(from: Date, to?: Date, maxResults?: number): GetProps {
-  const query: QueryConstraint[] = [
-    where('date_time', '>=', Timestamp.fromDate(from)),
-  ]
-  if (to) {
-    query.push(where('date_time', '<', Timestamp.fromDate(to)))
-  }
   const opts: GetProps = {
-    query,
-    orderBy: { fieldPath: 'date_time', directionStr: 'asc' },
+    dateTime: to
+      ? {
+          from,
+          to,
+        }
+      : {
+          from,
+        },
   }
   if (typeof maxResults === 'number' && maxResults > 0) {
     opts.limit = maxResults
   }
   return opts
-}
-
-function isQueryInteropError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error ?? '')
-  return (
-    message.includes('INTERNAL ASSERTION FAILED') &&
-    message.includes('filters is not iterable')
-  )
 }
 
 function isPermissionDeniedError(error: unknown) {
@@ -250,6 +241,9 @@ function pickEffectiveRequest() {
 
 async function safeStart(opts: GetProps) {
   try {
+    // Workaround: cic-kit dedupe key currently does not distinguish dateTime values.
+    // Force a fresh listener so range changes (e.g. stats from-date) are applied.
+    appointmentStore.stop()
     await appointmentStore.start(opts)
     resetRetryState()
     return true
@@ -263,16 +257,6 @@ async function safeStart(opts: GetProps) {
         isLoggedIn: Boolean(Auth.isLoggedIn),
         isOnLoginProcess: Boolean(Auth.isOnLoginProcess),
       })
-      return false
-    }
-
-    if (isQueryInteropError(error)) {
-      console.warn(
-        '[appointment-watch] firestore query interop error, retrying same filtered query',
-        error,
-      )
-      retryAttempt += 1
-      scheduleRetry('query interop transient failure')
       return false
     }
 

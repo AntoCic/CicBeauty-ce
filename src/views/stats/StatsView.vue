@@ -1,23 +1,23 @@
 <script setup lang="ts">
 import { cicKitStore } from 'cic-kit'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount } from 'vue'
+import AppointmentWatchRangePicker from '../../components/appointments/AppointmentWatchRangePicker.vue'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { buildDefaultAppointmentWatchRange, useAppointmentWatchManager } from '../../composables/useAppointmentWatchManager'
 import { appointmentStore } from '../../stores/appointmentStore'
-import { startOfDay } from '../../utils/calendar'
 import { asDate } from '../../utils/date'
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const STATS_WATCH_REASON = 'stats-view'
 
 const initialFromDate = buildDefaultAppointmentWatchRange(new Date()).from
-const fromDateInput = ref(toInputDate(initialFromDate))
+
+type AppointmentWatchRange = {
+  from: Date
+  to?: Date
+}
 
 const { activateRangeWatch, releaseAppointmentWatch } = useAppointmentWatchManager()
-
-const fromDate = computed(() => {
-  return parseInputDate(fromDateInput.value) ?? initialFromDate
-})
 
 const downloadedTreatmentsCount = computed(() => appointmentStore.itemsActiveArray.length)
 const downloadedAppointmentDates = computed(() => {
@@ -28,35 +28,17 @@ const downloadedAppointmentDates = computed(() => {
     .map((date) => date.toLocaleDateString('it-IT'))
 })
 
-watch(
-  fromDate,
-  (value) => {
-    activateRangeWatch({
-      from: value,
-      reason: STATS_WATCH_REASON,
-    })
-  },
-  { immediate: true },
-)
+function onRangeChange(range: AppointmentWatchRange) {
+  activateRangeWatch({
+    from: range.from,
+    to: range.to,
+    reason: STATS_WATCH_REASON,
+  })
+}
 
 onBeforeUnmount(() => {
   releaseAppointmentWatch(STATS_WATCH_REASON)
 })
-
-function toInputDate(date: Date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function parseInputDate(value: string) {
-  const normalized = String(value ?? '').trim()
-  if (!normalized) return undefined
-  const date = new Date(`${normalized}T12:00:00`)
-  if (Number.isNaN(date.getTime())) return undefined
-  return startOfDay(date)
-}
 </script>
 
 <template>
@@ -64,10 +46,7 @@ function parseInputDate(value: string) {
     <HeaderApp title="Statistiche" :to="{ name: 'home' }" />
 
     <div class="px-2 pb-4">
-      <section class="card border-0 shadow-sm p-3 mb-2">
-        <label for="statsFromDate" class="form-label small mb-1">Da che data devo scaricare</label>
-        <input id="statsFromDate" v-model="fromDateInput" type="date" class="form-control" />
-      </section>
+      <AppointmentWatchRangePicker :initial-from="initialFromDate" @change="onRangeChange" />
 
       <section class="card border-0 shadow-sm p-3">
         <p class="small text-muted mb-1">Trattamenti attualmente scaricati</p>

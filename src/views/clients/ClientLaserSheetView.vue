@@ -261,7 +261,7 @@ function emptyForm(): LaserSheetForm {
     epilessia: 'no',
     cicloRegolare: 'no',
     zonaInteresse: '',
-    consensoFoto: 'no',
+    consensoFoto: 'si',
     fitzpatrick_q1: '',
     fitzpatrick_q2: '',
     fitzpatrick_q3: '',
@@ -323,7 +323,7 @@ function setFormFromClient(client: CurrentClient) {
     epilessia: normalizeYesNo(readLaserSheetString(scheda, 'epilessia')),
     cicloRegolare: normalizeYesNo(readLaserSheetString(scheda, 'cicloRegolare')),
     zonaInteresse: readLaserSheetString(scheda, 'zonaInteresse'),
-    consensoFoto: normalizeYesNo(readLaserSheetString(scheda, 'consensoFoto')),
+    consensoFoto: normalizeYesNo(readLaserSheetString(scheda, 'consensoFoto'), 'si'),
     fitzpatrick_q1: toFitzValue(readLaserSheetNumber(scheda, 'fitzpatrick_q1')),
     fitzpatrick_q2: toFitzValue(readLaserSheetNumber(scheda, 'fitzpatrick_q2')),
     fitzpatrick_q3: toFitzValue(readLaserSheetNumber(scheda, 'fitzpatrick_q3')),
@@ -920,38 +920,51 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
   const page2FitzShift = 13
 
   drawTextFromTop(page2, `Scheda n. ${schedaNumber}`, 500, schedaNumberPositionY, 10, boldFont)
-  drawTextFromTop(page2, documentDate, 72, 91 + page2HeaderShift, 10, baseFont)
-  drawTextFromTop(page2, operatorName, 310, 91 + page2HeaderShift, 10, baseFont)
-  drawTextFromTop(page2, fullName, 82, 129 + page2MainShift, 10, baseFont)
+  drawTextFromTop(page2, documentDate, 72, 81 + page2HeaderShift, 10, baseFont)
+  drawTextFromTop(page2, operatorName, 340, 81 + page2HeaderShift, 10, baseFont)
+  drawTextFromTop(page2, fullName, 86, 129 + page2MainShift, 10, baseFont)
   drawTextFromTop(page2, age, 510, 129 + page2MainShift, 10, baseFont)
-  drawTextFromTop(page2, address, 82, 150 + page2MainShift, 10, baseFont, rgb(0.08, 0.08, 0.08), 370)
-  drawTextFromTop(page2, gender, 540, 150 + page2MainShift, 10, boldFont)
-  drawTextFromTop(page2, email, 82, 172 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 320)
-  drawTextFromTop(page2, primaryPhone, 446, 172 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 112)
+  drawTextFromTop(page2, address, 86, 154 + page2MainShift, 10, baseFont, rgb(0.08, 0.08, 0.08), 370)
+  if (gender === 'F' || gender === 'M') {
+    drawTextFromTop(page2, gender, gender === 'F' ? 554 : 526, 154 + page2MainShift, 10, boldFont)
+  }
+  drawTextFromTop(page2, email, 86, 178 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 320)
+  drawTextFromTop(page2, primaryPhone, 460, 178 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 112)
 
-  drawTextFromTop(page2, fillOrFallback(values.epilationAlreadyDone), 40, 217 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
-  drawTextFromTop(page2, fillOrFallback(values.epilationAreasDone), 40, 237 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
-  drawTextFromTop(page2, fillOrFallback(values.epilationResults), 40, 258 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
-  drawTextFromTop(page2, fillOrFallback(values.epilationCurrentMethods), 40, 279 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
+  drawTextFromTop(page2, fillOrFallback(values.epilationAlreadyDone), 376, 232 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
+  drawTextFromTop(page2, fillOrFallback(values.epilationAreasDone), 155, 249 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
+  drawTextFromTop(page2, fillOrFallback(values.epilationResults), 200, 265 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
+  drawTextFromTop(page2, fillOrFallback(values.epilationCurrentMethods), 260, 283 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
 
-  drawTextFromTop(page2, fillOrFallback(values.medsWomanAnticoncezionali), 56, 375 + page2MainShift, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.medsWomanAnabolizzanti), 56, 395 + page2MainShift, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.medsWomanCortisonici), 56, 415 + page2MainShift, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.medsWomanAltri), 56, 435 + page2MainShift, 8, baseFont, rgb(0.08, 0.08, 0.08), 120)
+  if (gender === 'F') {
+    drawTextFromTop(page2, fillOrFallback(values.medsWomanAnticoncezionali), 45, 356 + page2MainShift, 8, baseFont)
+    drawTextFromTop(page2, fillOrFallback(values.medsWomanAnabolizzanti), 45, 373 + page2MainShift, 8, baseFont)
+    drawTextFromTop(page2, fillOrFallback(values.medsWomanCortisonici), 45, 390 + page2MainShift, 8, baseFont)
+    if (values.medsWomanAltri?.trim() !== '') {
+      drawTextFromTop(page2, fillOrFallback('si'), 46, 407 + page2MainShift, 8, baseFont, rgb(0.08, 0.08, 0.08), 120)
+      drawTextFromTop(page2, fillOrFallback(values.medsWomanAltri), 56, 418 + page2MainShift, 8, baseFont, rgb(0.08, 0.08, 0.08), 120)
+    }
+  }
 
-  drawTextFromTop(page2, fillOrFallback(values.medsManRicrescitaCapelli), 194, 375 + page2MainShift, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.medsManAnabolizzanti), 194, 395 + page2MainShift, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.medsManCortisonici), 194, 415 + page2MainShift, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.medsManAltri), 194, 435 + page2MainShift, 8, baseFont, rgb(0.08, 0.08, 0.08), 120)
+  if (gender === 'M') {
+    drawTextFromTop(page2, fillOrFallback(values.medsManRicrescitaCapelli), 185, 356 + page2MainShift, 8, baseFont)
+    drawTextFromTop(page2, fillOrFallback(values.medsManAnabolizzanti), 185, 373 + page2MainShift, 8, baseFont)
+    drawTextFromTop(page2, fillOrFallback(values.medsManCortisonici), 185, 390 + page2MainShift, 8, baseFont)
+    if (values.medsManAltri?.trim() !== '') {
+      drawTextFromTop(page2, fillOrFallback('si'), 186, 407 + page2MainShift, 8, baseFont, rgb(0.08, 0.08, 0.08), 120)
+      drawTextFromTop(page2, fillOrFallback(values.medsManAltri), 196, 418 + page2MainShift, 8, baseFont, rgb(0.08, 0.08, 0.08), 120)
+    }
+  }
 
-  drawTextFromTop(page2, fillOrFallback(values.gravidanzaAllattamento), 372, 375 + page2MainShift, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.pacemaker), 372, 395 + page2MainShift, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.epilessia), 372, 415 + page2MainShift, 8, baseFont)
+  drawTextFromTop(page2, fillOrFallback(values.gravidanzaAllattamento), 386, 356 + page2MainShift, 8, baseFont)
+  drawTextFromTop(page2, fillOrFallback(values.pacemaker), 386, 373 + page2MainShift, 8, baseFont)
+  drawTextFromTop(page2, fillOrFallback(values.epilessia), 386, 390 + page2MainShift, 8, baseFont)
+  if (gender === 'F') {
+    drawTextFromTop(page2, fillOrFallback(values.cicloRegolare), values.cicloRegolare === 'si' ? 199 : 214, 437 + page2MainShift, 9, baseFont)
+  }
+  drawTextFromTop(page2, fillOrFallback(values.zonaInteresse), 399, 437 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 185)
 
-  drawTextFromTop(page2, fillOrFallback(values.cicloRegolare), 232, 463 + page2MainShift, 9, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.zonaInteresse), 362, 463 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 185)
-
-  const fitzRowTopOffsets = [536, 557, 577, 598, 619, 640, 661, 682, 704, 725]
+  const fitzRowTopOffsets = [520, 539, 559, 580, 600, 620, 638, 656, 675, 693]
   for (let index = 0; index < LASER_SHEET_FITZPATRICK_IDS.length; index += 1) {
     const key = LASER_SHEET_FITZPATRICK_IDS[index]
     if (!key) continue
@@ -959,9 +972,9 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
     if (scoreValue === '') continue
     const top = fitzRowTopOffsets[index]
     if (!top) continue
-    drawTextFromTop(page2, String(scoreValue), 559, top + page2FitzShift, 9, boldFont)
+    drawTextFromTop(page2, String(scoreValue), 540, top + page2FitzShift, 9, boldFont)
   }
-  drawTextFromTop(page2, String(score), 559, 746 + page2FitzShift, 10, boldFont)
+  drawTextFromTop(page2, String(score), 537, 710 + page2FitzShift, 10, boldFont)
 
   drawTextFromTop(page3, `Scheda n. ${schedaNumber}`, 500, schedaNumberPositionY, 10, boldFont)
   drawTextFromTop(page3, fullName, 65, 110, 9, baseFont, rgb(0.08, 0.08, 0.08), 220)
@@ -977,10 +990,10 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
   drawTextFromTop(page3, fullName, 286, 792, 9, baseFont)
 
   drawTextFromTop(page4, `Scheda n. ${schedaNumber}`, 500, schedaNumberPositionY, 10, boldFont)
-  drawTextFromTop(page4, documentDate, 40, 72, 10, baseFont)
-  drawTextFromTop(page4, fullName, 230, 72, 10, baseFont, rgb(0.08, 0.08, 0.08), 220)
-  drawTextFromTop(page4, `Punteggio questionario: ${score}`, 300, 92, 9, boldFont)
-  drawTextFromTop(page4, `Fototipo: ${phototype}`, 300, 106, 9, boldFont)
+  drawTextFromTop(page4, `Punteggio questionario: ${score}`, 439, 30, 9, boldFont)
+  drawTextFromTop(page4, `Fototipo: ${phototype}`, 506, 43, 9, boldFont)
+  drawTextFromTop(page4, documentDate, 72, 96, 10, baseFont)
+  drawTextFromTop(page4, fullName, 262, 96, 10, baseFont, rgb(0.08, 0.08, 0.08), 220)
 
   drawWrappedRows(
     page4,
@@ -988,8 +1001,8 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
       values.epilationCurrentMethods,
       'Non indicate',
     )}.`,
-    41,
-    118,
+    35,
+    115,
     7,
     baseFont,
     98,
@@ -1130,15 +1143,8 @@ watch(() => route.params.id, loadItem)
           <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
             <div>
               <div class="laser-client-heading">
-                <Btn
-                  type="button"
-                  color="secondary"
-                  variant="outline"
-                  icon="arrow_back"
-                  title="Torna al cliente"
-                  aria-label="Torna al cliente"
-                  @click="goBackToClient"
-                />
+                <Btn type="button" color="secondary" variant="outline" icon="arrow_back" title="Torna al cliente"
+                  aria-label="Torna al cliente" @click="goBackToClient" />
                 <h2 class="h6 mb-1 laser-panel__title-main">
                   {{ current.name }} {{ current.surname }}
                 </h2>
@@ -1165,47 +1171,20 @@ watch(() => route.params.id, loadItem)
               </p>
             </div>
             <div class="d-flex gap-2 flex-wrap">
-              <Btn
-                v-if="!hasActiveShareToken"
-                type="button"
-                color="dark"
-                icon="qr_code_2"
-                :disabled="!canCreateShareToken"
-                @click="openShareTokenModal"
-              >
+              <Btn v-if="!hasActiveShareToken" type="button" color="dark" icon="qr_code_2"
+                :disabled="!canCreateShareToken" @click="openShareTokenModal">
                 {{ shareTokenExpired ? 'Rigenera link' : 'Crea link' }}
               </Btn>
-              <Btn
-                v-if="hasActiveShareToken"
-                type="button"
-                color="secondary"
-                variant="outline"
-                icon="content_copy"
-                :loading="isCopyingShareLink"
-                @click="copyShareLink"
-              >
+              <Btn v-if="hasActiveShareToken" type="button" color="secondary" variant="outline" icon="content_copy"
+                :loading="isCopyingShareLink" @click="copyShareLink">
                 Copia link
               </Btn>
-              <Btn
-                v-if="hasActiveShareToken"
-                type="button"
-                color="dark"
-                variant="outline"
-                icon="send"
-                :disabled="!canSendShareLinkOnWhatsApp"
-                @click="sendShareLinkOnWhatsApp"
-              >
+              <Btn v-if="hasActiveShareToken" type="button" color="dark" variant="outline" icon="send"
+                :disabled="!canSendShareLinkOnWhatsApp" @click="sendShareLinkOnWhatsApp">
                 Invia su WhatsApp
               </Btn>
-              <Btn
-                v-if="hasActiveShareToken"
-                type="button"
-                color="danger"
-                variant="outline"
-                icon="block"
-                :loading="isRevokingShareToken"
-                @click="revokeShareToken"
-              >
+              <Btn v-if="hasActiveShareToken" type="button" color="danger" variant="outline" icon="block"
+                :loading="isRevokingShareToken" @click="revokeShareToken">
                 Revoca
               </Btn>
             </div>
@@ -1230,7 +1209,8 @@ watch(() => route.params.id, loadItem)
               <label class="small mb-1">Link completo</label>
               <div class="share-link-row">
                 <input :value="shareLink" type="text" class="form-control" readonly>
-                <Btn type="button" color="dark" icon="content_copy" :loading="isCopyingShareLink" @click="copyShareLink">
+                <Btn type="button" color="dark" icon="content_copy" :loading="isCopyingShareLink"
+                  @click="copyShareLink">
                   Copia
                 </Btn>
               </div>
@@ -1261,25 +1241,15 @@ watch(() => route.params.id, loadItem)
               <div class="col-12 col-md-4">
                 <label class="form-label laser-form-label">
                   <span>Indirizzo cliente</span>
-                  <button
-                    v-if="hasSkippedQuestion('clientAddress')"
-                    type="button"
-                    class="skip-flag-btn"
+                  <button v-if="hasSkippedQuestion('clientAddress')" type="button" class="skip-flag-btn"
                     :disabled="isClearingSkippedKey('clientAddress')"
                     title="Campo da chiarire: clicca per segnare come gestito"
-                    aria-label="Segna chiarito indirizzo cliente"
-                    @click="clearSkippedQuestion('clientAddress')"
-                  >
+                    aria-label="Segna chiarito indirizzo cliente" @click="clearSkippedQuestion('clientAddress')">
                     <span class="material-symbols-outlined" aria-hidden="true">help</span>
                   </button>
                 </label>
-                <input
-                  v-model="form.clientAddress"
-                  type="text"
-                  class="form-control"
-                  placeholder="Indirizzo"
-                  data-skip-key="clientAddress"
-                />
+                <input v-model="form.clientAddress" type="text" class="form-control" placeholder="Indirizzo"
+                  data-skip-key="clientAddress" />
               </div>
 
               <div class="col-12 col-md-6">
@@ -1298,50 +1268,31 @@ watch(() => route.params.id, loadItem)
               <div class="col-6 col-md-3">
                 <label class="form-label laser-form-label">
                   <span>Eta</span>
-                  <button
-                    v-if="hasSkippedQuestion('clientAge')"
-                    type="button"
-                    class="skip-flag-btn"
+                  <button v-if="hasSkippedQuestion('clientAge')" type="button" class="skip-flag-btn"
                     :disabled="isClearingSkippedKey('clientAge')"
-                    title="Campo da chiarire: clicca per segnare come gestito"
-                    aria-label="Segna chiarito eta cliente"
-                    @click="clearSkippedQuestion('clientAge')"
-                  >
+                    title="Campo da chiarire: clicca per segnare come gestito" aria-label="Segna chiarito eta cliente"
+                    @click="clearSkippedQuestion('clientAge')">
                     <span class="material-symbols-outlined" aria-hidden="true">help</span>
                   </button>
                 </label>
-                <input v-model="form.clientAge" type="number" min="0" step="1" class="form-control" data-skip-key="clientAge">
+                <input v-model="form.clientAge" type="number" min="0" step="1" class="form-control"
+                  data-skip-key="clientAge">
               </div>
               <div class="col-12 col-md-6">
                 <label class="form-label d-block laser-form-label">
                   <span>Sesso</span>
-                  <button
-                    v-if="hasSkippedQuestion('clientGender')"
-                    type="button"
-                    class="skip-flag-btn"
+                  <button v-if="hasSkippedQuestion('clientGender')" type="button" class="skip-flag-btn"
                     :disabled="isClearingSkippedKey('clientGender')"
-                    title="Campo da chiarire: clicca per segnare come gestito"
-                    aria-label="Segna chiarito sesso cliente"
-                    @click="clearSkippedQuestion('clientGender')"
-                  >
+                    title="Campo da chiarire: clicca per segnare come gestito" aria-label="Segna chiarito sesso cliente"
+                    @click="clearSkippedQuestion('clientGender')">
                     <span class="material-symbols-outlined" aria-hidden="true">help</span>
                   </button>
                 </label>
                 <div class="chip-radio-group" role="radiogroup" aria-label="Sesso cliente">
-                  <label
-                    v-for="option in binaryGenderOptions"
-                    :key="`gender-${option.value}`"
-                    class="chip-radio"
-                    :class="{ 'is-active': form.clientGender === option.value }"
-                  >
-                    <input
-                      class="chip-radio__input"
-                      type="radio"
-                      name="client-gender"
-                      :value="option.value"
-                      :checked="form.clientGender === option.value"
-                      @change="form.clientGender = option.value"
-                    >
+                  <label v-for="option in binaryGenderOptions" :key="`gender-${option.value}`" class="chip-radio"
+                    :class="{ 'is-active': form.clientGender === option.value }">
+                    <input class="chip-radio__input" type="radio" name="client-gender" :value="option.value"
+                      :checked="form.clientGender === option.value" @change="form.clientGender = option.value">
                     <span>{{ option.label }}</span>
                   </label>
                 </div>
@@ -1359,83 +1310,60 @@ watch(() => route.params.id, loadItem)
               <div class="col-12">
                 <label class="form-label laser-form-label">
                   <span>Ha gia effettuato trattamenti di epilazione progressiva permanente?</span>
-                  <button
-                    v-if="hasSkippedQuestion('epilationAlreadyDone')"
-                    type="button"
-                    class="skip-flag-btn"
+                  <button v-if="hasSkippedQuestion('epilationAlreadyDone')" type="button" class="skip-flag-btn"
                     :disabled="isClearingSkippedKey('epilationAlreadyDone')"
                     title="Campo da chiarire: clicca per segnare come gestito"
                     aria-label="Segna chiarito epilazione gia effettuata"
-                    @click="clearSkippedQuestion('epilationAlreadyDone')"
-                  >
+                    @click="clearSkippedQuestion('epilationAlreadyDone')">
                     <span class="material-symbols-outlined" aria-hidden="true">help</span>
                   </button>
                 </label>
-                <textarea
-                  v-model="form.epilationAlreadyDone"
-                  rows="2"
-                  class="form-control"
+                <textarea v-model="form.epilationAlreadyDone" rows="2" class="form-control"
                   placeholder="Descrivi trattamenti precedenti oppure lascia vuoto"
-                  data-skip-key="epilationAlreadyDone"
-                ></textarea>
+                  data-skip-key="epilationAlreadyDone"></textarea>
               </div>
 
               <template v-if="showEpilationDetails">
                 <div class="col-12 col-md-6">
                   <label class="form-label laser-form-label">
                     <span>Quali aree ha trattato?</span>
-                    <button
-                      v-if="hasSkippedQuestion('epilationAreasDone')"
-                      type="button"
-                      class="skip-flag-btn"
+                    <button v-if="hasSkippedQuestion('epilationAreasDone')" type="button" class="skip-flag-btn"
                       :disabled="isClearingSkippedKey('epilationAreasDone')"
                       title="Campo da chiarire: clicca per segnare come gestito"
-                      aria-label="Segna chiarito aree trattate"
-                      @click="clearSkippedQuestion('epilationAreasDone')"
-                    >
+                      aria-label="Segna chiarito aree trattate" @click="clearSkippedQuestion('epilationAreasDone')">
                       <span class="material-symbols-outlined" aria-hidden="true">help</span>
                     </button>
                   </label>
-                  <textarea v-model="form.epilationAreasDone" rows="2" class="form-control" data-skip-key="epilationAreasDone"></textarea>
+                  <textarea v-model="form.epilationAreasDone" rows="2" class="form-control"
+                    data-skip-key="epilationAreasDone"></textarea>
                 </div>
                 <div class="col-12 col-md-6">
                   <label class="form-label laser-form-label">
                     <span>Che tipo di risultati ha ottenuto?</span>
-                    <button
-                      v-if="hasSkippedQuestion('epilationResults')"
-                      type="button"
-                      class="skip-flag-btn"
+                    <button v-if="hasSkippedQuestion('epilationResults')" type="button" class="skip-flag-btn"
                       :disabled="isClearingSkippedKey('epilationResults')"
                       title="Campo da chiarire: clicca per segnare come gestito"
                       aria-label="Segna chiarito risultati epilazione"
-                      @click="clearSkippedQuestion('epilationResults')"
-                    >
+                      @click="clearSkippedQuestion('epilationResults')">
                       <span class="material-symbols-outlined" aria-hidden="true">help</span>
                     </button>
                   </label>
-                  <textarea v-model="form.epilationResults" rows="2" class="form-control" data-skip-key="epilationResults"></textarea>
+                  <textarea v-model="form.epilationResults" rows="2" class="form-control"
+                    data-skip-key="epilationResults"></textarea>
                 </div>
                 <div class="col-12">
                   <label class="form-label laser-form-label">
                     <span>Quali metodi usa abitualmente per depilarsi?</span>
-                    <button
-                      v-if="hasSkippedQuestion('epilationCurrentMethods')"
-                      type="button"
-                      class="skip-flag-btn"
+                    <button v-if="hasSkippedQuestion('epilationCurrentMethods')" type="button" class="skip-flag-btn"
                       :disabled="isClearingSkippedKey('epilationCurrentMethods')"
                       title="Campo da chiarire: clicca per segnare come gestito"
                       aria-label="Segna chiarito metodi depilazione"
-                      @click="clearSkippedQuestion('epilationCurrentMethods')"
-                    >
+                      @click="clearSkippedQuestion('epilationCurrentMethods')">
                       <span class="material-symbols-outlined" aria-hidden="true">help</span>
                     </button>
                   </label>
-                  <textarea
-                    v-model="form.epilationCurrentMethods"
-                    rows="2"
-                    class="form-control"
-                    data-skip-key="epilationCurrentMethods"
-                  ></textarea>
+                  <textarea v-model="form.epilationCurrentMethods" rows="2" class="form-control"
+                    data-skip-key="epilationCurrentMethods"></textarea>
                 </div>
               </template>
               <p v-else class="small text-muted mb-0">
@@ -1453,33 +1381,21 @@ watch(() => route.params.id, loadItem)
                   <div class="toggle-row">
                     <span class="toggle-row__label laser-inline-label">
                       <span>Anticoncezionali</span>
-                      <button
-                        v-if="hasSkippedQuestion('medsWomanAnticoncezionali')"
-                        type="button"
-                        class="skip-flag-btn"
+                      <button v-if="hasSkippedQuestion('medsWomanAnticoncezionali')" type="button" class="skip-flag-btn"
                         :disabled="isClearingSkippedKey('medsWomanAnticoncezionali')"
                         title="Campo da chiarire: clicca per segnare come gestito"
                         aria-label="Segna chiarito anticoncezionali"
-                        @click="clearSkippedQuestion('medsWomanAnticoncezionali')"
-                      >
+                        @click="clearSkippedQuestion('medsWomanAnticoncezionali')">
                         <span class="material-symbols-outlined" aria-hidden="true">help</span>
                       </button>
                     </span>
                     <div class="yes-no-switch">
-                      <label
-                        v-for="option in yesNoOptions"
-                        :key="`medsWomanAnticoncezionali-${option.value}`"
+                      <label v-for="option in yesNoOptions" :key="`medsWomanAnticoncezionali-${option.value}`"
                         class="yes-no-switch__option"
-                        :class="{ 'is-active': form.medsWomanAnticoncezionali === option.value }"
-                      >
-                        <input
-                          class="yes-no-switch__input"
-                          type="radio"
-                          name="medsWomanAnticoncezionali"
-                          :value="option.value"
-                          :checked="form.medsWomanAnticoncezionali === option.value"
-                          @change="setYesNo('medsWomanAnticoncezionali', option.value)"
-                        >
+                        :class="{ 'is-active': form.medsWomanAnticoncezionali === option.value }">
+                        <input class="yes-no-switch__input" type="radio" name="medsWomanAnticoncezionali"
+                          :value="option.value" :checked="form.medsWomanAnticoncezionali === option.value"
+                          @change="setYesNo('medsWomanAnticoncezionali', option.value)">
                         <span>{{ option.label }}</span>
                       </label>
                     </div>
@@ -1487,33 +1403,21 @@ watch(() => route.params.id, loadItem)
                   <div class="toggle-row">
                     <span class="toggle-row__label laser-inline-label">
                       <span>Anabolizzanti</span>
-                      <button
-                        v-if="hasSkippedQuestion('medsWomanAnabolizzanti')"
-                        type="button"
-                        class="skip-flag-btn"
+                      <button v-if="hasSkippedQuestion('medsWomanAnabolizzanti')" type="button" class="skip-flag-btn"
                         :disabled="isClearingSkippedKey('medsWomanAnabolizzanti')"
                         title="Campo da chiarire: clicca per segnare come gestito"
                         aria-label="Segna chiarito anabolizzanti donna"
-                        @click="clearSkippedQuestion('medsWomanAnabolizzanti')"
-                      >
+                        @click="clearSkippedQuestion('medsWomanAnabolizzanti')">
                         <span class="material-symbols-outlined" aria-hidden="true">help</span>
                       </button>
                     </span>
                     <div class="yes-no-switch">
-                      <label
-                        v-for="option in yesNoOptions"
-                        :key="`medsWomanAnabolizzanti-${option.value}`"
+                      <label v-for="option in yesNoOptions" :key="`medsWomanAnabolizzanti-${option.value}`"
                         class="yes-no-switch__option"
-                        :class="{ 'is-active': form.medsWomanAnabolizzanti === option.value }"
-                      >
-                        <input
-                          class="yes-no-switch__input"
-                          type="radio"
-                          name="medsWomanAnabolizzanti"
-                          :value="option.value"
-                          :checked="form.medsWomanAnabolizzanti === option.value"
-                          @change="setYesNo('medsWomanAnabolizzanti', option.value)"
-                        >
+                        :class="{ 'is-active': form.medsWomanAnabolizzanti === option.value }">
+                        <input class="yes-no-switch__input" type="radio" name="medsWomanAnabolizzanti"
+                          :value="option.value" :checked="form.medsWomanAnabolizzanti === option.value"
+                          @change="setYesNo('medsWomanAnabolizzanti', option.value)">
                         <span>{{ option.label }}</span>
                       </label>
                     </div>
@@ -1521,82 +1425,54 @@ watch(() => route.params.id, loadItem)
                   <div class="toggle-row">
                     <span class="toggle-row__label laser-inline-label">
                       <span>Cortisonici</span>
-                      <button
-                        v-if="hasSkippedQuestion('medsWomanCortisonici')"
-                        type="button"
-                        class="skip-flag-btn"
+                      <button v-if="hasSkippedQuestion('medsWomanCortisonici')" type="button" class="skip-flag-btn"
                         :disabled="isClearingSkippedKey('medsWomanCortisonici')"
                         title="Campo da chiarire: clicca per segnare come gestito"
                         aria-label="Segna chiarito cortisonici donna"
-                        @click="clearSkippedQuestion('medsWomanCortisonici')"
-                      >
+                        @click="clearSkippedQuestion('medsWomanCortisonici')">
                         <span class="material-symbols-outlined" aria-hidden="true">help</span>
                       </button>
                     </span>
                     <div class="yes-no-switch">
-                      <label
-                        v-for="option in yesNoOptions"
-                        :key="`medsWomanCortisonici-${option.value}`"
+                      <label v-for="option in yesNoOptions" :key="`medsWomanCortisonici-${option.value}`"
                         class="yes-no-switch__option"
-                        :class="{ 'is-active': form.medsWomanCortisonici === option.value }"
-                      >
-                        <input
-                          class="yes-no-switch__input"
-                          type="radio"
-                          name="medsWomanCortisonici"
-                          :value="option.value"
-                          :checked="form.medsWomanCortisonici === option.value"
-                          @change="setYesNo('medsWomanCortisonici', option.value)"
-                        >
+                        :class="{ 'is-active': form.medsWomanCortisonici === option.value }">
+                        <input class="yes-no-switch__input" type="radio" name="medsWomanCortisonici"
+                          :value="option.value" :checked="form.medsWomanCortisonici === option.value"
+                          @change="setYesNo('medsWomanCortisonici', option.value)">
                         <span>{{ option.label }}</span>
                       </label>
                     </div>
                   </div>
                   <label class="small mb-0 laser-form-label">
                     <span>Altri farmaci</span>
-                    <button
-                      v-if="hasSkippedQuestion('medsWomanAltri')"
-                      type="button"
-                      class="skip-flag-btn"
+                    <button v-if="hasSkippedQuestion('medsWomanAltri')" type="button" class="skip-flag-btn"
                       :disabled="isClearingSkippedKey('medsWomanAltri')"
                       title="Campo da chiarire: clicca per segnare come gestito"
-                      aria-label="Segna chiarito altri farmaci donna"
-                      @click="clearSkippedQuestion('medsWomanAltri')"
-                    >
+                      aria-label="Segna chiarito altri farmaci donna" @click="clearSkippedQuestion('medsWomanAltri')">
                       <span class="material-symbols-outlined" aria-hidden="true">help</span>
                     </button>
                   </label>
-                  <input v-model="form.medsWomanAltri" type="text" class="form-control form-control-sm" data-skip-key="medsWomanAltri" />
+                  <input v-model="form.medsWomanAltri" type="text" class="form-control form-control-sm"
+                    data-skip-key="medsWomanAltri" />
                   <div class="toggle-row">
                     <span class="toggle-row__label laser-inline-label">
                       <span>Gravidanza / allattamento</span>
-                      <button
-                        v-if="hasSkippedQuestion('gravidanzaAllattamento')"
-                        type="button"
-                        class="skip-flag-btn"
+                      <button v-if="hasSkippedQuestion('gravidanzaAllattamento')" type="button" class="skip-flag-btn"
                         :disabled="isClearingSkippedKey('gravidanzaAllattamento')"
                         title="Campo da chiarire: clicca per segnare come gestito"
                         aria-label="Segna chiarito gravidanza o allattamento"
-                        @click="clearSkippedQuestion('gravidanzaAllattamento')"
-                      >
+                        @click="clearSkippedQuestion('gravidanzaAllattamento')">
                         <span class="material-symbols-outlined" aria-hidden="true">help</span>
                       </button>
                     </span>
                     <div class="yes-no-switch">
-                      <label
-                        v-for="option in yesNoOptions"
-                        :key="`gravidanzaAllattamento-${option.value}`"
+                      <label v-for="option in yesNoOptions" :key="`gravidanzaAllattamento-${option.value}`"
                         class="yes-no-switch__option"
-                        :class="{ 'is-active': form.gravidanzaAllattamento === option.value }"
-                      >
-                        <input
-                          class="yes-no-switch__input"
-                          type="radio"
-                          name="gravidanzaAllattamento"
-                          :value="option.value"
-                          :checked="form.gravidanzaAllattamento === option.value"
-                          @change="setYesNo('gravidanzaAllattamento', option.value)"
-                        >
+                        :class="{ 'is-active': form.gravidanzaAllattamento === option.value }">
+                        <input class="yes-no-switch__input" type="radio" name="gravidanzaAllattamento"
+                          :value="option.value" :checked="form.gravidanzaAllattamento === option.value"
+                          @change="setYesNo('gravidanzaAllattamento', option.value)">
                         <span>{{ option.label }}</span>
                       </label>
                     </div>
@@ -1604,33 +1480,19 @@ watch(() => route.params.id, loadItem)
                   <div class="toggle-row">
                     <span class="toggle-row__label laser-inline-label">
                       <span>Ciclo mestruale regolare</span>
-                      <button
-                        v-if="hasSkippedQuestion('cicloRegolare')"
-                        type="button"
-                        class="skip-flag-btn"
+                      <button v-if="hasSkippedQuestion('cicloRegolare')" type="button" class="skip-flag-btn"
                         :disabled="isClearingSkippedKey('cicloRegolare')"
                         title="Campo da chiarire: clicca per segnare come gestito"
-                        aria-label="Segna chiarito ciclo regolare"
-                        @click="clearSkippedQuestion('cicloRegolare')"
-                      >
+                        aria-label="Segna chiarito ciclo regolare" @click="clearSkippedQuestion('cicloRegolare')">
                         <span class="material-symbols-outlined" aria-hidden="true">help</span>
                       </button>
                     </span>
                     <div class="yes-no-switch">
-                      <label
-                        v-for="option in yesNoOptions"
-                        :key="`cicloRegolare-${option.value}`"
-                        class="yes-no-switch__option"
-                        :class="{ 'is-active': form.cicloRegolare === option.value }"
-                      >
-                        <input
-                          class="yes-no-switch__input"
-                          type="radio"
-                          name="cicloRegolare"
-                          :value="option.value"
+                      <label v-for="option in yesNoOptions" :key="`cicloRegolare-${option.value}`"
+                        class="yes-no-switch__option" :class="{ 'is-active': form.cicloRegolare === option.value }">
+                        <input class="yes-no-switch__input" type="radio" name="cicloRegolare" :value="option.value"
                           :checked="form.cicloRegolare === option.value"
-                          @change="setYesNo('cicloRegolare', option.value)"
-                        >
+                          @change="setYesNo('cicloRegolare', option.value)">
                         <span>{{ option.label }}</span>
                       </label>
                     </div>
@@ -1644,33 +1506,21 @@ watch(() => route.params.id, loadItem)
                   <div class="toggle-row">
                     <span class="toggle-row__label laser-inline-label">
                       <span>Ricrescita capelli</span>
-                      <button
-                        v-if="hasSkippedQuestion('medsManRicrescitaCapelli')"
-                        type="button"
-                        class="skip-flag-btn"
+                      <button v-if="hasSkippedQuestion('medsManRicrescitaCapelli')" type="button" class="skip-flag-btn"
                         :disabled="isClearingSkippedKey('medsManRicrescitaCapelli')"
                         title="Campo da chiarire: clicca per segnare come gestito"
                         aria-label="Segna chiarito ricrescita capelli"
-                        @click="clearSkippedQuestion('medsManRicrescitaCapelli')"
-                      >
+                        @click="clearSkippedQuestion('medsManRicrescitaCapelli')">
                         <span class="material-symbols-outlined" aria-hidden="true">help</span>
                       </button>
                     </span>
                     <div class="yes-no-switch">
-                      <label
-                        v-for="option in yesNoOptions"
-                        :key="`medsManRicrescitaCapelli-${option.value}`"
+                      <label v-for="option in yesNoOptions" :key="`medsManRicrescitaCapelli-${option.value}`"
                         class="yes-no-switch__option"
-                        :class="{ 'is-active': form.medsManRicrescitaCapelli === option.value }"
-                      >
-                        <input
-                          class="yes-no-switch__input"
-                          type="radio"
-                          name="medsManRicrescitaCapelli"
-                          :value="option.value"
-                          :checked="form.medsManRicrescitaCapelli === option.value"
-                          @change="setYesNo('medsManRicrescitaCapelli', option.value)"
-                        >
+                        :class="{ 'is-active': form.medsManRicrescitaCapelli === option.value }">
+                        <input class="yes-no-switch__input" type="radio" name="medsManRicrescitaCapelli"
+                          :value="option.value" :checked="form.medsManRicrescitaCapelli === option.value"
+                          @change="setYesNo('medsManRicrescitaCapelli', option.value)">
                         <span>{{ option.label }}</span>
                       </label>
                     </div>
@@ -1678,33 +1528,21 @@ watch(() => route.params.id, loadItem)
                   <div class="toggle-row">
                     <span class="toggle-row__label laser-inline-label">
                       <span>Anabolizzanti</span>
-                      <button
-                        v-if="hasSkippedQuestion('medsManAnabolizzanti')"
-                        type="button"
-                        class="skip-flag-btn"
+                      <button v-if="hasSkippedQuestion('medsManAnabolizzanti')" type="button" class="skip-flag-btn"
                         :disabled="isClearingSkippedKey('medsManAnabolizzanti')"
                         title="Campo da chiarire: clicca per segnare come gestito"
                         aria-label="Segna chiarito anabolizzanti uomo"
-                        @click="clearSkippedQuestion('medsManAnabolizzanti')"
-                      >
+                        @click="clearSkippedQuestion('medsManAnabolizzanti')">
                         <span class="material-symbols-outlined" aria-hidden="true">help</span>
                       </button>
                     </span>
                     <div class="yes-no-switch">
-                      <label
-                        v-for="option in yesNoOptions"
-                        :key="`medsManAnabolizzanti-${option.value}`"
+                      <label v-for="option in yesNoOptions" :key="`medsManAnabolizzanti-${option.value}`"
                         class="yes-no-switch__option"
-                        :class="{ 'is-active': form.medsManAnabolizzanti === option.value }"
-                      >
-                        <input
-                          class="yes-no-switch__input"
-                          type="radio"
-                          name="medsManAnabolizzanti"
-                          :value="option.value"
-                          :checked="form.medsManAnabolizzanti === option.value"
-                          @change="setYesNo('medsManAnabolizzanti', option.value)"
-                        >
+                        :class="{ 'is-active': form.medsManAnabolizzanti === option.value }">
+                        <input class="yes-no-switch__input" type="radio" name="medsManAnabolizzanti"
+                          :value="option.value" :checked="form.medsManAnabolizzanti === option.value"
+                          @change="setYesNo('medsManAnabolizzanti', option.value)">
                         <span>{{ option.label }}</span>
                       </label>
                     </div>
@@ -1712,52 +1550,36 @@ watch(() => route.params.id, loadItem)
                   <div class="toggle-row">
                     <span class="toggle-row__label laser-inline-label">
                       <span>Cortisonici</span>
-                      <button
-                        v-if="hasSkippedQuestion('medsManCortisonici')"
-                        type="button"
-                        class="skip-flag-btn"
+                      <button v-if="hasSkippedQuestion('medsManCortisonici')" type="button" class="skip-flag-btn"
                         :disabled="isClearingSkippedKey('medsManCortisonici')"
                         title="Campo da chiarire: clicca per segnare come gestito"
                         aria-label="Segna chiarito cortisonici uomo"
-                        @click="clearSkippedQuestion('medsManCortisonici')"
-                      >
+                        @click="clearSkippedQuestion('medsManCortisonici')">
                         <span class="material-symbols-outlined" aria-hidden="true">help</span>
                       </button>
                     </span>
                     <div class="yes-no-switch">
-                      <label
-                        v-for="option in yesNoOptions"
-                        :key="`medsManCortisonici-${option.value}`"
+                      <label v-for="option in yesNoOptions" :key="`medsManCortisonici-${option.value}`"
                         class="yes-no-switch__option"
-                        :class="{ 'is-active': form.medsManCortisonici === option.value }"
-                      >
-                        <input
-                          class="yes-no-switch__input"
-                          type="radio"
-                          name="medsManCortisonici"
-                          :value="option.value"
+                        :class="{ 'is-active': form.medsManCortisonici === option.value }">
+                        <input class="yes-no-switch__input" type="radio" name="medsManCortisonici" :value="option.value"
                           :checked="form.medsManCortisonici === option.value"
-                          @change="setYesNo('medsManCortisonici', option.value)"
-                        >
+                          @change="setYesNo('medsManCortisonici', option.value)">
                         <span>{{ option.label }}</span>
                       </label>
                     </div>
                   </div>
                   <label class="small mb-0 laser-form-label">
                     <span>Altri farmaci</span>
-                    <button
-                      v-if="hasSkippedQuestion('medsManAltri')"
-                      type="button"
-                      class="skip-flag-btn"
+                    <button v-if="hasSkippedQuestion('medsManAltri')" type="button" class="skip-flag-btn"
                       :disabled="isClearingSkippedKey('medsManAltri')"
                       title="Campo da chiarire: clicca per segnare come gestito"
-                      aria-label="Segna chiarito altri farmaci uomo"
-                      @click="clearSkippedQuestion('medsManAltri')"
-                    >
+                      aria-label="Segna chiarito altri farmaci uomo" @click="clearSkippedQuestion('medsManAltri')">
                       <span class="material-symbols-outlined" aria-hidden="true">help</span>
                     </button>
                   </label>
-                  <input v-model="form.medsManAltri" type="text" class="form-control form-control-sm" data-skip-key="medsManAltri" />
+                  <input v-model="form.medsManAltri" type="text" class="form-control form-control-sm"
+                    data-skip-key="medsManAltri" />
                 </div>
               </div>
 
@@ -1767,33 +1589,18 @@ watch(() => route.params.id, loadItem)
                   <div class="toggle-row">
                     <span class="toggle-row__label laser-inline-label">
                       <span>Pacemaker</span>
-                      <button
-                        v-if="hasSkippedQuestion('pacemaker')"
-                        type="button"
-                        class="skip-flag-btn"
+                      <button v-if="hasSkippedQuestion('pacemaker')" type="button" class="skip-flag-btn"
                         :disabled="isClearingSkippedKey('pacemaker')"
-                        title="Campo da chiarire: clicca per segnare come gestito"
-                        aria-label="Segna chiarito pacemaker"
-                        @click="clearSkippedQuestion('pacemaker')"
-                      >
+                        title="Campo da chiarire: clicca per segnare come gestito" aria-label="Segna chiarito pacemaker"
+                        @click="clearSkippedQuestion('pacemaker')">
                         <span class="material-symbols-outlined" aria-hidden="true">help</span>
                       </button>
                     </span>
                     <div class="yes-no-switch">
-                      <label
-                        v-for="option in yesNoOptions"
-                        :key="`pacemaker-${option.value}`"
-                        class="yes-no-switch__option"
-                        :class="{ 'is-active': form.pacemaker === option.value }"
-                      >
-                        <input
-                          class="yes-no-switch__input"
-                          type="radio"
-                          name="pacemaker"
-                          :value="option.value"
-                          :checked="form.pacemaker === option.value"
-                          @change="setYesNo('pacemaker', option.value)"
-                        >
+                      <label v-for="option in yesNoOptions" :key="`pacemaker-${option.value}`"
+                        class="yes-no-switch__option" :class="{ 'is-active': form.pacemaker === option.value }">
+                        <input class="yes-no-switch__input" type="radio" name="pacemaker" :value="option.value"
+                          :checked="form.pacemaker === option.value" @change="setYesNo('pacemaker', option.value)">
                         <span>{{ option.label }}</span>
                       </label>
                     </div>
@@ -1801,33 +1608,18 @@ watch(() => route.params.id, loadItem)
                   <div class="toggle-row">
                     <span class="toggle-row__label laser-inline-label">
                       <span>Epilessia</span>
-                      <button
-                        v-if="hasSkippedQuestion('epilessia')"
-                        type="button"
-                        class="skip-flag-btn"
+                      <button v-if="hasSkippedQuestion('epilessia')" type="button" class="skip-flag-btn"
                         :disabled="isClearingSkippedKey('epilessia')"
-                        title="Campo da chiarire: clicca per segnare come gestito"
-                        aria-label="Segna chiarito epilessia"
-                        @click="clearSkippedQuestion('epilessia')"
-                      >
+                        title="Campo da chiarire: clicca per segnare come gestito" aria-label="Segna chiarito epilessia"
+                        @click="clearSkippedQuestion('epilessia')">
                         <span class="material-symbols-outlined" aria-hidden="true">help</span>
                       </button>
                     </span>
                     <div class="yes-no-switch">
-                      <label
-                        v-for="option in yesNoOptions"
-                        :key="`epilessia-${option.value}`"
-                        class="yes-no-switch__option"
-                        :class="{ 'is-active': form.epilessia === option.value }"
-                      >
-                        <input
-                          class="yes-no-switch__input"
-                          type="radio"
-                          name="epilessia"
-                          :value="option.value"
-                          :checked="form.epilessia === option.value"
-                          @change="setYesNo('epilessia', option.value)"
-                        >
+                      <label v-for="option in yesNoOptions" :key="`epilessia-${option.value}`"
+                        class="yes-no-switch__option" :class="{ 'is-active': form.epilessia === option.value }">
+                        <input class="yes-no-switch__input" type="radio" name="epilessia" :value="option.value"
+                          :checked="form.epilessia === option.value" @change="setYesNo('epilessia', option.value)">
                         <span>{{ option.label }}</span>
                       </label>
                     </div>
@@ -1835,58 +1627,34 @@ watch(() => route.params.id, loadItem)
                   <div class="toggle-row">
                     <span class="toggle-row__label laser-inline-label">
                       <span>Consenso foto</span>
-                      <button
-                        v-if="hasSkippedQuestion('consensoFoto')"
-                        type="button"
-                        class="skip-flag-btn"
+                      <button v-if="hasSkippedQuestion('consensoFoto')" type="button" class="skip-flag-btn"
                         :disabled="isClearingSkippedKey('consensoFoto')"
                         title="Campo da chiarire: clicca per segnare come gestito"
-                        aria-label="Segna chiarito consenso foto"
-                        @click="clearSkippedQuestion('consensoFoto')"
-                      >
+                        aria-label="Segna chiarito consenso foto" @click="clearSkippedQuestion('consensoFoto')">
                         <span class="material-symbols-outlined" aria-hidden="true">help</span>
                       </button>
                     </span>
                     <div class="yes-no-switch">
-                      <label
-                        v-for="option in yesNoOptions"
-                        :key="`consensoFoto-${option.value}`"
-                        class="yes-no-switch__option"
-                        :class="{ 'is-active': form.consensoFoto === option.value }"
-                      >
-                        <input
-                          class="yes-no-switch__input"
-                          type="radio"
-                          name="consensoFoto"
-                          :value="option.value"
+                      <label v-for="option in yesNoOptions" :key="`consensoFoto-${option.value}`"
+                        class="yes-no-switch__option" :class="{ 'is-active': form.consensoFoto === option.value }">
+                        <input class="yes-no-switch__input" type="radio" name="consensoFoto" :value="option.value"
                           :checked="form.consensoFoto === option.value"
-                          @change="setYesNo('consensoFoto', option.value)"
-                        >
+                          @change="setYesNo('consensoFoto', option.value)">
                         <span>{{ option.label }}</span>
                       </label>
                     </div>
                   </div>
                   <label class="small mb-0 laser-form-label">
                     <span>Zona da trattare</span>
-                    <button
-                      v-if="hasSkippedQuestion('zonaInteresse')"
-                      type="button"
-                      class="skip-flag-btn"
+                    <button v-if="hasSkippedQuestion('zonaInteresse')" type="button" class="skip-flag-btn"
                       :disabled="isClearingSkippedKey('zonaInteresse')"
                       title="Campo da chiarire: clicca per segnare come gestito"
-                      aria-label="Segna chiarito zona da trattare"
-                      @click="clearSkippedQuestion('zonaInteresse')"
-                    >
+                      aria-label="Segna chiarito zona da trattare" @click="clearSkippedQuestion('zonaInteresse')">
                       <span class="material-symbols-outlined" aria-hidden="true">help</span>
                     </button>
                   </label>
-                  <input
-                    v-model="form.zonaInteresse"
-                    type="text"
-                    class="form-control form-control-sm"
-                    placeholder="Es. inguine, gambe, ascelle..."
-                    data-skip-key="zonaInteresse"
-                  />
+                  <input v-model="form.zonaInteresse" type="text" class="form-control form-control-sm"
+                    placeholder="Es. inguine, gambe, ascelle..." data-skip-key="zonaInteresse" />
                 </div>
               </div>
             </div>
@@ -1898,34 +1666,19 @@ watch(() => route.params.id, loadItem)
               <div v-for="question in FITZPATRICK_QUESTIONS" :key="question.id" class="fitz-row">
                 <label class="small fw-semibold mb-1 laser-form-label">
                   <span>{{ question.label }}</span>
-                  <button
-                    v-if="hasSkippedQuestion(question.id)"
-                    type="button"
-                    class="skip-flag-btn"
+                  <button v-if="hasSkippedQuestion(question.id)" type="button" class="skip-flag-btn"
                     :disabled="isClearingSkippedKey(question.id)"
                     title="Campo da chiarire: clicca per segnare come gestito"
-                    :aria-label="`Segna chiarita domanda ${question.label}`"
-                    @click="clearSkippedQuestion(question.id)"
-                  >
+                    :aria-label="`Segna chiarita domanda ${question.label}`" @click="clearSkippedQuestion(question.id)">
                     <span class="material-symbols-outlined" aria-hidden="true">help</span>
                   </button>
                 </label>
                 <div class="fitz-options">
-                  <label
-                    v-for="option in question.options"
-                    :key="`${question.id}-${option.value}`"
-                    class="fitz-option"
-                    :class="{ 'is-active': form[question.id] === String(option.value) }"
-                    :title="option.label"
-                  >
-                    <input
-                      class="fitz-option__input"
-                      type="radio"
-                      :name="question.id"
-                      :value="String(option.value)"
+                  <label v-for="option in question.options" :key="`${question.id}-${option.value}`" class="fitz-option"
+                    :class="{ 'is-active': form[question.id] === String(option.value) }" :title="option.label">
+                    <input class="fitz-option__input" type="radio" :name="question.id" :value="String(option.value)"
                       :checked="form[question.id] === String(option.value)"
-                      @change="setFitzpatrickValue(question.id, String(option.value))"
-                    >
+                      @change="setFitzpatrickValue(question.id, String(option.value))">
                     <span class="fitz-option__text">{{ option.value }} : {{ option.label }}</span>
                   </label>
                 </div>
@@ -1940,33 +1693,22 @@ watch(() => route.params.id, loadItem)
             <Btn type="button" color="dark" icon="save" :loading="isSaving" @click="saveLaserSheet">
               Salva scheda laser
             </Btn>
-            <Btn type="button" color="secondary" variant="outline" icon="restart_alt" :disabled="isSaving" @click="resetFormValues">
+            <Btn type="button" color="secondary" variant="outline" icon="restart_alt" :disabled="isSaving"
+              @click="resetFormValues">
               Ripristina campi
             </Btn>
           </div>
         </article>
 
         <article class="laser-panel">
-          <ClientFilesGallery
-            section-title="Documenti scheda laser"
-            field-name="laser-documents"
-            :urls="laserDocumentUrls"
-            empty-text="Nessun documento scheda laser."
-            :is-uploading="isUploadingDocs"
-            :is-deleting="isDeletingFile"
-            :upload-files="uploadLaserDocuments"
-            :download-file="downloadFile"
-            :delete-file="removeLaserFile"
-          />
+          <ClientFilesGallery section-title="Documenti scheda laser" field-name="laser-documents"
+            :urls="laserDocumentUrls" empty-text="Nessun documento scheda laser." :is-uploading="isUploadingDocs"
+            :is-deleting="isDeletingFile" :upload-files="uploadLaserDocuments" :download-file="downloadFile"
+            :delete-file="removeLaserFile" />
         </article>
 
-        <div
-          v-if="isShareTokenModalOpen"
-          class="share-token-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Crea link pubblico scheda laser"
-        >
+        <div v-if="isShareTokenModalOpen" class="share-token-modal" role="dialog" aria-modal="true"
+          aria-label="Crea link pubblico scheda laser">
           <div class="share-token-modal__backdrop" @click="closeShareTokenModal"></div>
 
           <div class="share-token-modal__content card border-0 shadow-lg p-3 p-md-4">
@@ -1977,47 +1719,27 @@ watch(() => route.params.id, loadItem)
                   Seleziona la durata del token. Al termine mostreremo subito QR e link completo.
                 </p>
               </div>
-              <button type="button" class="btn-close" aria-label="Chiudi modal link pubblico" @click="closeShareTokenModal"></button>
+              <button type="button" class="btn-close" aria-label="Chiudi modal link pubblico"
+                @click="closeShareTokenModal"></button>
             </div>
 
             <div class="share-ttl-grid mt-3">
-              <label
-                v-for="option in shareTtlOptions"
-                :key="`share-ttl-${option.value}`"
-                class="share-ttl-option"
-                :class="{ 'is-active': selectedShareTtl === option.value }"
-              >
-                <input
-                  class="share-ttl-option__input"
-                  type="radio"
-                  name="share-ttl"
-                  :value="option.value"
-                  :checked="selectedShareTtl === option.value"
-                  @change="selectedShareTtl = option.value"
-                >
+              <label v-for="option in shareTtlOptions" :key="`share-ttl-${option.value}`" class="share-ttl-option"
+                :class="{ 'is-active': selectedShareTtl === option.value }">
+                <input class="share-ttl-option__input" type="radio" name="share-ttl" :value="option.value"
+                  :checked="selectedShareTtl === option.value" @change="selectedShareTtl = option.value">
                 <span class="share-ttl-option__label">{{ option.label }}</span>
                 <small class="share-ttl-option__description">{{ option.description }}</small>
               </label>
             </div>
 
             <div class="d-flex gap-2 mt-3 flex-wrap">
-              <Btn
-                type="button"
-                color="dark"
-                icon="qr_code_2"
-                :loading="isCreatingShareToken"
-                :disabled="!canCreateShareToken"
-                @click="createShareToken"
-              >
+              <Btn type="button" color="dark" icon="qr_code_2" :loading="isCreatingShareToken"
+                :disabled="!canCreateShareToken" @click="createShareToken">
                 Crea link e QR
               </Btn>
-              <Btn
-                type="button"
-                color="secondary"
-                variant="outline"
-                :disabled="isCreatingShareToken"
-                @click="closeShareTokenModal"
-              >
+              <Btn type="button" color="secondary" variant="outline" :disabled="isCreatingShareToken"
+                @click="closeShareTokenModal">
                 Annulla
               </Btn>
             </div>
@@ -2167,7 +1889,7 @@ watch(() => route.params.id, loadItem)
   padding: 0.75rem;
 }
 
-.laser-form-section + .laser-form-section {
+.laser-form-section+.laser-form-section {
   margin-top: 0.75rem;
 }
 

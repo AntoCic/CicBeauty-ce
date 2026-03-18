@@ -13,9 +13,8 @@ import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import { Timestamp } from 'firebase/firestore'
 import * as yup from 'yup'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAppointmentWatchManager } from '../../composables/useAppointmentWatchManager'
 import type { Client, ClientDeposit, ClientDepositSettlement } from '../../models/Client'
 import { computeFitzpatrickScore, resolveFitzpatrickPhototype } from '../../models/laserSheet'
 import { Auth } from '../../main'
@@ -89,13 +88,6 @@ const isDeletingClientFile = ref(false)
 const routeId = computed(() => String(route.params.id ?? '').trim())
 const isCreateMode = computed(() => !routeId.value || routeId.value === 'new')
 const isCreatingPurchase = computed(() => editingPurchaseIndex.value < 0)
-const CLIENT_EDIT_WATCH_SUSPEND_REASON = 'client-edit-view'
-const { suspendAppointmentWatch, releaseAppointmentWatch } = useAppointmentWatchManager()
-
-suspendAppointmentWatch(CLIENT_EDIT_WATCH_SUSPEND_REASON)
-onBeforeUnmount(() => {
-  releaseAppointmentWatch(CLIENT_EDIT_WATCH_SUSPEND_REASON)
-})
 
 const schema = toTypedSchema(
   yup.object({

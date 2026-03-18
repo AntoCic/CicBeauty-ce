@@ -230,7 +230,7 @@ function openAppointment() {
 }
 
 .calendar-appointment-card__overlap-flag {
-  display: inline-flex;
+  display: none;
   align-items: center;
   justify-content: center;
   padding: 0.03rem 0.23rem;
@@ -279,6 +279,10 @@ function openAppointment() {
   .calendar-appointment-card {
     padding: 0.2rem 0.27rem;
     font-size: 0.62rem;
+  }
+
+  .calendar-appointment-card__overlap-flag {
+    display: inline-flex;
   }
 
   .calendar-appointment-card__mobile {

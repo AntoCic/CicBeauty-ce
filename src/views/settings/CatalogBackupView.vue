@@ -78,6 +78,23 @@ const isLocalhost = computed(() => {
   return host === 'localhost' || host === '127.0.0.1' || host === '[::1]'
 })
 
+const LOCALHOST_CLIENT_IMPORT_PHONE = '+393295436315'
+
+function sanitizeClientRowForLocalImport(row: Record<string, unknown>, index: number): Record<string, unknown> {
+  const next = { ...row }
+  const progressive = String(index + 1).padStart(4, '0')
+  next.name = `Cliente ${progressive}`
+  next.surname = 'Import'
+  next.phone_number = LOCALHOST_CLIENT_IMPORT_PHONE
+
+  const currentEmail = String(row.email ?? '').trim()
+  if (currentEmail) {
+    next.email = `cliente.${progressive}@example.local`
+  }
+
+  return next
+}
+
 const defaultUpdateBy = computed(() => {
   const email = String(Auth.user?.email ?? '').trim()
   if (email) return email
@@ -146,6 +163,7 @@ function normalizeDateField(value: unknown) {
 type UpsertOptions = {
   dateFields?: string[]
   ensureUpdateBy?: boolean
+  transformRow?: (row: Record<string, unknown>, context: { index: number; id: string }) => Record<string, unknown>
 }
 
 function preparePayloadForUpsert(row: Record<string, unknown>, options: UpsertOptions = {}) {
@@ -179,7 +197,7 @@ async function upsertRows<D extends { id: string }, M extends FirestoreModel<D>>
   let updated = 0
   let skipped = 0
 
-  for (const row of rows) {
+  for (const [index, row] of rows.entries()) {
     const normalized = toRecord(row)
     if (!normalized) {
       skipped += 1
@@ -192,7 +210,8 @@ async function upsertRows<D extends { id: string }, M extends FirestoreModel<D>>
       continue
     }
 
-    const payload = preparePayloadForUpsert(normalized, options)
+    const transformed = options.transformRow ? options.transformRow(normalized, { index, id }) : normalized
+    const payload = preparePayloadForUpsert(transformed, options)
 
     try {
       const existing = store.findItemsById(id)
@@ -256,7 +275,11 @@ const collectionConfigs: CatalogCollectionConfig[] = [
     description: 'Rubrica clienti completa',
     count: () => clientStore.itemsActiveArray.length,
     getRows: () => clientStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
-    importRows: (rows) => upsertRows(clientStore, rows, { ensureUpdateBy: true }),
+    importRows: (rows) =>
+      upsertRows(clientStore, rows, {
+        ensureUpdateBy: true,
+        transformRow: (row, context) => (isLocalhost.value ? sanitizeClientRowForLocalImport(row, context.index) : row),
+      }),
   },
   {
     source: 'appointments',
@@ -519,6 +542,10 @@ async function onImportFileChange(event: Event) {
         <p class="text-muted small mb-3">
           Supporta sia file singoli (source del model) sia backup completi (`models-full`, compatibile anche con
           `catalog-full`).
+        </p>
+        <p v-if="isLocalhost" class="text-warning small mb-3">
+          In localhost, durante import clienti, nome/cognome/email vengono anonimizzati e il telefono diventa sempre
+          <strong>{{ LOCALHOST_CLIENT_IMPORT_PHONE }}</strong>.
         </p>
 
         <Btn

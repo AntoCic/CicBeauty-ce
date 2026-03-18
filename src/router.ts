@@ -40,7 +40,10 @@ import ClientLaserSheetsView from './views/clients/ClientLaserSheetsView.vue';
 import PublicLaserSheetFormView from './views/clients/PublicLaserSheetFormView.vue';
 import ExpensesView from './views/expenses/ExpensesView.vue';
 import CouponsView from './views/coupons/CouponsView.vue';
-import StatsView from './views/stats/StatsView.vue';
+import StatisticheGuadagniView from './views/home/auth/app/statistiche/StatisticheGuadagniView.vue';
+import StatisticheClientiView from './views/home/auth/app/statistiche/StatisticheClientiView.vue';
+import StatisticheTrattamentiView from './views/home/auth/app/statistiche/StatisticheTrattamentiView.vue';
+import StatisticheAppView from './views/home/auth/app/statistiche/StatisticheAppView.vue';
 import MigrationImportView from './views/migration/MigrationImportView.vue';
 import CatalogBackupView from './views/settings/CatalogBackupView.vue';
 import WhatsAppTemplatesView from './views/settings/WhatsAppTemplatesView.vue';
@@ -180,7 +183,36 @@ export const routes: RouteRecordRaw[] = [
   { path: '/bonifico-app', name: 'BonificoView', component: BonificoView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/price-list', name: 'PriceListView', component: PriceListView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/coupons', name: 'CouponsView', component: CouponsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
-  { path: '/stats', name: 'StatsView', component: StatsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  {
+    path: '/stats',
+    name: 'StatsView',
+    component: StatisticheAppView,
+    meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] },
+    children: [
+      {
+        path: '',
+        redirect: { name: 'StatsGuadagniView' },
+      },
+      {
+        path: 'guadagni',
+        name: 'StatsGuadagniView',
+        component: StatisticheGuadagniView,
+        meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] },
+      },
+      {
+        path: 'clienti',
+        name: 'StatsClientiView',
+        component: StatisticheClientiView,
+        meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] },
+      },
+      {
+        path: 'trattamenti',
+        name: 'StatsTrattamentiView',
+        component: StatisticheTrattamentiView,
+        meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] },
+      },
+    ],
+  },
   { path: '/migration/import', name: 'MigrationImportView', component: MigrationImportView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/announcements', name: 'AnnouncementsView', component: AnnouncementsView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
   { path: '/settings/app-config', name: 'AppConfigView', component: AppConfigView, meta: { loginStatus: true, permission: defaultUserPermission.SUPERADMIN } },

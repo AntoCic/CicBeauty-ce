@@ -62,7 +62,7 @@ const form = ref<Record<string, string>>({
   epilessia: 'no',
   cicloRegolare: 'no',
   zonaInteresse: '',
-  consensoFoto: 'no',
+  consensoFoto: 'si',
   fitzpatrick_q1: '',
   fitzpatrick_q2: '',
   fitzpatrick_q3: '',
@@ -230,6 +230,10 @@ function hydrateFormFromSession(nextSession: PublicLaserShareSession) {
   const nextForm = { ...form.value }
   for (const [key, value] of Object.entries(nextSession.answers ?? {})) {
     nextForm[key] = String(value ?? '')
+  }
+  const consensoFotoValue = normalizeString(nextForm.consensoFoto).toLowerCase()
+  if (consensoFotoValue !== 'si' && consensoFotoValue !== 'no') {
+    nextForm.consensoFoto = 'si'
   }
   form.value = nextForm
   skippedKeys.value = Array.isArray(nextSession.skippedKeys) ? [...nextSession.skippedKeys] : []

@@ -97,7 +97,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
   {
     id: 'stats',
     title: 'Statistiche',
-    to: { name: 'StatsView' },
+    to: { name: 'StatsGuadagniView' },
     icon: 'bar_chart',
     iconClass: 'app-icon-sky',
     permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES],
