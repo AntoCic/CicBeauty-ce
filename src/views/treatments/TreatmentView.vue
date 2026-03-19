@@ -9,6 +9,7 @@ import PublicSideNavigator from '../../components/public/PublicSideNavigator.vue
 import type { PublicSideLink } from '../../components/public/types'
 import { normalizeIdList } from '../../catalog/utils'
 import { usePublicSeo } from '../../composables/usePublicSeo'
+import { useStructuredData } from '../../composables/useStructuredData'
 import type { Treatment } from '../../models/Treatment'
 import { Auth } from '../../main'
 import { productStore } from '../../stores/productStore'
@@ -91,7 +92,10 @@ const pageDescription = computed(() =>
     : 'Dettaglio trattamento CNC Beauty con informazioni, durata e prodotti consigliati.',
 )
 
-usePublicSeo(pageTitle, pageDescription)
+usePublicSeo(pageTitle, pageDescription, {
+  canonicalPath: computed(() => item.value?.id ? `/treatment/${item.value.id}` : '/treatments'),
+  ogType: 'article',
+})
 
 const recommendedProducts = computed(() => {
   const current = item.value
@@ -144,6 +148,40 @@ function formatDuration(value: number | undefined) {
   if (typeof value !== 'number' || Number.isNaN(value) || value <= 0) return '-'
   return `${Math.round(value)} min`
 }
+
+const structuredData = computed(() => {
+  if (!item.value) return {}
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Service',
+        '@id': `${window.location.origin}/treatment/${item.value.id}#service`,
+        name: item.value.title,
+        description: item.value.subtitle || item.value.description || undefined,
+        category: itemCategoryLabels.value.join(', ') || undefined,
+        offers: typeof item.value.price === 'number'
+          ? {
+            '@type': 'Offer',
+            price: String(item.value.price),
+            priceCurrency: 'EUR',
+            availability: item.value.storeDisabeld ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+          }
+          : undefined,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: breadcrumbItems.value.map((crumb, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name: crumb.label,
+          item: crumb.to ? `${window.location.origin}${router.resolve(crumb.to).path}` : undefined,
+        })),
+      },
+    ],
+  }
+})
+useStructuredData('treatment-detail-schema', structuredData)
 
 onMounted(() => {
   loadItem()
@@ -204,7 +242,7 @@ async function onDeleteItem() {
                 <p class="detail-kicker">Trattamento</p>
 
                 <div class="detail-heading">
-                  <h2 class="detail-title">{{ item.title }}</h2>
+                  <h1 class="detail-title">{{ item.title }}</h1>
                   <p class="detail-price">
                     {{ formatPrice(item.price) }}
                   </p>

@@ -5,6 +5,7 @@ import { Auth } from '../main';
 
 <template>
   <nav class="legal-links" aria-label="Link legali">
+    <RouterLink class="legal-link" :to="{ name: 'PublicPriceListView' }">Prezzi & FAQ</RouterLink>
     <RouterLink class="legal-link" :to="{ name: 'PrivacyPolicyView' }">Privacy</RouterLink>
     <RouterLink class="legal-link" :to="{ name: 'CookiePolicyView' }">Cookie</RouterLink>
     <RouterLink class="legal-link" :to="{ name: 'TermsConditionsView' }">Termini</RouterLink>
