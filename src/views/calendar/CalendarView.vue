@@ -874,7 +874,7 @@ function onCalendarTouchCancel() {
 </script>
 
 <template>
-  <div class="container-fluid px-0 pb-t overflow-auto h-100" :style="bgStyle">
+  <div class="container-fluid px-0 pb-t calendar-page" :style="bgStyle">
     <CalendarHeaderExtra
       :has-active-filters="hasActiveFilters"
       :mobile-title="headerMonthLabel"
@@ -1068,8 +1068,18 @@ function onCalendarTouchCancel() {
   gap: 0.25rem;
 }
 
+.calendar-page {
+  height: 100svh;
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
 .calendar-shell {
   overflow: hidden;
+  touch-action: pan-y;
 }
 
 .calendar-grid {
