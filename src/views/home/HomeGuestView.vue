@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useScroll, useWindowSize } from '@vueuse/core'
 import { usePublicSeo } from '../../composables/usePublicSeo'
+import { useStructuredData } from '../../composables/useStructuredData'
 import { usePrefersReducedMotion } from '../../home/composables/usePrefersReducedMotion'
 import HeroSection from '../../home/sections/HeroSection.vue'
 import ManifestoSection from '../../home/sections/ManifestoSection.vue'
@@ -16,11 +17,86 @@ import { buildHomeContent } from '../../home/homeContent'
 import '../../styles/home.scss'
 
 const homeContent = computed(() => buildHomeContent(appConfigStore.getConfigData()))
+const config = computed(() => appConfigStore.getConfigData())
+const brandName = computed(() => String(config.value.brandName ?? 'CNC Beauty').trim() || 'CNC Beauty')
+const officeAddress = computed(() => String(config.value.officeAddress ?? '').trim())
+const publicPhone = computed(() => String(config.value.publicPhone ?? '').trim())
+const privacyEmail = computed(() => String(config.value.privacyEmail ?? '').trim())
+const servicesSummary = computed(() => homeContent.value.services.items.map((item) => item.title))
+const localFaqItems = computed(() => [
+  {
+    question: `Dove si trova ${brandName.value}?`,
+    answer: officeAddress.value || 'La sede è comunicata direttamente dal centro.',
+  },
+  {
+    question: 'Come contattare il centro estetico?',
+    answer: publicPhone.value
+      ? `Telefono e WhatsApp: ${publicPhone.value}.`
+      : 'Contatto disponibile nella sezione dedicata ai contatti.',
+  },
+  {
+    question: 'Dove vedere listino prezzi e catalogo servizi?',
+    answer: 'Nella pagina Prezzi, nel catalogo Trattamenti e nel catalogo Prodotti del sito.',
+  },
+])
 
 usePublicSeo(
   computed(() => homeContent.value.seo.title),
   computed(() => homeContent.value.seo.description),
+  {
+    canonicalPath: '/',
+  },
 )
+
+const homeStructuredData = computed(() => ({
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'BeautySalon',
+      '@id': `${window.location.origin}/#beautysalon`,
+      name: brandName.value,
+      url: `${window.location.origin}/`,
+      telephone: publicPhone.value || undefined,
+      email: privacyEmail.value || undefined,
+      address: officeAddress.value
+        ? {
+          '@type': 'PostalAddress',
+          streetAddress: officeAddress.value,
+          addressCountry: 'IT',
+        }
+        : undefined,
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${window.location.origin}/#website`,
+      name: brandName.value,
+      url: `${window.location.origin}/`,
+      inLanguage: 'it-IT',
+    },
+    {
+      '@type': 'ItemList',
+      name: 'Servizi principali del centro estetico',
+      itemListElement: servicesSummary.value.map((name, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        name,
+      })),
+    },
+    {
+      '@type': 'FAQPage',
+      mainEntity: localFaqItems.value.map((item) => ({
+        '@type': 'Question',
+        name: item.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.answer,
+        },
+      })),
+    },
+  ],
+}))
+
+useStructuredData('home-business-schema', homeStructuredData)
 
 const year = new Date().getFullYear()
 
@@ -80,6 +156,26 @@ const logoBgStyle = computed(() => {
       <HorizontalShowcaseSection :content="homeContent.showcase" />
       <ServicesSection :content="homeContent.services" />
       <FinalCtaSection :content="homeContent.finalCta" />
+
+      <section class="home-ai-summary" aria-labelledby="home-ai-summary-title">
+        <h2 id="home-ai-summary-title">Informazioni rapide: servizi, contatti e località</h2>
+        <p>
+          {{ brandName }} è un centro estetico con catalogo trattamenti e prodotti consultabile online.
+          In questa sezione trovi i dati principali in formato testuale per una lettura rapida.
+        </p>
+        <ul>
+          <li><strong>Brand:</strong> {{ brandName }}</li>
+          <li><strong>Indirizzo:</strong> {{ officeAddress || 'Disponibile su richiesta' }}</li>
+          <li><strong>Telefono:</strong> {{ publicPhone || 'Disponibile su richiesta' }}</li>
+          <li><strong>Email:</strong> {{ privacyEmail || 'Disponibile su richiesta' }}</li>
+          <li>
+            <strong>Pagine chiave:</strong>
+            <RouterLink :to="{ name: 'PublicPriceListView' }">Prezzi</RouterLink>,
+            <RouterLink :to="{ name: 'TreatmentCategoriesView' }">Trattamenti</RouterLink>,
+            <RouterLink :to="{ name: 'ProductCategoriesView' }">Prodotti</RouterLink>.
+          </li>
+        </ul>
+      </section>
     </div>
 
     <footer class="home-editorial__footer">
@@ -110,6 +206,24 @@ const logoBgStyle = computed(() => {
   align-items: end;
   gap: clamp(0.8rem, 2vw, 1.6rem);
   border-top: 1px solid rgba(36, 29, 27, 0.14);
+}
+
+.home-ai-summary {
+  width: var(--home-shell);
+  margin: clamp(1rem, 2.2vw, 1.5rem) auto 0;
+  padding: clamp(1rem, 2vw, 1.3rem);
+  border: 1px solid rgba(84, 44, 58, 0.18);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.home-ai-summary h2 {
+  margin-bottom: 0.6rem;
+  font-size: clamp(1.02rem, 2vw, 1.4rem);
+}
+
+.home-ai-summary p {
+  margin-bottom: 0.5rem;
 }
 
 .home-footer__brand {

@@ -35,6 +35,12 @@ function isCatalogActive(key: 'products' | 'treatments') {
           <!-- <a class="home-header__catalog-link text-decoration-none" href="#metodo">{{ content.methodLabel }}</a> -->
           <a class="home-header__catalog-link text-decoration-none" href="#percorsi">{{ content.pathsLabel }}</a>
           <RouterLink
+            :to="{ name: 'PublicPriceListView' }"
+            class="home-header__catalog-link text-decoration-none"
+          >
+            {{ content.pricesLabel }}
+          </RouterLink>
+          <RouterLink
             :to="{ name: 'ProductCategoriesView' }"
             class="home-header__catalog-link text-decoration-none"
             :class="{ 'is-active': isCatalogActive('products') }"

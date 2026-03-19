@@ -52,6 +52,7 @@ import WhatsAppTemplatesView from './views/settings/WhatsAppTemplatesView.vue';
 import BonificoView from './views/payments/BonificoView.vue';
 import PriceListView from './views/price-list/PriceListView.vue';
 import RefreshHomeView from './views/tools/RefreshHomeView.vue';
+import PublicPriceListView from './views/public/PublicPriceListView.vue';
 
 
 // ===================================================================================================
@@ -144,6 +145,18 @@ export const routes: RouteRecordRaw[] = [
       publicDepth: 1,
       title: 'Categorie Prodotti | CNC Beauty',
       description: 'Naviga tra le categorie prodotti CNC Beauty e trova la routine ideale per te.',
+    },
+  },
+  {
+    path: '/prezzi',
+    name: 'PublicPriceListView',
+    component: PublicPriceListView,
+    meta: {
+      publicRoute: true,
+      publicDepth: 1,
+      title: 'Prezzi Trattamenti e Prodotti | CNC Beauty',
+      description: 'Listino pubblico CNC Beauty con trattamenti, prodotti, categorie e prezzi in formato leggibile.',
+      robots: 'index,follow',
     },
   },
   { path: '/products/manage', name: 'ProductsManageView', component: ProductsManageView, meta: { loginStatus: true } },
