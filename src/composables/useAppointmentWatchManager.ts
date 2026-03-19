@@ -49,6 +49,7 @@ const loadedMonthKeys = new Set<string>()
 const WATCH_HEALTH_CHECK_MS = 4000
 const RETRY_DELAY_MIN_MS = 1500
 const RETRY_DELAY_MAX_MS = 30000
+const CALENDAR_WATCH_PADDING_MONTHS = 1
 
 let appliedMode = 'idle'
 let appliedReason = ''
@@ -406,16 +407,35 @@ export function activateCalendarMonthWatch(monthDate: Date, input: string | Acti
   const prefetchMonths = Number.isFinite(rawPrefetchMonths)
     ? Math.max(0, Math.min(6, Math.trunc(rawPrefetchMonths)))
     : 1
-  const nextFrom = addMonths(visibleMonth, -1)
-  const nextTo = addMonths(visibleMonth, prefetchMonths + 1)
+  const requiredFrom = addMonths(visibleMonth, -1)
+  const requiredTo = addMonths(visibleMonth, prefetchMonths + 1)
+  const paddingMonths = Math.max(0, CALENDAR_WATCH_PADDING_MONTHS)
+  const nextFrom = addMonths(requiredFrom, -paddingMonths)
+  const nextTo = addMonths(requiredTo, paddingMonths)
 
-  calendarFromByReason.set(normalizedReason, nextFrom)
-  calendarToByReason.set(normalizedReason, nextTo)
+  const currentFrom = calendarFromByReason.get(normalizedReason)
+  const currentTo = calendarToByReason.get(normalizedReason)
+  const currentCoversRequiredRange = Boolean(
+    currentFrom &&
+    currentTo &&
+    currentFrom.getTime() <= requiredFrom.getTime() &&
+    currentTo.getTime() >= requiredTo.getTime(),
+  )
+
+  const appliedFrom = currentCoversRequiredRange && currentFrom ? currentFrom : nextFrom
+  const appliedTo = currentCoversRequiredRange && currentTo ? currentTo : nextTo
+
+  calendarFromByReason.set(normalizedReason, appliedFrom)
+  calendarToByReason.set(normalizedReason, appliedTo)
   calendarVisibleMonthByReason.set(normalizedReason, monthKey(visibleMonth))
   rebuildActiveMonthKeys()
-  addLoadedMonths(nextFrom, addMonths(visibleMonth, prefetchMonths))
+  addLoadedMonths(appliedFrom, addMonths(visibleMonth, prefetchMonths + paddingMonths))
 
-  setWatchRequest(normalizedReason, 'calendar-month', nextFrom, nextTo, WATCH_PRIORITY.calendarMonth)
+  if (!currentCoversRequiredRange) {
+    setWatchRequest(normalizedReason, 'calendar-month', nextFrom, nextTo, WATCH_PRIORITY.calendarMonth)
+  } else {
+    queueApplyWatchPlan()
+  }
   return () => releaseAppointmentWatch(normalizedReason)
 }
 
