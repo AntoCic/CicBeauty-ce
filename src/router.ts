@@ -45,13 +45,14 @@ import CouponsListView from './views/coupons/CouponsListView.vue';
 import CouponDetailView from './views/coupons/CouponDetailView.vue';
 import StatisticheGuadagniView from './views/home/auth/app/statistiche/StatisticheGuadagniView.vue';
 import StatisticheClientiView from './views/home/auth/app/statistiche/StatisticheClientiView.vue';
-import StatisticheTrattamentiView from './views/home/auth/app/statistiche/StatisticheTrattamentiView.vue';
+import StatisticheAppuntamentiView from './views/home/auth/app/statistiche/StatisticheAppuntamentiView.vue';
 import StatisticheAppView from './views/home/auth/app/statistiche/StatisticheAppView.vue';
 import MigrationImportView from './views/migration/MigrationImportView.vue';
 import CatalogBackupView from './views/settings/CatalogBackupView.vue';
 import WhatsAppTemplatesView from './views/settings/WhatsAppTemplatesView.vue';
 import BonificoView from './views/payments/BonificoView.vue';
 import PriceListView from './views/price-list/PriceListView.vue';
+import RefreshHomeView from './views/tools/RefreshHomeView.vue';
 
 
 // ===================================================================================================
@@ -64,6 +65,7 @@ export const routes: RouteRecordRaw[] = [
     meta: {
       publicRoute: true,
       publicDepth: 0,
+      keepAlive: true,
       title: 'CNC Beauty | Trattamenti, prodotti e benessere',
       description: 'Centro estetico CNC Beauty: trattamenti professionali, prodotti selezionati e consulenza personalizzata.',
     },
@@ -211,9 +213,9 @@ export const routes: RouteRecordRaw[] = [
         meta: { loginStatus: true, permission: [UserPermission.OPERATORE] },
       },
       {
-        path: 'trattamenti',
-        name: 'StatsTrattamentiView',
-        component: StatisticheTrattamentiView,
+        path: 'appuntamenti',
+        name: 'StatsAppuntamentiView',
+        component: StatisticheAppuntamentiView,
         meta: { loginStatus: true, permission: [UserPermission.OPERATORE] },
       },
     ],
@@ -225,6 +227,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/settings/calendar-recurrences', name: 'CalendarRecurrenceRulesView', component: CalendarRecurrenceRulesView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
   { path: '/settings/catalog-backup', name: 'CatalogBackupView', component: CatalogBackupView, meta: { loginStatus: true, permission: defaultUserPermission.SUPERADMIN } },
   { path: '/settings/whatsapp-templates', name: 'WhatsAppTemplatesView', component: WhatsAppTemplatesView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
+  { path: '/tools/refresh-home', name: 'RefreshHomeView', component: RefreshHomeView, meta: { loginStatus: true } },
   {
     path: '/ai/beauty-chat',
     name: 'AiBeautyChatView',
