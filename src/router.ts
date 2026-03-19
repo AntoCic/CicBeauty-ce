@@ -45,7 +45,7 @@ import CouponsListView from './views/coupons/CouponsListView.vue';
 import CouponDetailView from './views/coupons/CouponDetailView.vue';
 import StatisticheGuadagniView from './views/home/auth/app/statistiche/StatisticheGuadagniView.vue';
 import StatisticheClientiView from './views/home/auth/app/statistiche/StatisticheClientiView.vue';
-import StatisticheTrattamentiView from './views/home/auth/app/statistiche/StatisticheTrattamentiView.vue';
+import StatisticheAppuntamentiView from './views/home/auth/app/statistiche/StatisticheAppuntamentiView.vue';
 import StatisticheAppView from './views/home/auth/app/statistiche/StatisticheAppView.vue';
 import MigrationImportView from './views/migration/MigrationImportView.vue';
 import CatalogBackupView from './views/settings/CatalogBackupView.vue';
@@ -212,9 +212,9 @@ export const routes: RouteRecordRaw[] = [
         meta: { loginStatus: true, permission: [UserPermission.OPERATORE] },
       },
       {
-        path: 'trattamenti',
-        name: 'StatsTrattamentiView',
-        component: StatisticheTrattamentiView,
+        path: 'appuntamenti',
+        name: 'StatsAppuntamentiView',
+        component: StatisticheAppuntamentiView,
         meta: { loginStatus: true, permission: [UserPermission.OPERATORE] },
       },
     ],
