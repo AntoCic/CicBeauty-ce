@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type StatsTab = 'guadagni' | 'clienti' | 'trattamenti'
+type StatsTab = 'guadagni' | 'clienti' | 'appuntamenti'
 
 defineProps<{
   active: StatsTab
@@ -8,7 +8,7 @@ defineProps<{
 const tabs: Array<{ id: StatsTab; label: string; icon: string; routeName: string }> = [
   { id: 'guadagni', label: 'Guadagni', icon: 'payments', routeName: 'StatsGuadagniView' },
   { id: 'clienti', label: 'Clienti', icon: 'groups', routeName: 'StatsClientiView' },
-  { id: 'trattamenti', label: 'Trattamenti', icon: 'spa', routeName: 'StatsTrattamentiView' },
+  { id: 'appuntamenti', label: 'Appuntamenti', icon: 'calendar_month', routeName: 'StatsAppuntamentiView' },
 ]
 </script>
 
