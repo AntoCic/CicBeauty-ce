@@ -135,7 +135,6 @@ onMounted(() => {
 
   <main :class="{
     'app-main--public': isPublicRoute,
-    'app-main--with-quick-toolbar': showQuickToolbar,
   }" :style="publicMainInlineStyle">
     <RouterView v-slot="{ Component, route: activeRoute }">
       <KeepAlive>
@@ -163,9 +162,3 @@ onMounted(() => {
   <RegisterSW :registerSW="registerSW" />
   <AutoPushPermissionModal :only-after-login="true" />
 </template>
-
-<style>
-main.app-main--with-quick-toolbar {
-  padding-bottom: calc(92px + env(safe-area-inset-bottom));
-}
-</style>

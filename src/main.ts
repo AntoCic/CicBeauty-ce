@@ -41,6 +41,28 @@ const reduceMotionEnabled = typeof window !== 'undefined'
   ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
   : false
 
+if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) {
+  const preventDefault = (event: Event) => {
+    event.preventDefault();
+  };
+
+  const preventDoubleTapZoom = (() => {
+    let lastTouchEnd = 0;
+    return (event: Event) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 320) {
+        event.preventDefault();
+      }
+      lastTouchEnd = now;
+    };
+  })();
+
+  document.addEventListener('gesturestart', preventDefault, { passive: false });
+  document.addEventListener('gesturechange', preventDefault, { passive: false });
+  document.addEventListener('gestureend', preventDefault, { passive: false });
+  document.addEventListener('touchend', preventDoubleTapZoom, { passive: false });
+}
+
 const app = createApp(App);
 app.use(MotionPlugin, {
   directives: createMotionPresets(reduceMotionEnabled),
