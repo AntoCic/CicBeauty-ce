@@ -121,7 +121,7 @@ function resolveVariantConfig(variant: PriceListPdfVariant): PdfVariantConfig {
       showItemSubtitle: true,
       showItemDescription: true,
       showItemAvailabilityNote: true,
-      contentScale: 1.2,
+      contentScale: 1.5,
     }
   }
 

@@ -329,7 +329,11 @@ async function loadSession() {
   }
 }
 
-async function saveCurrentStep() {
+function isCompletingStep() {
+  return currentStepIndex.value === totalSteps.value - 2
+}
+
+async function saveCurrentStep(completeSession = false) {
   if (!session.value) return
   const fields = currentStep.value.fields
   if (!fields.length) return
@@ -338,6 +342,7 @@ async function saveCurrentStep() {
     token: token.value,
     updates: buildStepUpdates(fields),
     skippedKeys: [] as string[],
+    completeSession,
   }
 
   const response = await savePublicLaserShareSessionStep(payload)
@@ -349,10 +354,12 @@ async function onSkipCurrentStep() {
   isSavingStep.value = true
   stepValidationError.value = ''
   try {
+    const completeSession = isCompletingStep()
     const response = await savePublicLaserShareSessionStep({
       token: token.value,
       updates: buildStepUpdates([]),
       skippedKeys: currentStep.value.fields,
+      completeSession,
     })
     skippedKeys.value = response.skippedKeys
     if (currentStepIndex.value < totalSteps.value - 1) {
@@ -376,7 +383,7 @@ async function onNextStep() {
 
   isSavingStep.value = true
   try {
-    await saveCurrentStep()
+    await saveCurrentStep(isCompletingStep())
     if (currentStepIndex.value < totalSteps.value - 1) {
       currentStepIndex.value += 1
     }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, toast, useStoreWatch } from 'cic-kit'
+import { Btn, cicKitStore, toast } from 'cic-kit'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
@@ -15,14 +15,6 @@ import { downloadCouponGiftPdf } from './couponGiftPdf'
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const isDownloadingId = ref('')
-
-useStoreWatch([
-  { store: couponStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } } },
-  { store: clientStore, getOpts: {} },
-  { store: treatmentStore, getOpts: {} },
-  { store: appointmentStore, getOpts: {} },
-  { store: appConfigStore, checkLogin: false },
-])
 
 const clientsById = computed(() => new Map(clientStore.itemsActiveArray.map((client) => [client.id, client])))
 const treatmentsById = computed(() => new Map(treatmentStore.itemsActiveArray.map((treatment) => [treatment.id, treatment])))

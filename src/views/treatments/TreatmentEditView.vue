@@ -432,7 +432,6 @@ async function onDeleteTreatment() {
 onMounted(() => {
   loadItem()
 })
-watch(() => route.params.id, loadItem)
 watch(
   () => productStore.itemsActiveArray.length,
   () => {

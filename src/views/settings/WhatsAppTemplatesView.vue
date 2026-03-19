@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, defaultUserPermission, toast, useChangeHeader, useStoreWatch } from 'cic-kit'
+import { Btn, cicKitStore, defaultUserPermission, toast, useChangeHeader } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -23,7 +23,6 @@ useChangeHeader('Template WhatsApp', { name: 'home' })
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const canManage = computed(() => hasPermissionAccess(defaultUserPermission.ADMIN))
-useStoreWatch(canManage.value ? [{ store: whatsAppTemplateStore }] : [])
 
 const templateSections = [
   {

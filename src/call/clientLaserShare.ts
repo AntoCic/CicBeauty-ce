@@ -2,7 +2,7 @@ import { ensureFirebase, functions } from 'cic-kit'
 import { httpsCallable } from 'firebase/functions'
 import { firebaseConfig } from '../firebase-config'
 
-export type LaserShareTtlHours = 3 | 12 | 24 | 48 | 72
+export type LaserShareTtlHours = 48 | 168 | 336 | 720
 
 type CreateTokenRequest = {
   clientId: string
@@ -37,6 +37,7 @@ export type SavePublicLaserSharePayload = {
   token: string
   updates?: Record<string, unknown>
   skippedKeys?: string[]
+  completeSession?: boolean
 }
 
 type SavePublicLaserShareResponse = {

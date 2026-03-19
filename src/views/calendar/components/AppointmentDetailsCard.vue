@@ -11,6 +11,7 @@ const props = withDefaults(
     operatorLabel: string
     treatmentsLabel: string
     couponLabel: string
+    couponPath?: string
     total?: number
     isPersonal?: boolean
     isPublic?: boolean
@@ -20,6 +21,7 @@ const props = withDefaults(
   {
     total: 0,
     clientPath: '',
+    couponPath: '',
     isPersonal: false,
     isPublic: false,
     notes: '',
@@ -86,7 +88,12 @@ const financialLabel = computed(() => {
       <div class="col-12 col-md-6">
         <div class="appointment-details-card__item">
           <small class="text-muted d-block">Coupon</small>
-          <span>{{ couponLabel }}</span>
+          <router-link v-if="couponPath" :to="couponPath" class="appointment-details-card__coupon-link">
+            <span class="appointment-details-card__coupon-badge" aria-hidden="true">🎁</span>
+            <span>{{ couponLabel }}</span>
+            <span class="material-symbols-outlined appointment-details-card__coupon-icon" aria-hidden="true">arrow_outward</span>
+          </router-link>
+          <span v-else>{{ couponLabel }}</span>
         </div>
       </div>
       <div class="col-12 col-md-6">
@@ -173,6 +180,35 @@ const financialLabel = computed(() => {
 }
 
 .appointment-details-card__client-icon {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.appointment-details-card__coupon-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #6a2032;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.appointment-details-card__coupon-link:hover {
+  text-decoration: underline;
+}
+
+.appointment-details-card__coupon-link:focus-visible {
+  outline: 2px solid rgba(106, 32, 50, 0.33);
+  outline-offset: 2px;
+  border-radius: 0.2rem;
+}
+
+.appointment-details-card__coupon-badge {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.appointment-details-card__coupon-icon {
   font-size: 0.9rem;
   line-height: 1;
 }

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, toast, useChangeHeader, useStoreWatch } from "cic-kit";
+import { Btn, cicKitStore, toast, useChangeHeader } from "cic-kit";
 import { Form, Field, ErrorMessage } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/yup";
 import * as yup from "yup";
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { announcementStore } from "../../stores/announcementStore";
 import { Auth } from "../../main";
 
@@ -14,13 +14,9 @@ type AnnouncementForm = {
 };
 
 useChangeHeader("Avvisi", "/");
-useStoreWatch([
-  {
-    store: announcementStore,
-    getOpts: { orderBy: { fieldPath: "updatedAt", directionStr: "desc" } },
-    checkLogin: false,
-  },
-]);
+onMounted(() => {
+  void announcementStore.get({ orderBy: { fieldPath: "updatedAt", directionStr: "desc" } });
+});
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle());
 const formKey = ref(0);

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, toast, useChangeHeader, useStoreWatch } from 'cic-kit'
+import { Btn, cicKitStore, toast, useChangeHeader } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { Auth } from '../../main'
 import {
   AGENT_PROMPT_DEFAULTS,
@@ -26,7 +26,10 @@ type AgentPromptForm = {
 useChangeHeader('Prompt AI Agents', { name: 'home' })
 
 const canManage = computed(() => Auth.isAdmin || Auth.isSuperAdmin)
-useStoreWatch(canManage.value ? [{ store: agentPromptStore, checkLogin: false }] : [])
+onMounted(() => {
+  if (!canManage.value) return
+  void agentPromptStore.get()
+})
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const selectedAgentId = ref<AgentPromptId>(AGENT_PROMPT_IDS[0])

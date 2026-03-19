@@ -174,8 +174,6 @@ onMounted(() => {
   loadItem()
 })
 
-watch(() => route.params.id, loadItem)
-
 watch(
   imageUrls,
   (urls) => {

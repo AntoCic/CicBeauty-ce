@@ -1,3 +1,9 @@
+## v0.0.55 - 2026-03-19
+
+fixing token laser
+
+---
+
 ## v0.0.54 - 2026-03-18
 
 fix appointment and scheda laser and statistiche

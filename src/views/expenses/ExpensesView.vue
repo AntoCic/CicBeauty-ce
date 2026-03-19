@@ -8,13 +8,12 @@ import {
   toFileArray,
   uploadFilesToUrls,
   type FieldFileValue,
-  useStoreWatch,
 } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { Timestamp } from 'firebase/firestore'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { Auth } from '../../main'
 import { clientStore } from '../../stores/clientStore'
@@ -39,10 +38,9 @@ type ExpenseForm = {
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const fileValue = ref<FieldFileValue>([])
 
-useStoreWatch([
-  { store: expenseStore, getOpts: { orderBy: { fieldPath: 'paidAt', directionStr: 'desc' },  } },
-  { store: couponStore, getOpts: {  } },
-])
+onMounted(() => {
+  void expenseStore.get({ orderBy: { fieldPath: 'paidAt', directionStr: 'desc' } })
+})
 
 const schema = toTypedSchema(
   yup.object({

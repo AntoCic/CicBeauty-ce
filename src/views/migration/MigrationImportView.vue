@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, normalizeGender, toast, useStoreWatch } from 'cic-kit'
+import { Btn, cicKitStore, normalizeGender, toast } from 'cic-kit'
 import { Timestamp } from 'firebase/firestore'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { parseAiError } from '../../call/_utilityApi'
 import {
@@ -83,13 +83,15 @@ const appointmentsSummary = ref<ImportSummary | null>(null)
 const importedAppointmentMonths = ref<Record<string, ImportSummary>>({})
 const activeMonthImportKey = ref('')
 
-useStoreWatch([
-  { store: treatmentStore, getOpts: { } },
-  { store: typeExpenseStore, getOpts: { } },
-  { store: clientStore, getOpts: { } },
-  { store: appointmentStore, getOpts: { } },
-  { store: publicUserStore, getOpts: { } },
-])
+onMounted(() => {
+  void Promise.all([
+    treatmentStore.get(),
+    typeExpenseStore.get(),
+    clientStore.get(),
+    appointmentStore.get(),
+    publicUserStore.get(),
+  ])
+})
 
 const parsedCounts = computed(() => {
   const data = parsedExport.value

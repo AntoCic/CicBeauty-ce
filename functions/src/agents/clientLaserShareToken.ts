@@ -3,6 +3,7 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError, onCall, onRequest, type CallableRequest } from 'firebase-functions/v2/https';
 import type { Request, Response } from 'express';
 import { db } from '../config/firebaseAdmin.js';
+import { sendUserPush } from '../config/cicKitFunctions.js';
 import { REGION } from '../config/runtime.js';
 import { requireAuth } from '../utils/auth.js';
 
@@ -15,9 +16,10 @@ type RevokeTokenRequest = {
   clientId?: string;
 };
 
-const TOKEN_TTL_HOURS = new Set([3, 12, 24, 48, 72]);
+const TOKEN_TTL_HOURS = new Set([48, 168, 336, 720]);
 const OPERATOR_PERMISSIONS = new Set(['OPERATORE', 'ADMIN', 'SUPERADMIN']);
 const MAX_TEXT_LENGTH = 1500;
+const SYSTEM_PUSH_UID = 'public-laser-share';
 
 const PUBLIC_TEXT_KEYS = new Set([
   'clientAddress',
@@ -102,6 +104,7 @@ export const createClientLaserShareToken = onCall<CreateTokenRequest>(
       laserShareTokenCreatedAt: Timestamp.fromDate(now),
       laserShareTokenExpiresAt: Timestamp.fromDate(expiresAt),
       laserShareTokenOperatorFirstName: operatorFirstName,
+      laserShareTokenCreatedByUid: uid,
       updateBy,
     };
 
@@ -152,11 +155,7 @@ export const revokeClientLaserShareToken = onCall<RevokeTokenRequest>(
     }
 
     await clientRef.update({
-      laserShareToken: FieldValue.delete(),
-      laserShareTokenHash: FieldValue.delete(),
-      laserShareTokenCreatedAt: FieldValue.delete(),
-      laserShareTokenExpiresAt: FieldValue.delete(),
-      laserShareTokenOperatorFirstName: FieldValue.delete(),
+      ...buildShareTokenRevocationUpdate(),
       updateBy,
     });
 
@@ -221,10 +220,13 @@ export const saveClientLaserShareSession = onRequest(
       const token = readRequiredString(body, 'token');
       const updates = asObjectOrEmpty(body.updates);
       const skippedKeys = normalizeStringArray(body.skippedKeys).filter((key) => ALLOWED_PUBLIC_KEYS.has(key));
+      const completeSession = readBoolean(body.completeSession);
 
       const clientTokenData = await resolveClientByToken(token);
       const clientRef = clientTokenData.ref;
       const clientData = clientTokenData.data;
+      const creatorUid = normalizeString(clientData.laserShareTokenCreatedByUid);
+      const clientDisplayName = resolveClientDisplayName(clientData);
       const previousSheet = readSheetRecord(clientData.schedaLaser);
       const sanitizedUpdates = sanitizeUpdates(updates);
       const nextSheet = {
@@ -242,12 +244,24 @@ export const saveClientLaserShareSession = onRequest(
         }
       }
 
-      await clientRef.update({
+      const updatePayload: Record<string, unknown> = {
         schedaLaser: nextSheet,
         laserShareSkippedKeys: [...nextSkipped],
         dataSchiedaLaser: Timestamp.fromDate(new Date()),
         updateBy: 'public-laser-share',
-      });
+      };
+      if (completeSession) {
+        Object.assign(updatePayload, buildShareTokenRevocationUpdate());
+      }
+
+      await clientRef.update(updatePayload);
+      if (completeSession) {
+        await notifyShareCompleted({
+          toUid: creatorUid,
+          clientId: clientRef.id,
+          clientName: clientDisplayName,
+        });
+      }
 
       response.status(200).json({
         ok: true,
@@ -298,6 +312,56 @@ async function resolveClientByToken(token: string) {
     ref: doc.ref,
     data,
     expiresAt,
+  };
+}
+
+async function notifyShareCompleted(params: { toUid: string; clientId: string; clientName: string }) {
+  const toUid = normalizeString(params.toUid);
+  if (!toUid) return;
+
+  const clientName = normalizeString(params.clientName) || 'Un cliente';
+  const title = `⚡ ${clientName} ha completato la scheda laser`;
+  const body = `${clientName} ha completato la compilazione della scheda laser.`;
+
+  try {
+    await sendUserPush.run({
+      data: {
+        toUid,
+        title,
+        options: {
+          body,
+          data: { url: `/clients/${params.clientId}/laser` },
+        },
+      },
+      auth: {
+        uid: SYSTEM_PUSH_UID,
+        token: {} as never,
+        rawToken: 'internal',
+      },
+      rawRequest: {} as never,
+      acceptsStreaming: false,
+    } as never);
+  } catch (error) {
+    console.error('Errore invio notifica completamento scheda laser', error);
+  }
+}
+
+function resolveClientDisplayName(clientData: Record<string, unknown>) {
+  const name = normalizeString(clientData.name);
+  const surname = normalizeString(clientData.surname);
+  const fullName = `${name} ${surname}`.trim();
+  if (fullName) return fullName;
+  return name || 'Cliente';
+}
+
+function buildShareTokenRevocationUpdate() {
+  return {
+    laserShareToken: FieldValue.delete(),
+    laserShareTokenHash: FieldValue.delete(),
+    laserShareTokenCreatedAt: FieldValue.delete(),
+    laserShareTokenExpiresAt: FieldValue.delete(),
+    laserShareTokenOperatorFirstName: FieldValue.delete(),
+    laserShareTokenCreatedByUid: FieldValue.delete(),
   };
 }
 
@@ -504,6 +568,12 @@ function normalizeString(value: unknown) {
 function normalizeStringArray(raw: unknown) {
   if (!Array.isArray(raw)) return [];
   return [...new Set(raw.map((item) => normalizeString(item)).filter(Boolean))];
+}
+
+function readBoolean(raw: unknown) {
+  if (typeof raw === 'boolean') return raw;
+  const normalized = normalizeString(raw).toLowerCase();
+  return normalized === 'true' || normalized === '1';
 }
 
 function asObject(input: unknown) {

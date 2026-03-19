@@ -4,7 +4,7 @@ import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { Timestamp } from 'firebase/firestore'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { callAvailabilityAgent } from '../../call/callAvailabilityAgent'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
@@ -267,6 +267,11 @@ const currentCouponLabel = computed(() => {
   const coupon = couponStore.findItemsById(couponId)
   if (!coupon) return couponId
   return couponDisplayTitle(coupon)
+})
+const currentCouponPath = computed(() => {
+  const couponId = normalizeString(current.value?.coupon_id)
+  if (!couponId) return ''
+  return `/coupons/${encodeURIComponent(couponId)}`
 })
 
 function normalizeString(value: unknown) {
@@ -933,7 +938,6 @@ async function requestAiSuggestions(values: Record<string, unknown>) {
 }
 
 onMounted(loadItem)
-watch(() => route.params.id, loadItem)
 </script>
 
 <template>
@@ -1433,6 +1437,7 @@ watch(() => route.params.id, loadItem)
           :operator-label="currentOperatorLabel"
           :treatments-label="currentTreatmentsLabel"
           :coupon-label="currentCouponLabel"
+          :coupon-path="currentCouponPath"
           :total="current.total"
           :is-personal="current.isPersonal"
           :is-public="current.isPublic"

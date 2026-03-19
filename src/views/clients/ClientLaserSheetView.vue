@@ -89,7 +89,6 @@ const isSaving = ref(false)
 const isDownloadingPdf = ref(false)
 const isUploadingDocs = ref(false)
 const isDeletingFile = ref(false)
-const isShareTokenModalOpen = ref(false)
 const isCreatingShareToken = ref(false)
 const isRevokingShareToken = ref(false)
 const isCopyingShareLink = ref(false)
@@ -107,14 +106,14 @@ const binaryGenderOptions = [
   { value: 'F', label: 'Donna' },
   { value: 'M', label: 'Uomo' },
 ]
-const shareTtlOptions: Array<{ value: LaserShareTtlHours; label: string; description: string }> = [
-  { value: 3, label: '3 ore', description: 'Ideale per invio immediato' },
-  { value: 12, label: '12 ore', description: 'Valido per tutta la giornata' },
-  { value: 24, label: '1 giorno', description: 'Scadenza dopo 24 ore' },
-  { value: 48, label: '2 giorni', description: 'Scadenza dopo 48 ore' },
-  { value: 72, label: '3 giorni', description: 'Scadenza dopo 72 ore' },
+const DEFAULT_SHARE_TTL_HOURS: LaserShareTtlHours = 48
+const shareTtlOptions: Array<{ value: LaserShareTtlHours; label: string }> = [
+  { value: 48, label: '2 giorni' },
+  { value: 168, label: '1 settimana' },
+  { value: 336, label: '2 settimane' },
+  { value: 720, label: '1 mese' },
 ]
-const selectedShareTtl = ref<LaserShareTtlHours>(3)
+const selectedShareTtl = ref<LaserShareTtlHours>(DEFAULT_SHARE_TTL_HOURS)
 
 const operatorNameFromLogin = computed(() => {
   const authUid = normalizeString(Auth.uid)
@@ -146,6 +145,7 @@ const isManFlow = computed(() => currentGender.value !== 'F')
 const showEpilationDetails = computed(() => form.value.epilationAlreadyDone === 'si')
 
 const shareToken = computed(() => normalizeString(current.value?.laserShareToken))
+const shareTokenCreatedAt = computed(() => asDate(current.value?.laserShareTokenCreatedAt))
 const shareTokenExpiresAt = computed(() => asDate(current.value?.laserShareTokenExpiresAt))
 const shareTokenExpired = computed(() => {
   if (!shareToken.value) return false
@@ -154,6 +154,7 @@ const shareTokenExpired = computed(() => {
   return expiresAt.getTime() <= Date.now()
 })
 const hasActiveShareToken = computed(() => Boolean(shareToken.value) && !shareTokenExpired.value)
+const hasInactiveShareToken = computed(() => Boolean(shareToken.value) && shareTokenExpired.value)
 const shareLink = computed(() => {
   if (!shareToken.value) return ''
   return buildClientLaserShareUrl(shareToken.value)
@@ -176,6 +177,10 @@ const shareTokenExpiresAtLabel = computed(() => {
     hour: '2-digit',
     minute: '2-digit',
   })
+})
+const selectedShareTtlLabel = computed(() => {
+  const option = shareTtlOptions.find((item) => item.value === selectedShareTtl.value)
+  return option?.label ?? ''
 })
 const canCreateShareToken = computed(() => Boolean(normalizeString(current.value?.phone_number)))
 const shareWhatsAppPhone = computed(() => normalizeWhatsAppPhoneNumber(current.value?.phone_number))
@@ -206,6 +211,35 @@ function normalizeDateInput(value: unknown) {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function parseShareTtlHours(value: unknown) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return DEFAULT_SHARE_TTL_HOURS
+  const rounded = Math.round(parsed)
+  const matched = shareTtlOptions.find((item) => item.value === rounded)
+  return matched?.value ?? DEFAULT_SHARE_TTL_HOURS
+}
+
+function inferShareTtlHours(createdAt?: Date, expiresAt?: Date) {
+  if (!createdAt || !expiresAt) return undefined
+  const diffHours = Math.round((expiresAt.getTime() - createdAt.getTime()) / (60 * 60 * 1000))
+  if (diffHours <= 0) return undefined
+  const exact = shareTtlOptions.find((item) => item.value === diffHours)
+  if (exact) return exact.value
+  let closest = shareTtlOptions[0]
+  for (const option of shareTtlOptions) {
+    if (!closest) {
+      closest = option
+      continue
+    }
+    const currentDistance = Math.abs(option.value - diffHours)
+    const bestDistance = Math.abs(closest.value - diffHours)
+    if (currentDistance < bestDistance) {
+      closest = option
+    }
+  }
+  return closest?.value
 }
 
 function defaultUpdateBy() {
@@ -595,42 +629,63 @@ async function removeLaserFile(url: string) {
   }
 }
 
-function openShareTokenModal() {
-  selectedShareTtl.value = 3
-  isShareTokenModalOpen.value = true
-}
-
-function closeShareTokenModal() {
-  if (isCreatingShareToken.value) return
-  isShareTokenModalOpen.value = false
-}
-
-async function createShareToken() {
+async function createShareToken(overrideTtlHours?: LaserShareTtlHours, mode: 'create' | 'regenerate' = 'create') {
   if (!current.value || isCreatingShareToken.value) return
   if (!canCreateShareToken.value) {
     toast.warning('Per creare il link pubblico serve il numero di telefono del cliente')
-    return
+    return false
   }
 
+  const ttlHours = parseShareTtlHours(overrideTtlHours ?? selectedShareTtl.value)
+  const wasAlreadyCreated = Boolean(normalizeString(current.value.laserShareToken))
   isCreatingShareToken.value = true
   try {
     const response = await createClientLaserShareToken({
       clientId: current.value.id,
-      ttlHours: selectedShareTtl.value,
+      ttlHours,
     })
+    const resolvedTtl = parseShareTtlHours(response.ttlHours)
     const expiresAt = asDate(response.expiresAt)
     current.value.laserShareToken = normalizeString(response.token)
     current.value.laserShareTokenOperatorFirstName = normalizeString(response.operatorFirstName)
-    current.value.laserShareTokenCreatedAt = Timestamp.fromDate(new Date())
-    current.value.laserShareTokenExpiresAt = expiresAt ? Timestamp.fromDate(expiresAt) : undefined
-    isShareTokenModalOpen.value = false
-    toast.success('Link pubblico creato con successo')
+    current.value.laserShareTokenCreatedByUid = normalizeString(Auth.uid)
+    selectedShareTtl.value = resolvedTtl
+    if (expiresAt) {
+      const createdAt = new Date(expiresAt.getTime() - resolvedTtl * 60 * 60 * 1000)
+      current.value.laserShareTokenCreatedAt = Timestamp.fromDate(createdAt)
+      current.value.laserShareTokenExpiresAt = Timestamp.fromDate(expiresAt)
+    } else {
+      current.value.laserShareTokenCreatedAt = Timestamp.fromDate(new Date())
+      current.value.laserShareTokenExpiresAt = undefined
+    }
+    if (mode === 'regenerate' || wasAlreadyCreated) {
+      toast.success(`Link rigenerato con scadenza ${selectedShareTtlLabel.value}`)
+    } else {
+      toast.success('Link pubblico creato con successo')
+    }
+    return true
   } catch (error) {
     console.error(error)
     const message = normalizeString((error as Error)?.message)
     toast.error(message || 'Errore creazione link pubblico')
+    return false
   } finally {
     isCreatingShareToken.value = false
+  }
+}
+
+async function onShareTtlSelectChange(event: Event) {
+  const target = event.target as HTMLSelectElement | null
+  const previousTtl = selectedShareTtl.value
+  const nextTtl = parseShareTtlHours(target?.value)
+  if (previousTtl === nextTtl) return
+
+  selectedShareTtl.value = nextTtl
+  if (!hasActiveShareToken.value) return
+
+  const regenerated = await createShareToken(nextTtl, 'regenerate')
+  if (!regenerated) {
+    selectedShareTtl.value = previousTtl
   }
 }
 
@@ -647,6 +702,8 @@ async function revokeShareToken() {
     current.value.laserShareTokenExpiresAt = undefined
     current.value.laserShareTokenCreatedAt = undefined
     current.value.laserShareTokenOperatorFirstName = undefined
+    current.value.laserShareTokenCreatedByUid = undefined
+    selectedShareTtl.value = DEFAULT_SHARE_TTL_HOURS
     shareQrDataUrl.value = ''
     toast.success('Link pubblico revocato')
   } catch (error) {
@@ -722,6 +779,14 @@ function sendShareLinkOnWhatsApp() {
     return
   }
   toast.success('Messaggio WhatsApp pronto')
+}
+
+function openShareLink() {
+  if (!shareLink.value) {
+    toast.warning('Crea prima un link pubblico da condividere')
+    return
+  }
+  window.open(shareLink.value, '_blank', 'noopener,noreferrer')
 }
 
 const skippedKeyAliases: Record<string, string[]> = {
@@ -1203,6 +1268,21 @@ watch(
   { immediate: true },
 )
 
+watch(
+  [shareToken, shareTokenCreatedAt, shareTokenExpiresAt],
+  () => {
+    if (!shareToken.value) {
+      selectedShareTtl.value = DEFAULT_SHARE_TTL_HOURS
+      return
+    }
+    const inferred = inferShareTtlHours(shareTokenCreatedAt.value, shareTokenExpiresAt.value)
+    if (inferred) {
+      selectedShareTtl.value = inferred
+    }
+  },
+  { immediate: true },
+)
+
 onMounted(loadItem)
 watch(() => route.params.id, loadItem)
 </script>
@@ -1237,39 +1317,13 @@ watch(() => route.params.id, loadItem)
           </div>
         </article>
 
-        <article class="laser-panel laser-panel--share">
-          <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
-            <div>
-              <h3 class="h6 mb-1">Link pubblico compilazione cliente</h3>
-              <p class="small text-muted mb-0">
-                Condividi un URL temporaneo con QR per permettere al cliente di compilare i campi da remoto.
-              </p>
-            </div>
-            <div class="d-flex gap-2 flex-wrap">
-              <Btn v-if="!hasActiveShareToken" type="button" color="dark" icon="qr_code_2"
-                :disabled="!canCreateShareToken" @click="openShareTokenModal">
-                {{ shareTokenExpired ? 'Rigenera link' : 'Crea link' }}
-              </Btn>
-              <Btn v-if="hasActiveShareToken" type="button" color="secondary" variant="outline" icon="content_copy"
-                :loading="isCopyingShareLink" @click="copyShareLink">
-                Copia link
-              </Btn>
-              <Btn v-if="hasActiveShareToken" type="button" color="dark" variant="outline" icon="send"
-                :disabled="!canSendShareLinkOnWhatsApp" @click="sendShareLinkOnWhatsApp">
-                Invia su WhatsApp
-              </Btn>
-              <Btn v-if="hasActiveShareToken" type="button" color="danger" variant="outline" icon="block"
-                :loading="isRevokingShareToken" @click="revokeShareToken">
-                Revoca
-              </Btn>
-            </div>
-          </div>
+        <section class="laser-share-zone">
+          <Btn v-if="!hasActiveShareToken" type="button" color="dark" icon="add_link" class="laser-share-create-btn"
+            :loading="isCreatingShareToken" :disabled="!canCreateShareToken" @click="createShareToken()">
+            {{ hasInactiveShareToken ? 'Rigenera link scheda' : 'Crea link scheda' }}
+          </Btn>
 
-          <p v-if="!canCreateShareToken" class="small text-danger mb-0 mt-2">
-            Serve il numero di telefono del cliente per creare il link.
-          </p>
-
-          <div v-if="hasActiveShareToken" class="share-token-box mt-3">
+          <article v-if="hasActiveShareToken" class="share-token-box">
             <div class="share-token-box__qr">
               <img v-if="shareQrDataUrl" :src="shareQrDataUrl" alt="QR per compilazione scheda laser cliente">
               <p v-else class="small text-muted mb-0">Generazione QR in corso...</p>
@@ -1281,23 +1335,49 @@ watch(() => route.params.id, loadItem)
               <p class="small mb-2">
                 Scadenza token: <strong>{{ shareTokenExpiresAtLabel }}</strong>
               </p>
+              <div class="share-ttl-select-wrap mb-2">
+                <label class="small mb-1" for="share-token-ttl">Durata link</label>
+                <select id="share-token-ttl" class="form-select form-select-sm" :value="selectedShareTtl"
+                  :disabled="isCreatingShareToken" @change="onShareTtlSelectChange">
+                  <option v-for="option in shareTtlOptions" :key="`share-ttl-${option.value}`" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </div>
               <label class="small mb-1">Link completo</label>
               <div class="share-link-row">
                 <input :value="shareLink" type="text" class="form-control" readonly>
-                <Btn type="button" color="dark" icon="content_copy" :loading="isCopyingShareLink"
+              </div>
+              <div class="share-actions-row mt-2">
+                <Btn type="button" color="secondary" variant="outline" icon="content_copy" :loading="isCopyingShareLink"
                   @click="copyShareLink">
-                  Copia
+                  Copia link
+                </Btn>
+                <Btn type="button" color="secondary" variant="outline" icon="open_in_new" @click="openShareLink">
+                  Apri link
+                </Btn>
+                <Btn type="button" color="success" icon="chat" class="share-whatsapp-btn"
+                  :disabled="!canSendShareLinkOnWhatsApp" @click="sendShareLinkOnWhatsApp">
+                  Invia WhatsApp
+                </Btn>
+                <Btn type="button" color="danger" variant="outline" icon="block" :loading="isRevokingShareToken"
+                  @click="revokeShareToken">
+                  Revoca
                 </Btn>
               </div>
             </div>
-          </div>
-          <p v-else-if="shareTokenExpired && shareToken" class="small text-muted mb-0 mt-2">
-            Il precedente link e scaduto il {{ shareTokenExpiresAtLabel }}. Creane uno nuovo per continuare.
+          </article>
+
+          <p v-if="!canCreateShareToken" class="small text-danger mb-0">
+            Serve il numero di telefono del cliente per creare il link.
           </p>
-          <p v-else class="small text-muted mb-0 mt-2">
-            Nessun link attivo. Crea un token temporaneo per condividere la compilazione.
+          <p v-else-if="hasInactiveShareToken" class="small text-muted mb-0">
+            Il precedente link e scaduto il {{ shareTokenExpiresAtLabel }}. Crea un nuovo link scheda per continuare.
           </p>
-        </article>
+          <p v-else-if="!hasActiveShareToken" class="small text-muted mb-0">
+            Il link creato ha validita predefinita di 2 giorni.
+          </p>
+        </section>
 
         <article class="laser-panel" @click.capture="onFormInteraction" @focusin.capture="onFormInteraction">
           <h3 class="h6 mb-3">Compilazione scheda laser</h3>
@@ -1801,44 +1881,6 @@ watch(() => route.params.id, loadItem)
             :delete-file="removeLaserFile" />
         </article>
 
-        <div v-if="isShareTokenModalOpen" class="share-token-modal" role="dialog" aria-modal="true"
-          aria-label="Crea link pubblico scheda laser">
-          <div class="share-token-modal__backdrop" @click="closeShareTokenModal"></div>
-
-          <div class="share-token-modal__content card border-0 shadow-lg p-3 p-md-4">
-            <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
-              <div>
-                <h3 class="h6 mb-1">Nuovo link pubblico cliente</h3>
-                <p class="small text-muted mb-0">
-                  Seleziona la durata del token. Al termine mostreremo subito QR e link completo.
-                </p>
-              </div>
-              <button type="button" class="btn-close" aria-label="Chiudi modal link pubblico"
-                @click="closeShareTokenModal"></button>
-            </div>
-
-            <div class="share-ttl-grid mt-3">
-              <label v-for="option in shareTtlOptions" :key="`share-ttl-${option.value}`" class="share-ttl-option"
-                :class="{ 'is-active': selectedShareTtl === option.value }">
-                <input class="share-ttl-option__input" type="radio" name="share-ttl" :value="option.value"
-                  :checked="selectedShareTtl === option.value" @change="selectedShareTtl = option.value">
-                <span class="share-ttl-option__label">{{ option.label }}</span>
-                <small class="share-ttl-option__description">{{ option.description }}</small>
-              </label>
-            </div>
-
-            <div class="d-flex gap-2 mt-3 flex-wrap">
-              <Btn type="button" color="dark" icon="qr_code_2" :loading="isCreatingShareToken"
-                :disabled="!canCreateShareToken" @click="createShareToken">
-                Crea link e QR
-              </Btn>
-              <Btn type="button" color="secondary" variant="outline" :disabled="isCreatingShareToken"
-                @click="closeShareTokenModal">
-                Annulla
-              </Btn>
-            </div>
-          </div>
-        </div>
       </template>
       <p v-else class="text-muted small">Cliente non trovato.</p>
     </div>
@@ -1869,36 +1911,25 @@ watch(() => route.params.id, loadItem)
     linear-gradient(165deg, rgba(255, 255, 255, 0.95), rgba(247, 241, 242, 0.9));
 }
 
-.laser-panel--share {
-  border-color: rgba(14, 119, 108, 0.26);
+.laser-share-zone {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.laser-share-create-btn {
+  width: 100%;
+  min-height: 3.2rem;
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+.share-token-box {
+  border: 1px solid rgba(14, 119, 108, 0.26);
+  border-radius: 0.85rem;
   background:
     radial-gradient(circle at 0% 100%, rgba(31, 138, 112, 0.24) 0%, transparent 50%),
     radial-gradient(circle at 100% 0%, rgba(117, 224, 202, 0.28) 0%, transparent 50%),
     linear-gradient(167deg, rgba(243, 255, 252, 0.96), rgba(236, 251, 247, 0.92));
-}
-
-.laser-panel__title-main {
-  color: #4b2935;
-}
-
-.laser-panel__subtitle {
-  color: #6f4f5c !important;
-}
-
-.laser-client-heading {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-.laser-client-heading :deep(button) {
-  flex-shrink: 0;
-}
-
-.share-token-box {
-  border: 1px solid rgba(84, 44, 58, 0.2);
-  border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.86);
   padding: 0.65rem;
   display: grid;
   grid-template-columns: 210px 1fr;
@@ -1925,15 +1956,53 @@ watch(() => route.params.id, loadItem)
   min-width: 0;
 }
 
+.share-ttl-select-wrap {
+  max-width: 220px;
+}
+
 .share-link-row {
   display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
+  gap: 0.42rem;
+  align-items: stretch;
 }
 
 .share-link-row .form-control {
-  flex: 1 1 280px;
+  flex: 1 1 100%;
+}
+
+.share-actions-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.share-whatsapp-btn {
+  background: #25d366 !important;
+  border-color: #25d366 !important;
+  color: #fff !important;
+}
+
+.share-whatsapp-btn:hover:not(:disabled) {
+  background: #1ea857 !important;
+  border-color: #1ea857 !important;
+}
+
+.laser-panel__title-main {
+  color: #4b2935;
+}
+
+.laser-panel__subtitle {
+  color: #6f4f5c !important;
+}
+
+.laser-client-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.laser-client-heading :deep(button) {
+  flex-shrink: 0;
 }
 
 .laser-form-label {
@@ -2137,69 +2206,6 @@ watch(() => route.params.id, loadItem)
   word-break: break-word;
 }
 
-.share-token-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 1300;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-}
-
-.share-token-modal__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.share-token-modal__content {
-  position: relative;
-  width: min(calc(100vw - 2rem), 760px);
-  max-height: calc(100vh - 2rem);
-  overflow: auto;
-}
-
-.share-ttl-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.45rem;
-}
-
-.share-ttl-option {
-  position: relative;
-  border: 1px solid rgba(84, 44, 58, 0.24);
-  border-radius: 0.7rem;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 0.54rem 0.58rem;
-  display: grid;
-  gap: 0.16rem;
-  cursor: pointer;
-  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
-}
-
-.share-ttl-option.is-active {
-  border-color: #5c3543;
-  background: rgba(92, 53, 67, 0.12);
-  transform: translateY(-1px);
-}
-
-.share-ttl-option__input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-}
-
-.share-ttl-option__label {
-  font-size: 0.84rem;
-  font-weight: 700;
-  color: #5c3543;
-}
-
-.share-ttl-option__description {
-  font-size: 0.72rem;
-  color: #7a4958;
-}
-
 @media (max-width: 767.98px) {
   .laser-panel {
     padding: 0.78rem;
@@ -2219,6 +2225,10 @@ watch(() => route.params.id, loadItem)
 
   .share-token-box__qr {
     min-height: 170px;
+  }
+
+  .share-actions-row :deep(button) {
+    width: 100%;
   }
 }
 </style>

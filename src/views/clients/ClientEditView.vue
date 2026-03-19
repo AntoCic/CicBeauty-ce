@@ -13,7 +13,7 @@ import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import { Timestamp } from 'firebase/firestore'
 import * as yup from 'yup'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { Client, ClientDeposit, ClientDepositSettlement } from '../../models/Client'
 import { computeFitzpatrickScore, resolveFitzpatrickPhototype } from '../../models/laserSheet'
@@ -721,7 +721,6 @@ function closeDeleteClientModal() {
 }
 
 onMounted(loadItem)
-watch(() => route.params.id, loadItem)
 </script>
 
 <template>

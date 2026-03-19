@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, defaultUserPermission, toast, useChangeHeader, useStoreWatch } from 'cic-kit'
+import { Btn, cicKitStore, defaultUserPermission, toast, useChangeHeader } from 'cic-kit'
 import { Timestamp } from 'firebase/firestore'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AiPromptLauncherCard from '../../components/ai/AiPromptLauncherCard.vue'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
@@ -71,9 +71,9 @@ type MixedBatchOptions = AppointmentOverrides & {
   includeCouponVariant?: boolean
 }
 
-useStoreWatch([
-  { store: appointmentStore, getOpts: { orderBy: { fieldPath: 'date_time', directionStr: 'desc' } } },
-])
+onMounted(() => {
+  void appointmentStore.get({ orderBy: { fieldPath: 'date_time', directionStr: 'desc' } })
+})
 
 const hasBetaFeatures = computed(() => Auth?.user?.hasPermission(defaultUserPermission.BETA_FEATURES) ?? false)
 const operatorIds = computed(() => {

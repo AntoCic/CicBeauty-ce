@@ -8,12 +8,11 @@ import {
   toFileArray,
   uploadFilesToUrls,
   type FieldFileValue,
-  useStoreWatch,
 } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { Auth } from '../../main'
 import { typeCouponStore } from '../../stores/typeCouponStore'
@@ -28,7 +27,9 @@ type TypeCouponForm = {
   updateBy: string
 }
 
-useStoreWatch([{ store: typeCouponStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } } }])
+onMounted(() => {
+  void typeCouponStore.get({ orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } })
+})
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const formKey = ref(0)

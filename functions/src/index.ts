@@ -1,4 +1,3 @@
-import { cicInit } from 'cic-kit-firebase-functions';
 import { marketingAgent } from './agents/marketingAgent.js';
 import { metaAIAgent } from './agents/metaAIAgent.js';
 import { catalogChatAgent } from './agents/catalogChatAgent.js';
@@ -12,12 +11,7 @@ import {
   getClientLaserShareSession,
   saveClientLaserShareSession,
 } from './agents/clientLaserShareToken.js';
-import { REGION } from './config/runtime.js';
-
-const { sendUserPush, syncPublicUser } = cicInit({
-  region: REGION,
-  https: { cors: true },
-});
+import { sendUserPush, syncPublicUser } from './config/cicKitFunctions.js';
 
 export {
   sendUserPush,

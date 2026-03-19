@@ -13,7 +13,7 @@ import {
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { Product, ProductData } from '../../models/Product'
 import { Auth } from '../../main'
@@ -546,7 +546,6 @@ async function generateMetaAI(values: Record<string, unknown>, setFieldValue: Se
 onMounted(() => {
   loadItem()
 })
-watch(() => route.params.id, loadItem)
 </script>
 
 <template>

@@ -127,6 +127,7 @@ export interface ClientData extends Partial<Timestampble> {
   laserShareTokenExpiresAt?: Timestamp | null
   laserShareTokenCreatedAt?: Timestamp | null
   laserShareTokenOperatorFirstName?: string
+  laserShareTokenCreatedByUid?: string
   laserShareSkippedKeys?: string[]
   updateBy: string
 }
@@ -160,6 +161,7 @@ export class Client extends FirestoreModel<ClientData> {
   laserShareTokenExpiresAt?: Timestamp
   laserShareTokenCreatedAt?: Timestamp
   laserShareTokenOperatorFirstName?: string
+  laserShareTokenCreatedByUid?: string
   laserShareSkippedKeys: string[]
   updateBy: string
 
@@ -191,6 +193,7 @@ export class Client extends FirestoreModel<ClientData> {
     this.laserShareTokenExpiresAt = normalizeOptionalTimestamp(data.laserShareTokenExpiresAt)
     this.laserShareTokenCreatedAt = normalizeOptionalTimestamp(data.laserShareTokenCreatedAt)
     this.laserShareTokenOperatorFirstName = normalizeString(data.laserShareTokenOperatorFirstName)
+    this.laserShareTokenCreatedByUid = normalizeString(data.laserShareTokenCreatedByUid)
     this.laserShareSkippedKeys = normalizeStringList(data.laserShareSkippedKeys)
     this.updateBy = data.updateBy
   }
@@ -224,6 +227,7 @@ export class Client extends FirestoreModel<ClientData> {
       laserShareTokenExpiresAt: this.laserShareTokenExpiresAt,
       laserShareTokenCreatedAt: this.laserShareTokenCreatedAt,
       laserShareTokenOperatorFirstName: this.laserShareTokenOperatorFirstName,
+      laserShareTokenCreatedByUid: this.laserShareTokenCreatedByUid,
       laserShareSkippedKeys: this.laserShareSkippedKeys,
       updateBy: this.updateBy,
       ...this.timestampbleProps()

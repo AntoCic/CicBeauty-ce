@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { cicKitStore, loading, toast } from 'cic-kit'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CatalogCard from '../../components/CatalogCard.vue'
 import AppHeaderCatalogNav from '../../components/headers/AppHeaderCatalogNav.vue'
@@ -148,7 +148,6 @@ function formatDuration(value: number | undefined) {
 onMounted(() => {
   loadItem()
 })
-watch(() => route.params.id, loadItem)
 
 function goPageEdit() {
   router.push({ name: 'TreatmentEditView', params: { id: route.params.id } })

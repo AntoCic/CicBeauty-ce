@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { cicKitStore, toast, useStoreWatch } from 'cic-kit'
+import { cicKitStore, toast } from 'cic-kit'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
@@ -13,12 +13,6 @@ import { defaultCouponGiftFormValues, normalizeCouponGiftForm, type CouponGiftFo
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const isSaving = ref(false)
-
-useStoreWatch([
-  { store: couponStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } } },
-  { store: clientStore, getOpts: {} },
-  { store: treatmentStore, getOpts: {} },
-])
 
 const initialValues = computed<CouponGiftFormValues>(() => defaultCouponGiftFormValues(new Date()))
 

@@ -5,11 +5,10 @@ import {
   defaultUserPermission,
   toast,
   useChangeHeader,
-  useStoreWatch,
   type FirestoreModel,
   type FirestoreStoreReactive,
 } from 'cic-kit'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Auth } from '../../main'
 import { agentPromptStore } from '../../stores/agentPromptStore'
@@ -112,28 +111,14 @@ watch(
   { immediate: true },
 )
 
-useStoreWatch([
-  {
-    store: appointmentStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-  {
-    store: expenseStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-  {
-    store: announcementStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-  {
-    store: agentPromptStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-])
+onMounted(() => {
+  void Promise.all([
+    appointmentStore.get({ orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } }),
+    expenseStore.get({ orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } }),
+    announcementStore.get({ orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } }),
+    agentPromptStore.get({ orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } }),
+  ])
+})
 
 function toRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null

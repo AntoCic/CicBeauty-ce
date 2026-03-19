@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Btn, cicKitStore, toast, useStoreWatch } from 'cic-kit'
+import { Btn, cicKitStore, toast } from 'cic-kit'
 import { Form, Field, ErrorMessage } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
 import { Auth } from '../../main'
 import { calendarRecurrenceStore } from '../../stores/calendarRecurrenceStore'
@@ -25,7 +25,9 @@ type CalendarRecurrenceForm = {
   updateBy: string
 }
 
-useStoreWatch([{ store: calendarRecurrenceStore, getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } } }])
+onMounted(() => {
+  void calendarRecurrenceStore.get({ orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } })
+})
 
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const formKey = ref(0)
