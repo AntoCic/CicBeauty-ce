@@ -32,6 +32,14 @@ export const GUEST_HOME_APPS: HomeAppShortcut[] = [
 
 export const AUTH_HOME_APPS: HomeAppShortcut[] = [
   {
+    id: 'refresh-home',
+    title: 'Refresh Home',
+    to: { name: 'RefreshHomeView' },
+    icon: 'refresh',
+    iconClass: 'app-icon-night',
+    group: 'settings',
+  },
+  {
     id: 'clients',
     title: 'Clienti',
     to: { name: 'ClientsView' },
@@ -95,27 +103,11 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     permission: UserPermission.OPERATORE,
   },
   {
-    id: 'stats-guadagni',
-    title: 'Stats Guadagni',
+    id: 'stats',
+    title: 'Statistiche',
     to: { name: 'StatsGuadagniView' },
-    icon: 'payments',
+    icon: 'monitoring',
     iconClass: 'app-icon-sky',
-    permission: [UserPermission.OPERATORE],
-  },
-  {
-    id: 'stats-clienti',
-    title: 'Stats Clienti',
-    to: { name: 'StatsClientiView' },
-    icon: 'groups',
-    iconClass: 'app-icon-calm',
-    permission: [UserPermission.OPERATORE],
-  },
-  {
-    id: 'stats-appuntamenti',
-    title: 'Stats Appunt.',
-    to: { name: 'StatsAppuntamentiView' },
-    icon: 'calendar_month',
-    iconClass: 'app-icon-rose',
     permission: [UserPermission.OPERATORE],
   },
   {
@@ -157,14 +149,6 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: '/user',
     icon: 'manage_accounts',
     iconClass: 'app-icon-soft',
-    group: 'settings',
-  },
-  {
-    id: 'refresh-home',
-    title: 'Refresh Home',
-    to: { name: 'RefreshHomeView' },
-    icon: 'refresh',
-    iconClass: 'app-icon-night',
     group: 'settings',
   },
   {

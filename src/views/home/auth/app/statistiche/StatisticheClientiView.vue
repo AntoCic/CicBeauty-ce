@@ -2,7 +2,6 @@
 import { computed } from 'vue'
 import { endOfDay, startOfDay } from '../../../../../utils/calendar'
 import StatisticheChartCard from './components/StatisticheChartCard.vue'
-import StatisticheSummaryCard from './components/StatisticheSummaryCard.vue'
 import { useStatisticheBase } from './useStatisticheBase'
 import {
   addMonths,
@@ -23,7 +22,6 @@ type ClienteMetric = {
 
 const {
   range,
-  summary,
   clientLabelById,
   appuntamentiFiltrati,
 } = useStatisticheBase()
@@ -110,8 +108,6 @@ function clientiPerRange(appointments: AppuntamentoStat[]) {
 
 <template>
   <div>
-    <StatisticheSummaryCard :summary="summary" />
-
     <section class="card border-0 shadow-sm p-3 mb-2 clienti-summary-card">
       <p class="small text-muted mb-2">Metriche clienti (ultimi 6 mesi nel range coerente)</p>
       <p class="small text-muted mb-2">Finestra analizzata: {{ rangeLabel }}</p>

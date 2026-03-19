@@ -1,16 +1,31 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { startOfDay } from '../../../../../utils/calendar'
 import StatisticheChartCard from './components/StatisticheChartCard.vue'
-import StatisticheSummaryCard from './components/StatisticheSummaryCard.vue'
 import { useStatisticheBase } from './useStatisticheBase'
 import {
   buildDailyRevenueSeries,
   formatCurrency,
   formatHoursAndMinutes,
+  formatHoursFromMinutes,
+  startOfMonth,
+  startOfWeekMonday,
   type AppuntamentoStat,
 } from './statisticheUtils'
 
-const { appuntamentiFiltrati, summary, range, clientLabelById } = useStatisticheBase()
+type RevenuePerHourMetric = {
+  revenue: number
+  minutes: number
+  perHour: number
+}
+
+const { appuntamentiFiltrati, range, clientLabelById } = useStatisticheBase()
+
+const now = computed(() => new Date())
+const currentYearStart = computed(() => new Date(now.value.getFullYear(), 0, 1, 0, 0, 0, 0))
+const currentMonthStart = computed(() => startOfMonth(now.value))
+const currentWeekStart = computed(() => startOfWeekMonday(now.value))
+const currentDayStart = computed(() => startOfDay(now.value))
 
 const serieAppuntamenti = computed(() => {
   if (!range.value.to) {
@@ -41,19 +56,68 @@ const serieAppuntamenti = computed(() => {
   }
 })
 
+const appointmentsCount = computed(() => appuntamentiFiltrati.value.length)
+const totalMinutes = computed(() =>
+  appuntamentiFiltrati.value.reduce((sum, item) => sum + item.minutes, 0),
+)
+const totalRevenue = computed(() =>
+  Math.round(appuntamentiFiltrati.value.reduce((sum, item) => sum + item.revenue, 0) * 100) / 100,
+)
+
 const durataMedia = computed(() => {
-  const totalAppointments = appuntamentiFiltrati.value.length
-  if (!totalAppointments) return 0
-  const minutes = appuntamentiFiltrati.value.reduce((sum, item) => sum + item.minutes, 0)
-  return minutes / totalAppointments
+  if (!appointmentsCount.value) return 0
+  return totalMinutes.value / appointmentsCount.value
 })
 
-const ricavoMedio = computed(() => {
-  const totalAppointments = appuntamentiFiltrati.value.length
-  if (!totalAppointments) return 0
-  const total = appuntamentiFiltrati.value.reduce((sum, item) => sum + item.revenue, 0)
-  return total / totalAppointments
+const ricavoOrarioMedioFiltro = computed(() => {
+  if (!totalMinutes.value) return 0
+  return totalRevenue.value / (totalMinutes.value / 60)
 })
+
+const yearPerHour = computed(() => buildRevenuePerHourMetric(currentYearStart.value, now.value))
+const monthPerHour = computed(() => buildRevenuePerHourMetric(currentMonthStart.value, now.value))
+const weekPerHour = computed(() => buildRevenuePerHourMetric(currentWeekStart.value, now.value))
+const dayPerHour = computed(() => buildRevenuePerHourMetric(currentDayStart.value, now.value))
+
+const nowLabel = computed(() =>
+  now.value.toLocaleString('it-IT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }),
+)
+
+function buildRevenuePerHourMetric(from: Date, to: Date): RevenuePerHourMetric {
+  const fromMs = from.getTime()
+  const toMs = to.getTime()
+
+  let revenue = 0
+  let minutes = 0
+
+  for (const item of appuntamentiFiltrati.value) {
+    const time = item.start.getTime()
+    if (time < fromMs || time > toMs) continue
+    revenue += item.revenue
+    minutes += item.minutes
+  }
+
+  const safeRevenue = Math.round(revenue * 100) / 100
+  if (!minutes) {
+    return {
+      revenue: safeRevenue,
+      minutes: 0,
+      perHour: 0,
+    }
+  }
+
+  return {
+    revenue: safeRevenue,
+    minutes,
+    perHour: safeRevenue / (minutes / 60),
+  }
+}
 
 function toDayKey(date: Date) {
   const year = date.getFullYear()
@@ -73,22 +137,74 @@ function topAppointments(items: AppuntamentoStat[]) {
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 8)
 }
+
+function formatRevenuePerHour(value: number) {
+  return `${formatCurrency(value)} / h`
+}
+
+function formatDateTime(date: Date) {
+  return date.toLocaleString('it-IT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 </script>
 
 <template>
   <section class="d-flex flex-column gap-2">
-    <StatisticheSummaryCard :summary="summary" />
-
     <section class="card border-0 shadow-sm p-3 appuntamenti-summary-card">
       <h2 class="h6 mb-2">Panoramica appuntamenti</h2>
-      <div class="appuntamenti-summary-grid">
+
+      <div class="appuntamenti-summary-grid mb-2">
+        <article class="appuntamenti-summary-metric">
+          <p class="appuntamenti-summary-metric__label">Appuntamenti filtrati</p>
+          <strong class="appuntamenti-summary-metric__value">{{ appointmentsCount }}</strong>
+        </article>
         <article class="appuntamenti-summary-metric">
           <p class="appuntamenti-summary-metric__label">Durata media appuntamento</p>
           <strong class="appuntamenti-summary-metric__value">{{ formatHoursAndMinutes(durataMedia) }}</strong>
         </article>
         <article class="appuntamenti-summary-metric">
-          <p class="appuntamenti-summary-metric__label">Ricavo medio appuntamento</p>
-          <strong class="appuntamenti-summary-metric__value">{{ formatCurrency(ricavoMedio) }}</strong>
+          <p class="appuntamenti-summary-metric__label">Ricavo orario medio nel filtro</p>
+          <strong class="appuntamenti-summary-metric__value">{{ formatRevenuePerHour(ricavoOrarioMedioFiltro) }}</strong>
+        </article>
+      </div>
+
+      <p class="small text-muted mb-2">
+        Rapporto guadagno/ora calcolato fino al momento attuale ({{ nowLabel }}).
+      </p>
+
+      <div class="appuntamenti-hourly-grid">
+        <article class="appuntamenti-hourly-card">
+          <p class="appuntamenti-hourly-card__label">Anno in corso</p>
+          <strong class="appuntamenti-hourly-card__value">{{ formatRevenuePerHour(yearPerHour.perHour) }}</strong>
+          <span class="appuntamenti-hourly-card__detail">
+            {{ formatCurrency(yearPerHour.revenue) }} su {{ formatHoursFromMinutes(yearPerHour.minutes) }}
+          </span>
+        </article>
+        <article class="appuntamenti-hourly-card">
+          <p class="appuntamenti-hourly-card__label">Mese in corso</p>
+          <strong class="appuntamenti-hourly-card__value">{{ formatRevenuePerHour(monthPerHour.perHour) }}</strong>
+          <span class="appuntamenti-hourly-card__detail">
+            {{ formatCurrency(monthPerHour.revenue) }} su {{ formatHoursFromMinutes(monthPerHour.minutes) }}
+          </span>
+        </article>
+        <article class="appuntamenti-hourly-card">
+          <p class="appuntamenti-hourly-card__label">Settimana in corso</p>
+          <strong class="appuntamenti-hourly-card__value">{{ formatRevenuePerHour(weekPerHour.perHour) }}</strong>
+          <span class="appuntamenti-hourly-card__detail">
+            {{ formatCurrency(weekPerHour.revenue) }} su {{ formatHoursFromMinutes(weekPerHour.minutes) }}
+          </span>
+        </article>
+        <article class="appuntamenti-hourly-card">
+          <p class="appuntamenti-hourly-card__label">Giorno corrente (fino ad ora)</p>
+          <strong class="appuntamenti-hourly-card__value">{{ formatRevenuePerHour(dayPerHour.perHour) }}</strong>
+          <span class="appuntamenti-hourly-card__detail">
+            {{ formatCurrency(dayPerHour.revenue) }} su {{ formatHoursFromMinutes(dayPerHour.minutes) }}
+          </span>
         </article>
       </div>
     </section>
@@ -96,12 +212,10 @@ function topAppointments(items: AppuntamentoStat[]) {
     <StatisticheChartCard
       title="Numero appuntamenti per giorno"
       subtitle="Mostrato quando il filtro ha una data fine"
-      chart-id="stats-appointments-daily-count"
-      chart-type="line"
+      type="line"
       :labels="serieAppuntamenti.labels"
       :datasets="[{ label: 'Appuntamenti', data: serieAppuntamenti.values, color: '#0d6efd' }]"
-      :show-empty="!range.to"
-      empty-message="Aggiungi una data fine al filtro per vedere il trend giornaliero."
+      :empty-message="'Aggiungi una data fine al filtro per vedere il trend giornaliero.'"
     />
 
     <section class="card border-0 shadow-sm p-3">
@@ -111,7 +225,7 @@ function topAppointments(items: AppuntamentoStat[]) {
           <thead>
             <tr>
               <th>Cliente</th>
-              <th class="text-end">Data</th>
+              <th class="text-end">Data e ora</th>
               <th class="text-end">Durata</th>
               <th class="text-end">Ricavo</th>
             </tr>
@@ -119,7 +233,7 @@ function topAppointments(items: AppuntamentoStat[]) {
           <tbody>
             <tr v-for="item in topAppointments(appuntamentiFiltrati)" :key="item.id">
               <td>{{ clientLabelById.get(item.clientId) ?? (item.clientId || 'Cliente sconosciuto') }}</td>
-              <td class="text-end">{{ item.start.toLocaleDateString('it-IT') }}</td>
+              <td class="text-end">{{ formatDateTime(item.start) }}</td>
               <td class="text-end">{{ formatHoursAndMinutes(item.minutes) }}</td>
               <td class="text-end">{{ formatCurrency(item.revenue) }}</td>
             </tr>
@@ -143,7 +257,7 @@ function topAppointments(items: AppuntamentoStat[]) {
 .appuntamenti-summary-grid {
   display: grid;
   gap: 0.65rem;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
 }
 
 .appuntamenti-summary-metric {
@@ -166,5 +280,38 @@ function topAppointments(items: AppuntamentoStat[]) {
   display: block;
   font-size: 1rem;
   color: #1e2f55;
+}
+
+.appuntamenti-hourly-grid {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+}
+
+.appuntamenti-hourly-card {
+  border: 1px solid rgba(84, 44, 58, 0.2);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.55rem 0.62rem;
+}
+
+.appuntamenti-hourly-card__label {
+  margin: 0;
+  font-size: 0.68rem;
+  color: rgba(84, 44, 58, 0.82);
+}
+
+.appuntamenti-hourly-card__value {
+  display: block;
+  margin-top: 0.08rem;
+  font-size: 0.9rem;
+  color: #432330;
+}
+
+.appuntamenti-hourly-card__detail {
+  display: block;
+  margin-top: 0.06rem;
+  font-size: 0.65rem;
+  color: rgba(67, 35, 48, 0.72);
 }
 </style>
