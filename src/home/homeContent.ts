@@ -17,6 +17,7 @@ type HomeHeaderContent = {
   brandTitle: string
   methodLabel: string
   pathsLabel: string
+  pricesLabel: string
   productsLabel: string
   treatmentsLabel: string
   contactsLabel: string
@@ -289,6 +290,7 @@ export function buildHomeContent(config: AppConfigData): HomeContent {
       brandTitle: brandName,
       methodLabel: 'Metodo',
       pathsLabel: 'Percorsi',
+      pricesLabel: 'Prezzi',
       productsLabel: 'Prodotti',
       treatmentsLabel: 'Trattamenti',
       contactsLabel: 'Contatti',
