@@ -117,18 +117,25 @@ const autoScrolledMonthKey = ref('')
 const hasInitialCalendarSnapshot = ref(false)
 const CALENDAR_WATCH_REASON = 'calendar-month-view'
 const currentViewerId = computed(() => String(Auth.uid ?? '').trim())
-const { activateCalendarMonthWatch, releaseAppointmentWatch } = useAppointmentWatchManager()
+const { activateCalendarMonthWatch } = useAppointmentWatchManager()
+const calendarPrefetchMonths = computed(() => {
+  const raw = Number(appConfigStore.getConfigData().calendarPrefetchMonths)
+  if (!Number.isFinite(raw)) return 1
+  return Math.max(0, Math.min(6, Math.trunc(raw)))
+})
 
 watch(
-  visibleMonth,
+  [visibleMonth, calendarPrefetchMonths],
   (month) => {
-    activateCalendarMonthWatch(month, CALENDAR_WATCH_REASON)
+    activateCalendarMonthWatch(month[0], {
+      reason: CALENDAR_WATCH_REASON,
+      prefetchMonths: month[1],
+    })
   },
   { immediate: true },
 )
 
 onBeforeUnmount(() => {
-  releaseAppointmentWatch(CALENDAR_WATCH_REASON)
   loading.off(CALENDAR_BOOT_LOADING_KEY)
 })
 
@@ -1231,4 +1238,3 @@ function applyFilters() {
   }
 }
 </style>
-

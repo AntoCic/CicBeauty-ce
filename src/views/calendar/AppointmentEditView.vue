@@ -20,6 +20,7 @@ import { treatmentStore } from '../../stores/treatmentStore'
 import { appointmentPersonalOwnerId, isPersonalAppointment } from '../../utils/appointmentVisibility'
 import { computeAppointmentDurationMinutes, fromDateTimeLocalValue, toDateTimeLocalValue } from '../../utils/calendar'
 import { asDate } from '../../utils/date'
+import { buildCouponUsageCountMap, couponDisplayTitle, couponRemainingUses } from '../../utils/couponUtils'
 import { hasAiAndOperatorAccess, hasBetaFeaturesAccess } from '../../utils/permissions'
 import { matchesPhoneSearch } from '../../utils/phone'
 import { whatsAppTemplateStore } from '../../stores/whatsAppTemplateStore'
@@ -175,18 +176,19 @@ const filteredTreatments = computed(() => {
     return label.includes(search)
   })
 })
+const couponUsageById = computed(() => buildCouponUsageCountMap(appointmentStore.itemsActiveArray))
+const currentCouponId = computed(() => normalizeString(current.value?.coupon_id))
 const selectableCoupons = computed(() => {
-  const nowMs = Date.now()
+  const now = new Date()
   return couponStore.itemsActiveArray.filter((coupon) => {
     if (!coupon.active) return false
-
     const from = asDate(coupon.valid_from)
-    if (from && from.getTime() > nowMs) return false
-
+    if (from && from.getTime() > now.getTime()) return false
     const to = asDate(coupon.valid_to)
-    if (to && to.getTime() < nowMs) return false
+    if (to && to.getTime() < now.getTime()) return false
 
-    return true
+    const keepCurrentUsage = currentCouponId.value === coupon.id ? 1 : 0
+    return couponRemainingUses(coupon, couponUsageById.value, keepCurrentUsage) > 0
   })
 })
 
@@ -264,7 +266,7 @@ const currentCouponLabel = computed(() => {
   if (!couponId) return 'Nessun coupon'
   const coupon = couponStore.findItemsById(couponId)
   if (!coupon) return couponId
-  return `${coupon.code} - ${coupon.title}`
+  return couponDisplayTitle(coupon)
 })
 
 function normalizeString(value: unknown) {
@@ -1225,7 +1227,7 @@ watch(() => route.params.id, loadItem)
             <Field name="coupon_id" as="select" class="form-select">
               <option value="">Nessuno</option>
               <option v-for="coupon in selectableCoupons" :key="coupon.id" :value="coupon.id">
-                {{ coupon.code }} - {{ coupon.title }}
+                {{ couponDisplayTitle(coupon) }}
               </option>
             </Field>
             <ErrorMessage name="coupon_id" class="text-danger small" />

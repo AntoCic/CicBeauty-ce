@@ -16,13 +16,13 @@ import { productCategoryStore } from './stores/productCategoryStore';
 import { typeExpenseStore } from './stores/typeExpenseStore';
 import { clientStore } from './stores/clientStore';
 import { couponStore } from './stores/couponStore';
-import { typeCouponStore } from './stores/typeCouponStore';
 import { calendarRecurrenceStore } from './stores/calendarRecurrenceStore';
 import { whatsAppTemplateStore } from './stores/whatsAppTemplateStore';
 import { ensureAppointmentWatchRunning } from './composables/useAppointmentWatchManager';
 
 const route = useRoute();
 let initAppLoadingClosed = false;
+let staticStoresHydrated = false;
 const userPermission = computed(() => Object.values(UserPermission));
 const isPublicRoute = computed(() => Boolean(route.meta.publicRoute));
 const showAppHeader = computed(() => !isPublicRoute.value);
@@ -42,21 +42,35 @@ const publicMainInlineStyle = computed<CSSProperties | undefined>(() => {
 })
 
 useStoreWatch([
-  { store: appConfigStore, checkLogin: false },
-  { store: treatmentCategoryStore, checkLogin: false },
-  { store: treatmentStore, checkLogin: false },
-  { store: productStore, checkLogin: false },
-  { store: productCategoryStore, checkLogin: false },
   { store: clientStore },
   { store: publicUserStore },
-  { store: typeExpenseStore },
-  { store: typeCouponStore },
-  { store: calendarRecurrenceStore },
   { store: couponStore },
   { store: whatsAppTemplateStore },
 ]);
 
 ensureAppointmentWatchRunning()
+
+async function hydrateStaticStores() {
+  const isLoggedIn = Boolean(Auth?.isLoggedIn)
+  const sharedStores = [
+    appConfigStore,
+    treatmentCategoryStore,
+    treatmentStore,
+    productStore,
+    productCategoryStore,
+  ]
+
+  await Promise.all(sharedStores.map((store) => store.get()))
+
+  if (!isLoggedIn) {
+    return
+  }
+
+  await Promise.all([
+    typeExpenseStore.get(),
+    calendarRecurrenceStore.get(),
+  ])
+}
 
 watch(
   () => Auth?.isLoggedIn,
@@ -74,6 +88,10 @@ watch(
       }
     }
     ensureAppointmentWatchRunning()
+    if (Auth?.isLoggedIn || !staticStoresHydrated) {
+      void hydrateStaticStores()
+      staticStoresHydrated = true
+    }
   },
   { immediate: true },
 )
@@ -104,6 +122,10 @@ async function onRouteComponentMounted() {
 
 onMounted(() => {
   document.getElementsByClassName('starter-loader')?.[0]?.remove();
+  if (!staticStoresHydrated) {
+    void hydrateStaticStores()
+    staticStoresHydrated = true
+  }
 })
 </script>
 
@@ -116,7 +138,20 @@ onMounted(() => {
     'app-main--with-quick-toolbar': showQuickToolbar,
   }" :style="publicMainInlineStyle">
     <RouterView v-slot="{ Component, route: activeRoute }">
-      <component :is="Component" :key="activeRoute.fullPath" @vue:mounted="onRouteComponentMounted" />
+      <KeepAlive>
+        <component
+          :is="Component"
+          v-if="activeRoute.meta.keepAlive"
+          :key="String(activeRoute.name ?? activeRoute.path)"
+          @vue:mounted="onRouteComponentMounted"
+        />
+      </KeepAlive>
+      <component
+        :is="Component"
+        v-if="!activeRoute.meta.keepAlive"
+        :key="activeRoute.fullPath"
+        @vue:mounted="onRouteComponentMounted"
+      />
     </RouterView>
   </main>
 

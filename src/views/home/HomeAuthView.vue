@@ -19,7 +19,7 @@ const SETTINGS_APP_ORDER = [
   'product-categories-manage',
   'treatment-categories-manage',
   'type-expenses',
-  'type-coupons',
+  'clear-client-emails',
   'test-playground',
   'catalog-backup',
   'migration-import',

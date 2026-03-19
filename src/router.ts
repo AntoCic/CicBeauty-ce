@@ -19,7 +19,6 @@ import TreatmentCategoriesManageView from './views/treatments/TreatmentCategorie
 import TreatmentView from './views/treatments/TreatmentView.vue';
 import TreatmentEditView from './views/treatments/TreatmentEditView.vue';
 import TypeExpensesView from './views/type-expenses/TypeExpensesView.vue';
-import TypeCouponsView from './views/type-coupons/TypeCouponsView.vue';
 import AnnouncementsView from './views/announcements/AnnouncementsView.vue';
 import AiBeautyChatView from './views/ai/AiBeautyChatView.vue';
 import PdfPlacementDemoView from './views/tools/PdfPlacementDemoView.vue';
@@ -30,6 +29,7 @@ import AiTransparencyView from './views/legal/AiTransparencyView.vue';
 import AppConfigView from './views/app-config/AppConfigView.vue';
 import AgentPromptsView from './views/ai/AgentPromptsView.vue';
 import TestPlaygroundView from './views/tools/TestPlaygroundView.vue';
+import ClearClientEmailsView from './views/tools/ClearClientEmailsView.vue';
 import CalendarDayView from './views/calendar/CalendarDayView.vue';
 import AppointmentEditView from './views/calendar/AppointmentEditView.vue';
 import CalendarRecurrenceRulesView from './views/calendar/CalendarRecurrenceRulesView.vue';
@@ -40,15 +40,19 @@ import ClientLaserSheetsView from './views/clients/ClientLaserSheetsView.vue';
 import PublicLaserSheetFormView from './views/clients/PublicLaserSheetFormView.vue';
 import ExpensesView from './views/expenses/ExpensesView.vue';
 import CouponsView from './views/coupons/CouponsView.vue';
+import CouponGiftCreateView from './views/coupons/CouponGiftCreateView.vue';
+import CouponsListView from './views/coupons/CouponsListView.vue';
+import CouponDetailView from './views/coupons/CouponDetailView.vue';
 import StatisticheGuadagniView from './views/home/auth/app/statistiche/StatisticheGuadagniView.vue';
 import StatisticheClientiView from './views/home/auth/app/statistiche/StatisticheClientiView.vue';
-import StatisticheTrattamentiView from './views/home/auth/app/statistiche/StatisticheTrattamentiView.vue';
+import StatisticheAppuntamentiView from './views/home/auth/app/statistiche/StatisticheAppuntamentiView.vue';
 import StatisticheAppView from './views/home/auth/app/statistiche/StatisticheAppView.vue';
 import MigrationImportView from './views/migration/MigrationImportView.vue';
 import CatalogBackupView from './views/settings/CatalogBackupView.vue';
 import WhatsAppTemplatesView from './views/settings/WhatsAppTemplatesView.vue';
 import BonificoView from './views/payments/BonificoView.vue';
 import PriceListView from './views/price-list/PriceListView.vue';
+import RefreshHomeView from './views/tools/RefreshHomeView.vue';
 
 
 // ===================================================================================================
@@ -61,6 +65,7 @@ export const routes: RouteRecordRaw[] = [
     meta: {
       publicRoute: true,
       publicDepth: 0,
+      keepAlive: true,
       title: 'CNC Beauty | Trattamenti, prodotti e benessere',
       description: 'Centro estetico CNC Beauty: trattamenti professionali, prodotti selezionati e consulenza personalizzata.',
     },
@@ -166,7 +171,6 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   { path: '/type-expenses', name: 'TypeExpensesView', component: TypeExpensesView, meta: { loginStatus: true } },
-  { path: '/type-coupons', name: 'TypeCouponsView', component: TypeCouponsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   { path: '/calendar/day', name: 'CalendarDayView', component: CalendarDayView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/appointments/:id', name: 'AppointmentEditView', component: AppointmentEditView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/clients', name: 'ClientsView', component: ClientsView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
@@ -183,6 +187,9 @@ export const routes: RouteRecordRaw[] = [
   { path: '/bonifico-app', name: 'BonificoView', component: BonificoView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/price-list', name: 'PriceListView', component: PriceListView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   { path: '/coupons', name: 'CouponsView', component: CouponsView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  { path: '/coupons/create/gift', name: 'CouponGiftCreateView', component: CouponGiftCreateView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  { path: '/coupons/list', name: 'CouponsListView', component: CouponsListView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
+  { path: '/coupons/:id', name: 'CouponDetailView', component: CouponDetailView, meta: { loginStatus: true, permission: [UserPermission.OPERATORE, defaultUserPermission.BETA_FEATURES] } },
   {
     path: '/stats',
     name: 'StatsView',
@@ -206,9 +213,9 @@ export const routes: RouteRecordRaw[] = [
         meta: { loginStatus: true, permission: [UserPermission.OPERATORE] },
       },
       {
-        path: 'trattamenti',
-        name: 'StatsTrattamentiView',
-        component: StatisticheTrattamentiView,
+        path: 'appuntamenti',
+        name: 'StatsAppuntamentiView',
+        component: StatisticheAppuntamentiView,
         meta: { loginStatus: true, permission: [UserPermission.OPERATORE] },
       },
     ],
@@ -220,6 +227,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/settings/calendar-recurrences', name: 'CalendarRecurrenceRulesView', component: CalendarRecurrenceRulesView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
   { path: '/settings/catalog-backup', name: 'CatalogBackupView', component: CatalogBackupView, meta: { loginStatus: true, permission: defaultUserPermission.SUPERADMIN } },
   { path: '/settings/whatsapp-templates', name: 'WhatsAppTemplatesView', component: WhatsAppTemplatesView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
+  { path: '/tools/refresh-home', name: 'RefreshHomeView', component: RefreshHomeView, meta: { loginStatus: true } },
   {
     path: '/ai/beauty-chat',
     name: 'AiBeautyChatView',
@@ -272,6 +280,7 @@ export const routes: RouteRecordRaw[] = [
   },
   { path: '/tools/pdf-placement-demo', name: 'PdfPlacementDemoView', component: PdfPlacementDemoView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
   { path: '/tools/test-playground', name: 'TestPlaygroundView', component: TestPlaygroundView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
+  { path: '/tools/clear-client-emails', name: 'ClearClientEmailsView', component: ClearClientEmailsView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
   { path: '/products/categories/manage', name: 'ProductCategoriesManageView', component: ProductCategoriesManageView, meta: { loginStatus: true } },
   { path: '/treatments/categories/manage', name: 'TreatmentCategoriesManageView', component: TreatmentCategoriesManageView, meta: { loginStatus: true } },
 

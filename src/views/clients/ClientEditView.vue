@@ -20,6 +20,7 @@ import { computeFitzpatrickScore, resolveFitzpatrickPhototype } from '../../mode
 import { Auth } from '../../main'
 import { appointmentStore } from '../../stores/appointmentStore'
 import { clientStore } from '../../stores/clientStore'
+import { couponStore } from '../../stores/couponStore'
 import { asDate } from '../../utils/date'
 import { sanitizePhoneNumberInput } from '../../utils/phone'
 import HeaderApp from '../../components/headers/HeaderApp.vue'
@@ -27,6 +28,7 @@ import ClientAppointmentCard from './components/ClientAppointmentCard.vue'
 import ClientFilesGallery from './components/ClientFilesGallery.vue'
 import ClientPersonCard from './components/ClientPersonCard.vue'
 import { appointmentClientId, buildClientAppointmentSummary, type AppointmentLike } from './clientAppointmentUtils'
+import { buildCouponUsageCountMap, couponDisplayTitle, couponGiftedByName } from '../../utils/couponUtils'
 
 const EMPTY_NOTE_HTML = '<p></p>'
 
@@ -123,6 +125,21 @@ const clientAppointments = computed(() => {
 })
 
 const appointmentSummary = computed(() => buildClientAppointmentSummary(clientAppointments.value))
+const couponUsageById = computed(() => buildCouponUsageCountMap(appointmentStore.itemsActiveArray))
+const clientReceivedCoupons = computed(() => {
+  if (!current.value) return []
+  return [...couponStore.itemsActiveArray]
+    .filter((coupon) => String(coupon.client_id ?? '').trim() === current.value!.id)
+    .sort((a, b) => (asDate(b.updatedAt)?.getTime() ?? 0) - (asDate(a.updatedAt)?.getTime() ?? 0))
+})
+const clientGiftedCoupons = computed(() => {
+  if (!current.value) return []
+  const fullName = `${normalizeString(current.value.name)} ${normalizeString(current.value.surname)}`.trim()
+  if (!fullName) return []
+  return [...couponStore.itemsActiveArray]
+    .filter((coupon) => couponGiftedByName(coupon, fullName))
+    .sort((a, b) => (asDate(b.updatedAt)?.getTime() ?? 0) - (asDate(a.updatedAt)?.getTime() ?? 0))
+})
 const laserScore = computed(() => computeFitzpatrickScore(current.value?.schedaLaser))
 const laserPhototype = computed(() => resolveFitzpatrickPhototype(laserScore.value))
 const hasLaserSheet = computed(() => Boolean(current.value?.schedaLaser && Object.keys(current.value.schedaLaser).length))
@@ -588,6 +605,25 @@ function openAppointment(appointment: AppointmentLike) {
   router.push({ name: 'AppointmentEditView', params: { id: appointment.id } })
 }
 
+function couponUsageLabel(couponId: string) {
+  const used = couponUsageById.value.get(couponId) ?? 0
+  return `${used}/1`
+}
+
+function couponRecipientLabel(clientId: unknown) {
+  const normalized = normalizeString(clientId)
+  if (!normalized) return 'Cliente non assegnato'
+  const client = clientStore.findItemsById(normalized)
+  if (!client) return normalized
+  return `${normalizeString(client.name)} ${normalizeString(client.surname)}`.trim() || normalized
+}
+
+function openCouponDetail(couponId: string) {
+  const normalized = normalizeString(couponId)
+  if (!normalized) return
+  router.push({ name: 'CouponDetailView', params: { id: normalized } })
+}
+
 async function loadItem() {
   resetPurchaseModalState()
   isDeleteClientModalOpen.value = false
@@ -942,6 +978,67 @@ watch(() => route.params.id, loadItem)
               @click="openAppointment"
             />
             <p v-if="!clientAppointments.length" class="text-muted small mb-0">Nessun appuntamento trovato per questo cliente.</p>
+          </div>
+        </section>
+
+        <section class="client-section-card">
+          <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+            <h2 class="h6 mb-0">Coupon cliente</h2>
+            <RouterLink :to="{ name: 'CouponGiftCreateView' }" class="text-decoration-none">
+              <Btn type="button" color="dark" variant="outline" icon="add">Nuovo coupon regalo</Btn>
+            </RouterLink>
+          </div>
+
+          <div class="row g-2">
+            <div class="col-12 col-md-6">
+              <article class="coupon-client-box h-100">
+                <p class="coupon-client-box__title mb-1">
+                  Ricevuti ({{ clientReceivedCoupons.length }})
+                </p>
+                <div class="vstack gap-1">
+                  <button
+                    v-for="coupon in clientReceivedCoupons"
+                    :key="`received-${coupon.id}`"
+                    type="button"
+                    class="coupon-client-row"
+                    @click="openCouponDetail(coupon.id)"
+                  >
+                    <span class="coupon-client-row__main">
+                      <strong>{{ couponDisplayTitle(coupon) }}</strong>
+                      <small>Uso: {{ couponUsageLabel(coupon.id) }}</small>
+                    </span>
+                  </button>
+                  <p v-if="!clientReceivedCoupons.length" class="text-muted small mb-0">
+                    Nessun coupon ricevuto.
+                  </p>
+                </div>
+              </article>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <article class="coupon-client-box h-100">
+                <p class="coupon-client-box__title mb-1">
+                  Regalati ({{ clientGiftedCoupons.length }})
+                </p>
+                <div class="vstack gap-1">
+                  <button
+                    v-for="coupon in clientGiftedCoupons"
+                    :key="`gifted-${coupon.id}`"
+                    type="button"
+                    class="coupon-client-row"
+                    @click="openCouponDetail(coupon.id)"
+                  >
+                    <span class="coupon-client-row__main">
+                      <strong>{{ couponDisplayTitle(coupon) }}</strong>
+                      <small>Per: {{ couponRecipientLabel(coupon.client_id) }}</small>
+                    </span>
+                  </button>
+                  <p v-if="!clientGiftedCoupons.length" class="text-muted small mb-0">
+                    Nessun coupon regalato.
+                  </p>
+                </div>
+              </article>
+            </div>
           </div>
         </section>
 
@@ -1418,6 +1515,39 @@ watch(() => route.params.id, loadItem)
 
 .laser-clarification-badge .material-symbols-outlined {
   font-size: 0.95rem;
+}
+
+.coupon-client-box {
+  border: 1px solid rgba(84, 44, 58, 0.14);
+  border-radius: 0.65rem;
+  padding: 0.6rem;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.coupon-client-box__title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #5a3543;
+}
+
+.coupon-client-row {
+  width: 100%;
+  border: 1px solid rgba(84, 44, 58, 0.18);
+  border-radius: 0.52rem;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.46rem 0.5rem;
+  text-align: left;
+}
+
+.coupon-client-row__main {
+  display: grid;
+  gap: 0.08rem;
+  font-size: 0.78rem;
+  color: #3d2a34;
+}
+
+.coupon-client-row__main small {
+  color: #6b4b58;
 }
 
 .client-delete-modal,

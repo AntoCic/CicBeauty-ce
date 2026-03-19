@@ -23,7 +23,6 @@ import { productCategoryStore } from '../../stores/productCategoryStore'
 import { productStore } from '../../stores/productStore'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
-import { typeCouponStore } from '../../stores/typeCouponStore'
 import { typeExpenseStore } from '../../stores/typeExpenseStore'
 import { downloadJsonFromSource } from '../../utils/downloadJsonFromSource'
 
@@ -39,7 +38,6 @@ type CatalogCollectionSource =
   | 'expenses'
   | 'type-expenses'
   | 'coupons'
-  | 'type-coupons'
   | 'announcements'
   | 'app-config'
   | 'agent-prompts'
@@ -122,11 +120,6 @@ useStoreWatch([
   },
   {
     store: expenseStore,
-    getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
-    checkLogin: false,
-  },
-  {
-    store: typeCouponStore,
     getOpts: { orderBy: { fieldPath: 'updatedAt', directionStr: 'desc' } },
     checkLogin: false,
   },
@@ -322,15 +315,6 @@ const collectionConfigs: CatalogCollectionConfig[] = [
     importRows: (rows) => upsertRows(couponStore, rows, { dateFields: ['valid_from', 'valid_to'], ensureUpdateBy: true }),
   },
   {
-    source: 'type-coupons',
-    label: 'Tipi Coupon',
-    icon: 'sell',
-    description: 'Anagrafica tipi coupon',
-    count: () => typeCouponStore.itemsActiveArray.length,
-    getRows: () => typeCouponStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
-    importRows: (rows) => upsertRows(typeCouponStore, rows, { ensureUpdateBy: true }),
-  },
-  {
     source: 'announcements',
     label: 'Avvisi',
     icon: 'campaign',
@@ -421,7 +405,6 @@ function buildFullPayload(): CatalogFullPayload {
     expenses: expenseStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
     'type-expenses': typeExpenseStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
     coupons: couponStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
-    'type-coupons': typeCouponStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
     announcements: announcementStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
     'app-config': appConfigStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
     'agent-prompts': agentPromptStore.itemsActiveArray.map((item) => item.toData() as unknown as Record<string, unknown>),
