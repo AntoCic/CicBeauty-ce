@@ -4,6 +4,7 @@ import HeaderApp from '../../../components/headers/HeaderApp.vue'
 
 defineProps<{
   hasActiveFilters?: boolean
+  mobileTitle?: string
 }>()
 
 defineEmits<{
@@ -15,7 +16,10 @@ defineEmits<{
 <template>
   <HeaderApp :to="{ name: 'homeApp' }">
     <div class="d-flex justify-content-between align-items-center">
-      <h1 class="app-header__title">Calendario</h1>
+      <h1 class="app-header__title">
+        <span class="app-header__title-desktop">Calendario</span>
+        <span class="app-header__title-mobile">{{ mobileTitle || 'Calendario' }}</span>
+      </h1>
       <div>
         <Btn icon="add" variant="ghost" color="dark" @click="$emit('createAppointment')" />
         <Btn icon="tune" variant="ghost" :color="hasActiveFilters ? 'warning' : 'dark'" @click="$emit('openFilters')" />
@@ -39,9 +43,21 @@ defineEmits<{
   text-overflow: ellipsis;
 }
 
+.app-header__title-mobile {
+  display: none;
+}
 
 /* Da md in giu: con titolo lo slot va a capo */
 @media (max-width: 991.98px) {
+  .app-header__title-desktop {
+    display: none;
+  }
+
+  .app-header__title-mobile {
+    display: inline;
+    text-transform: capitalize;
+  }
+
   .app-header--with-title :deep(.col:last-child) {
     width: 100%;
     flex: 0 0 100%;

@@ -102,6 +102,11 @@ const OVERFLOW_EMOJI = '\u2795'
 const CALENDAR_RECURRENCE_FALLBACK_FREQUENCY: CalendarRecurrenceFrequency = 'yearly'
 const CALENDAR_RECURRENCE_FALLBACK_CATEGORY: CalendarRecurrenceCategory = 'general'
 const CALENDAR_BOOT_LOADING_KEY = 'loading:calendar-initial'
+const SWIPE_MIN_HORIZONTAL_PX = 56
+const SWIPE_MAX_VERTICAL_PX = 70
+const SWIPE_AXIS_RATIO = 1.35
+const SWIPE_MAX_DURATION_MS = 700
+const SWIPE_COOLDOWN_MS = 220
 
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
@@ -115,9 +120,43 @@ const draftShowOnlyMyPersonal = ref(false)
 const calendarGridRef = ref<HTMLElement | null>(null)
 const autoScrolledMonthKey = ref('')
 const hasInitialCalendarSnapshot = ref(false)
+const isTouchLayout = ref(false)
+const swipeTracking = ref(false)
+const swipeStartX = ref(0)
+const swipeStartY = ref(0)
+const swipeStartedAt = ref(0)
+const lastSwipeAt = ref(0)
 const CALENDAR_WATCH_REASON = 'calendar-month-view'
 const currentViewerId = computed(() => String(Auth.uid ?? '').trim())
 const { activateCalendarMonthWatch } = useAppointmentWatchManager()
+let detachTouchLayoutMediaListener: (() => void) | undefined
+
+if (typeof window !== 'undefined') {
+  const touchLayoutMedia = window.matchMedia('(pointer: coarse), (hover: none)')
+  const syncTouchLayout = () => {
+    isTouchLayout.value = touchLayoutMedia.matches
+  }
+
+  syncTouchLayout()
+
+  if (typeof touchLayoutMedia.addEventListener === 'function') {
+    const onTouchLayoutChange = () => syncTouchLayout()
+    touchLayoutMedia.addEventListener('change', onTouchLayoutChange)
+    detachTouchLayoutMediaListener = () => {
+      touchLayoutMedia.removeEventListener('change', onTouchLayoutChange)
+    }
+  } else {
+    const legacy = touchLayoutMedia as MediaQueryList & {
+      addListener?: (handler: () => void) => void
+      removeListener?: (handler: () => void) => void
+    }
+    const onTouchLayoutChange = () => syncTouchLayout()
+    legacy.addListener?.(onTouchLayoutChange)
+    detachTouchLayoutMediaListener = () => {
+      legacy.removeListener?.(onTouchLayoutChange)
+    }
+  }
+}
 const calendarPrefetchMonths = computed(() => {
   const raw = Number(appConfigStore.getConfigData().calendarPrefetchMonths)
   if (!Number.isFinite(raw)) return 1
@@ -137,6 +176,7 @@ watch(
 
 onBeforeUnmount(() => {
   loading.off(CALENDAR_BOOT_LOADING_KEY)
+  detachTouchLayoutMediaListener?.()
 })
 
 const operators = computed(() => {
@@ -238,6 +278,13 @@ const defaultDurationMinutes = computed(() => {
 const monthLabel = computed(() =>
   visibleMonth.value.toLocaleDateString('it-IT', {
     month: 'long',
+  }),
+)
+
+const headerMonthLabel = computed(() =>
+  visibleMonth.value.toLocaleDateString('it-IT', {
+    month: 'long',
+    year: 'numeric',
   }),
 )
 
@@ -758,18 +805,85 @@ function applyFilters() {
   showOnlyMyPersonal.value = draftShowOnlyMyPersonal.value
   closeFiltersModal()
 }
+
+function resetSwipeTracking() {
+  swipeTracking.value = false
+  swipeStartedAt.value = 0
+}
+
+function onCalendarTouchStart(event: TouchEvent) {
+  if (!isTouchLayout.value) return
+  if (event.touches.length !== 1) {
+    resetSwipeTracking()
+    return
+  }
+
+  const firstTouch = event.touches[0]
+  if (!firstTouch) return
+
+  swipeStartX.value = firstTouch.clientX
+  swipeStartY.value = firstTouch.clientY
+  swipeStartedAt.value = Date.now()
+  swipeTracking.value = true
+}
+
+function onCalendarTouchMove(event: TouchEvent) {
+  if (!swipeTracking.value) return
+  if (event.touches.length !== 1) {
+    resetSwipeTracking()
+  }
+}
+
+function onCalendarTouchEnd(event: TouchEvent) {
+  if (!swipeTracking.value) return
+  const firstChangedTouch = event.changedTouches[0]
+  const startX = swipeStartX.value
+  const startY = swipeStartY.value
+  const elapsed = Date.now() - swipeStartedAt.value
+  resetSwipeTracking()
+
+  if (!isTouchLayout.value) return
+  if (!firstChangedTouch) return
+  if (elapsed > SWIPE_MAX_DURATION_MS) return
+
+  const deltaX = firstChangedTouch.clientX - startX
+  const deltaY = firstChangedTouch.clientY - startY
+  const absDeltaX = Math.abs(deltaX)
+  const absDeltaY = Math.abs(deltaY)
+
+  // Soglie conservative per evitare cambi mese involontari durante scroll verticale.
+  if (absDeltaX < SWIPE_MIN_HORIZONTAL_PX) return
+  if (absDeltaY > SWIPE_MAX_VERTICAL_PX) return
+  if (absDeltaX < absDeltaY * SWIPE_AXIS_RATIO) return
+
+  const nowTs = Date.now()
+  if (nowTs - lastSwipeAt.value < SWIPE_COOLDOWN_MS) return
+  lastSwipeAt.value = nowTs
+
+  if (deltaX < 0) {
+    goToNextMonth()
+    return
+  }
+
+  goToPreviousMonth()
+}
+
+function onCalendarTouchCancel() {
+  resetSwipeTracking()
+}
 </script>
 
 <template>
   <div class="container-fluid px-0 pb-t overflow-auto h-100" :style="bgStyle">
     <CalendarHeaderExtra
       :has-active-filters="hasActiveFilters"
+      :mobile-title="headerMonthLabel"
       @create-appointment="openNewAppointment"
       @open-filters="openFiltersModal"
     />
 
     <div class="pb-4">
-      <section class="card border-0 shadow-sm p-2 mb-2">
+      <section v-if="!isTouchLayout" class="card border-0 shadow-sm p-2 mb-2">
         <div class="month-switcher">
           <button type="button" class="month-arrow-btn" aria-label="Mese precedente" @click="goToPreviousMonth">
             <span class="material-symbols-outlined">chevron_left</span>
@@ -787,7 +901,13 @@ function applyFilters() {
         </div>
       </section>
 
-      <section class="card border-0 shadow-sm p-0 calendar-shell">
+      <section
+        class="card border-0 shadow-sm p-0 calendar-shell"
+        @touchstart.passive="onCalendarTouchStart"
+        @touchmove.passive="onCalendarTouchMove"
+        @touchend.passive="onCalendarTouchEnd"
+        @touchcancel.passive="onCalendarTouchCancel"
+      >
         <div ref="calendarGridRef" class="calendar-grid">
           <div
             v-for="(label, index) in WEEKDAY_LABELS"
