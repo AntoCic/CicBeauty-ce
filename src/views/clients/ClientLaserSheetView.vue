@@ -1140,7 +1140,6 @@ watch(
     if (normalizeYesNo(value, 'no') === 'si') return
     form.value.epilationAreasDone = ''
     form.value.epilationResults = ''
-    form.value.epilationCurrentMethods = ''
   },
 )
 
@@ -1446,24 +1445,24 @@ watch(() => route.params.id, loadItem)
                   <textarea v-model="form.epilationResults" rows="2" class="form-control"
                     data-skip-key="epilationResults"></textarea>
                 </div>
-                <div class="col-12">
-                  <label class="form-label laser-form-label">
-                    <span>Quali metodi usa abitualmente per depilarsi?</span>
-                    <button v-if="hasSkippedQuestion('epilationCurrentMethods')" type="button" class="skip-flag-btn"
-                      :disabled="isClearingSkippedKey('epilationCurrentMethods')"
-                      title="Campo da chiarire: clicca per segnare come gestito"
-                      aria-label="Segna chiarito metodi depilazione"
-                      @click="clearSkippedQuestion('epilationCurrentMethods')">
-                      <span class="material-symbols-outlined" aria-hidden="true">help</span>
-                    </button>
-                  </label>
-                  <textarea v-model="form.epilationCurrentMethods" rows="2" class="form-control"
-                    data-skip-key="epilationCurrentMethods"></textarea>
-                </div>
               </template>
               <p v-else class="small text-muted mb-0">
-                Le domande successive compaiono quando selezioni "Si".
+                Le domande su aree e risultati compaiono quando selezioni "Si".
               </p>
+              <div class="col-12">
+                <label class="form-label laser-form-label">
+                  <span>Quali metodi usa abitualmente per depilarsi?</span>
+                  <button v-if="hasSkippedQuestion('epilationCurrentMethods')" type="button" class="skip-flag-btn"
+                    :disabled="isClearingSkippedKey('epilationCurrentMethods')"
+                    title="Campo da chiarire: clicca per segnare come gestito"
+                    aria-label="Segna chiarito metodi depilazione"
+                    @click="clearSkippedQuestion('epilationCurrentMethods')">
+                    <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                  </button>
+                </label>
+                <textarea v-model="form.epilationCurrentMethods" rows="2" class="form-control"
+                  data-skip-key="epilationCurrentMethods"></textarea>
+              </div>
             </div>
           </section>
 

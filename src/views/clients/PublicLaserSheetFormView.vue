@@ -107,9 +107,16 @@ const steps = computed<StepDefinition[]>(() => {
       id: 'epilation-details',
       title: 'Dettagli epilazione',
       subtitle: 'Completa le informazioni sui trattamenti gia fatti.',
-      fields: ['epilationAreasDone', 'epilationResults', 'epilationCurrentMethods'],
+      fields: ['epilationAreasDone', 'epilationResults'],
     })
   }
+
+  list.push({
+    id: 'epilation-methods',
+    title: 'Metodi depilazione',
+    subtitle: 'Quali metodi usa abitualmente per depilarsi?',
+    fields: ['epilationCurrentMethods'],
+  })
 
   if (includeWomanStep) {
     list.push({
@@ -394,7 +401,6 @@ watch(
     if (normalizeString(value).toLowerCase() === 'si') return
     form.value.epilationAreasDone = ''
     form.value.epilationResults = ''
-    form.value.epilationCurrentMethods = ''
   },
 )
 
@@ -511,8 +517,11 @@ onMounted(loadSession)
               <label class="form-label">Che risultati ha ottenuto?</label>
               <textarea v-model="form.epilationResults" rows="3" class="form-control"></textarea>
             </div>
+          </section>
+
+          <section v-else-if="currentStep.id === 'epilation-methods'" class="step-body row g-3">
             <div class="col-12">
-              <label class="form-label">Metodi depilazione abituali</label>
+              <label class="form-label">Quali metodi usa abitualmente per depilarsi?</label>
               <textarea v-model="form.epilationCurrentMethods" rows="3" class="form-control"></textarea>
             </div>
           </section>
