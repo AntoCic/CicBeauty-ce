@@ -998,28 +998,29 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
   drawTextFromTop(page2, fillOrFallback(values.epilationCurrentMethods), 260, 283 + page2MainShift, 9, baseFont, rgb(0.08, 0.08, 0.08), 510)
 
   if (gender === 'F') {
-    drawTextFromTop(page2, fillOrFallback(values.medsWomanAnticoncezionali), 45, 356 + page2MainShift, 8, baseFont)
-    drawTextFromTop(page2, fillOrFallback(values.medsWomanAnabolizzanti), 45, 373 + page2MainShift, 8, baseFont)
-    drawTextFromTop(page2, fillOrFallback(values.medsWomanCortisonici), 45, 390 + page2MainShift, 8, baseFont)
+    if (values.medsWomanAnticoncezionali === 'si') drawTextFromTop(page2, fillOrFallback(values.medsWomanAnticoncezionali), 45, 356 + page2MainShift, 8, baseFont)
+    if (values.medsWomanAnabolizzanti === 'si') drawTextFromTop(page2, fillOrFallback(values.medsWomanAnabolizzanti), 45, 373 + page2MainShift, 8, baseFont)
+    if (values.medsWomanCortisonici === 'si') drawTextFromTop(page2, fillOrFallback(values.medsWomanCortisonici), 45, 390 + page2MainShift, 8, baseFont)
     if (values.medsWomanAltri?.trim() !== '') {
       drawTextFromTop(page2, fillOrFallback('si'), 46, 407 + page2MainShift, 8, baseFont, rgb(0.08, 0.08, 0.08), 120)
       drawTextFromTop(page2, fillOrFallback(values.medsWomanAltri), 56, 418 + page2MainShift, 8, baseFont, rgb(0.08, 0.08, 0.08), 120)
     }
   }
 
+
   if (gender === 'M') {
-    drawTextFromTop(page2, fillOrFallback(values.medsManRicrescitaCapelli), 185, 356 + page2MainShift, 8, baseFont)
-    drawTextFromTop(page2, fillOrFallback(values.medsManAnabolizzanti), 185, 373 + page2MainShift, 8, baseFont)
-    drawTextFromTop(page2, fillOrFallback(values.medsManCortisonici), 185, 390 + page2MainShift, 8, baseFont)
+    if (values.medsManRicrescitaCapelli === 'si') drawTextFromTop(page2, fillOrFallback(values.medsManRicrescitaCapelli), 185, 356 + page2MainShift, 8, baseFont)
+    if (values.medsManAnabolizzanti === 'si') drawTextFromTop(page2, fillOrFallback(values.medsManAnabolizzanti), 185, 373 + page2MainShift, 8, baseFont)
+    if (values.medsManCortisonici === 'si') drawTextFromTop(page2, fillOrFallback(values.medsManCortisonici), 185, 390 + page2MainShift, 8, baseFont)
     if (values.medsManAltri?.trim() !== '') {
       drawTextFromTop(page2, fillOrFallback('si'), 186, 407 + page2MainShift, 8, baseFont, rgb(0.08, 0.08, 0.08), 120)
       drawTextFromTop(page2, fillOrFallback(values.medsManAltri), 196, 418 + page2MainShift, 8, baseFont, rgb(0.08, 0.08, 0.08), 120)
     }
   }
 
-  drawTextFromTop(page2, fillOrFallback(values.gravidanzaAllattamento), 386, 356 + page2MainShift, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.pacemaker), 386, 373 + page2MainShift, 8, baseFont)
-  drawTextFromTop(page2, fillOrFallback(values.epilessia), 386, 390 + page2MainShift, 8, baseFont)
+  if (values.gravidanzaAllattamento === 'si') drawTextFromTop(page2, fillOrFallback(values.gravidanzaAllattamento), 386, 356 + page2MainShift, 8, baseFont)
+  if (values.pacemaker === 'si') drawTextFromTop(page2, fillOrFallback(values.pacemaker), 386, 373 + page2MainShift, 8, baseFont)
+  if (values.epilessia === 'si') drawTextFromTop(page2, fillOrFallback(values.epilessia), 386, 390 + page2MainShift, 8, baseFont)
   if (gender === 'F') {
     drawTextFromTop(page2, fillOrFallback(values.cicloRegolare), values.cicloRegolare === 'si' ? 199 : 214, 437 + page2MainShift, 9, baseFont)
   }
@@ -1048,11 +1049,11 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
   drawTextFromTop(page3, officeAddress.value, 106, 527, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
   drawTextFromTop(page3, documentDate, 106, 535, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
   drawTextFromTop(page3, `(${fullName})`, 500, 535, 8, baseFont, rgb(0.5, 0.5, 0.5))
-  
+
   drawTextFromTop(page3, officeAddress.value, 106, 594, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
   drawTextFromTop(page3, documentDate, 106, 601, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
   drawTextFromTop(page3, `(${fullName})`, 500, 600, 8, baseFont, rgb(0.5, 0.5, 0.5))
-  
+
   drawTextFromTop(page3, `${officeAddress.value} - ${documentDate}`, 240, 655, 9, baseFont)
   drawTextFromTop(page3, legalEntity.value, 204, 675, 9, baseFont)
   drawTextFromTop(page3, `(${fullName})`, 500, 677, 8, baseFont, rgb(0.5, 0.5, 0.5))
@@ -1060,7 +1061,7 @@ async function buildCompiledPdfBytes(client: CurrentClient, values: LaserSheetFo
   drawTextFromTop(page3, officeAddress.value, 128, 754, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
   drawTextFromTop(page3, documentDate, 128, 761, 8, baseFont, rgb(0.08, 0.08, 0.08), 220)
   drawTextFromTop(page3, fullName, 398, 758, 9, baseFont)
-  
+
   drawTextFromTop(page3, documentDate, 65, 778, 9, baseFont)
 
 

@@ -29,7 +29,6 @@ import AiTransparencyView from './views/legal/AiTransparencyView.vue';
 import AppConfigView from './views/app-config/AppConfigView.vue';
 import AgentPromptsView from './views/ai/AgentPromptsView.vue';
 import TestPlaygroundView from './views/tools/TestPlaygroundView.vue';
-import ClearClientEmailsView from './views/tools/ClearClientEmailsView.vue';
 import CalendarDayView from './views/calendar/CalendarDayView.vue';
 import AppointmentEditView from './views/calendar/AppointmentEditView.vue';
 import CalendarRecurrenceRulesView from './views/calendar/CalendarRecurrenceRulesView.vue';
@@ -280,7 +279,6 @@ export const routes: RouteRecordRaw[] = [
   },
   { path: '/tools/pdf-placement-demo', name: 'PdfPlacementDemoView', component: PdfPlacementDemoView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
   { path: '/tools/test-playground', name: 'TestPlaygroundView', component: TestPlaygroundView, meta: { loginStatus: true, permission: defaultUserPermission.BETA_FEATURES } },
-  { path: '/tools/clear-client-emails', name: 'ClearClientEmailsView', component: ClearClientEmailsView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
   { path: '/products/categories/manage', name: 'ProductCategoriesManageView', component: ProductCategoriesManageView, meta: { loginStatus: true } },
   { path: '/treatments/categories/manage', name: 'TreatmentCategoriesManageView', component: TreatmentCategoriesManageView, meta: { loginStatus: true } },
 

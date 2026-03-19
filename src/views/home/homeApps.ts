@@ -227,16 +227,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     iconClass: 'app-icon-night',
     permission: defaultUserPermission.BETA_FEATURES,
     group: 'settings',
-  },
-  {
-    id: 'clear-client-emails',
-    title: 'Reset Email',
-    to: { name: 'ClearClientEmailsView' },
-    icon: 'email_off',
-    iconClass: 'app-icon-night',
-    permission: defaultUserPermission.ADMIN,
-    group: 'settings',
-  },
+  },  
   {
     id: 'pdf-placement-demo',
     title: 'PDF Demo',
