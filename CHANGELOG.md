@@ -1,3 +1,9 @@
+## v0.0.56 - 2026-03-20
+
+add prezzi
+
+---
+
 ## v0.0.55 - 2026-03-19
 
 fixing token laser

@@ -49,15 +49,6 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     group: 'settings',
   },
   {
-    id: 'daily-notes-pdf',
-    title: 'Appunti PDF',
-    to: { name: 'DailyNotesPdfView' },
-    icon: 'event_note',
-    iconClass: 'app-icon-night',
-    permission: defaultUserPermission.SUPERADMIN,
-    group: 'settings',
-  },
-  {
     id: 'clients',
     title: 'Clienti',
     to: { name: 'ClientsView' },
@@ -72,6 +63,14 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     icon: 'description',
     iconClass: 'app-icon-rose',
     permission: UserPermission.OPERATORE,
+  },
+  {
+    id: 'daily-notes-pdf',
+    title: 'Riepilogo PDF',
+    to: { name: 'DailyNotesPdfView' },
+    icon: 'event_note',
+    iconClass: 'app-icon-night',
+    permission: defaultUserPermission.SUPERADMIN,
   },
   {
     id: 'products-manage',
