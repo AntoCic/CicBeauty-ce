@@ -70,7 +70,7 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     to: { name: 'DailyNotesPdfView' },
     icon: 'event_note',
     iconClass: 'app-icon-night',
-    permission: defaultUserPermission.SUPERADMIN,
+    permission: UserPermission.OPERATORE,
   },
   {
     id: 'products-manage',

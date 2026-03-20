@@ -243,7 +243,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/settings/whatsapp-templates', name: 'WhatsAppTemplatesView', component: WhatsAppTemplatesView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
   { path: '/tools/refresh-home', name: 'RefreshHomeView', component: RefreshHomeView, meta: { loginStatus: true } },
   { path: '/tools/seo-export', name: 'SeoExportView', component: SeoExportView, meta: { loginStatus: true, permission: defaultUserPermission.SUPERADMIN } },
-  { path: '/tools/daily-notes-pdf', name: 'DailyNotesPdfView', component: DailyNotesPdfView, meta: { loginStatus: true, permission: defaultUserPermission.SUPERADMIN } },
+  { path: '/tools/daily-notes-pdf', name: 'DailyNotesPdfView', component: DailyNotesPdfView, meta: { loginStatus: true, permission: UserPermission.OPERATORE } },
   {
     path: '/ai/beauty-chat',
     name: 'AiBeautyChatView',

@@ -49,6 +49,8 @@ type PdfTimelineEntry =
     toTime: string
   }
 
+type ColumnIndex = 0 | 1
+
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
 const selectedDate = ref(toInputDateValue(new Date()))
 
@@ -209,6 +211,12 @@ function toInputDateValue(date: Date) {
   return `${year}-${month}-${day}`
 }
 
+function toInputDateByOffset(offsetDays: number) {
+  const date = new Date()
+  date.setDate(date.getDate() + offsetDays)
+  return toInputDateValue(date)
+}
+
 function formatTime(date: Date) {
   return new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' }).format(date)
 }
@@ -359,7 +367,9 @@ async function downloadDailyPdf() {
   const pageSize: [number, number] = [595, 842]
   const marginX = 38
   const bottomY = 44
-  const cardWidth = pageSize[0] - marginX * 2
+  const columnGap = 10
+  const cardWidth = (pageSize[0] - (marginX * 2) - columnGap) / 2
+  const columnX: [number, number] = [marginX, marginX + cardWidth + columnGap]
   const cardInnerWidth = cardWidth - 20
   const titleFontSize = 9.2
   const detailFontSize = 7.6
@@ -367,7 +377,8 @@ async function downloadDailyPdf() {
   const detailLineHeight = 8.3
   const cardPaddingY = 4.8
   const sectionGap = 1.4
-  const cardTextX = marginX + 10
+  const cardTextInsetX = 10
+  const appointmentEntrySpacing = 8
 
   const title = toPdfSafeText(`Riepilogo PDF ${selectedDate.value}`, bold)
   const headerMeta = toPdfSafeText(
@@ -400,12 +411,34 @@ async function downloadDailyPdf() {
     return headerY - 10
   }
 
-  let y = drawHeader(page, true)
+  const firstColumnsStartY = drawHeader(page, true)
+  let columnYs: [number, number] = [firstColumnsStartY, firstColumnsStartY]
+  let currentColumnIndex: ColumnIndex = 0
+
+  const startNewPage = () => {
+    page = pdfDoc.addPage(pageSize)
+    const columnsStartY = drawHeader(page, false)
+    columnYs = [columnsStartY, columnsStartY]
+    currentColumnIndex = 0
+  }
+
+  const resolveColumnForHeight = (requiredHeight: number): ColumnIndex => {
+    if (columnYs[currentColumnIndex] - requiredHeight >= bottomY) return currentColumnIndex
+
+    const nextColumn: ColumnIndex = currentColumnIndex === 0 ? 1 : 0
+    if (columnYs[nextColumn] - requiredHeight >= bottomY) {
+      currentColumnIndex = nextColumn
+      return currentColumnIndex
+    }
+
+    startNewPage()
+    return currentColumnIndex
+  }
 
   if (!appointmentCards.value.length) {
     page.drawText(toPdfSafeText('Nessun appuntamento trovato per la data selezionata.', regular), {
       x: marginX,
-      y,
+      y: firstColumnsStartY,
       size: 9,
       font: regular,
       color: rgb(0.24, 0.24, 0.24),
@@ -414,25 +447,23 @@ async function downloadDailyPdf() {
 
   for (const entry of pdfTimelineEntries.value) {
     if (entry.kind === 'gap') {
-      const gapHeight = 16
-      if (y - gapHeight < bottomY) {
-        page = pdfDoc.addPage(pageSize)
-        y = drawHeader(page, false)
-      }
+      const gapHeight = 14
+      const columnIndex = resolveColumnForHeight(gapHeight)
+      const columnTopY = columnYs[columnIndex]
 
       const gapLabel = toPdfSafeText(
         `${entry.gapMinutes} min liberi | ${entry.fromTime} - ${entry.toTime}`,
         bold,
       )
       page.drawText(gapLabel, {
-        x: marginX + 2,
-        y: y - 6,
+        x: columnX[columnIndex] + 2,
+        y: columnTopY - 6,
         size: 7.8,
         font: bold,
         color: rgb(0.45, 0.29, 0.34),
       })
 
-      y -= gapHeight
+      columnYs[columnIndex] -= gapHeight
       continue
     }
 
@@ -454,14 +485,14 @@ async function downloadDailyPdf() {
     const innerGap = titleBlockHeight && detailBlockHeight ? sectionGap : 0
     const cardHeight = (cardPaddingY * 2) + titleBlockHeight + innerGap + detailBlockHeight
 
-    if (y - cardHeight < bottomY) {
-      page = pdfDoc.addPage(pageSize)
-      y = drawHeader(page, false)
-    }
+    const columnIndex = resolveColumnForHeight(cardHeight)
+    const columnTopY = columnYs[columnIndex]
+    const cardX = columnX[columnIndex]
+    const cardTextX = cardX + cardTextInsetX
 
     page.drawRectangle({
-      x: marginX,
-      y: y - cardHeight -1,
+      x: cardX,
+      y: columnTopY - cardHeight,
       width: cardWidth,
       height: cardHeight,
       color: rgb(0.99, 0.98, 0.98),
@@ -469,7 +500,7 @@ async function downloadDailyPdf() {
       borderWidth: 1,
     })
 
-    const titleStartY = y - cardPaddingY - titleFontSize
+    const titleStartY = columnTopY - cardPaddingY - titleFontSize
 
     let textY = titleStartY
     for (const line of titleLines) {
@@ -477,14 +508,14 @@ async function downloadDailyPdf() {
       textY -= titleLineHeight
     }
 
-    const detailStartY = y - cardPaddingY - titleBlockHeight - innerGap - detailFontSize
+    const detailStartY = columnTopY - cardPaddingY - titleBlockHeight - innerGap - detailFontSize
     textY = detailStartY
     for (const line of detailLines) {
       page.drawText(line, { x: cardTextX, y: textY, size: detailFontSize, font: regular, color: rgb(0.24, 0.24, 0.24) })
       textY -= detailLineHeight
     }
 
-    y -= cardHeight + 10
+    columnYs[columnIndex] -= cardHeight + appointmentEntrySpacing
   }
 
   const bytes = await pdfDoc.save()
@@ -497,6 +528,11 @@ async function downloadDailyPdf() {
   anchor.click()
   document.body.removeChild(anchor)
   URL.revokeObjectURL(url)
+}
+
+async function downloadRelativeDailyPdf(offsetDays: number) {
+  selectedDate.value = toInputDateByOffset(offsetDays)
+  await downloadDailyPdf()
 }
 </script>
 
@@ -520,6 +556,15 @@ async function downloadDailyPdf() {
           />
           <button type="button" class="btn btn-dark btn-sm" @click="downloadDailyPdf">
             Scarica PDF riepilogo
+          </button>
+        </div>
+
+        <div class="daily-notes__quick-actions">
+          <button type="button" class="btn btn-outline-dark btn-sm" @click="downloadRelativeDailyPdf(0)">
+            Scarica riepilogo di oggi
+          </button>
+          <button type="button" class="btn btn-outline-dark btn-sm" @click="downloadRelativeDailyPdf(1)">
+            Scarica riepilogo di domani
           </button>
         </div>
 
@@ -611,6 +656,13 @@ async function downloadDailyPdf() {
 .daily-notes__counter {
   font-size: 0.85rem;
   color: #5f4d55;
+}
+
+.daily-notes__quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .daily-list {
