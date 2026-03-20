@@ -7,6 +7,8 @@ import HeaderApp from '../../components/headers/HeaderApp.vue'
 import AppHeaderCatalogNav from '../../components/headers/AppHeaderCatalogNav.vue'
 import SectionHeader from '../../components/public/SectionHeader.vue'
 import { filterBySearch } from '../../catalog/utils'
+import { usePublicSeo } from '../../composables/usePublicSeo'
+import { useStructuredData } from '../../composables/useStructuredData'
 import { Auth } from '../../main'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
@@ -28,6 +30,58 @@ const filteredItems = computed(() => {
 
   return filterBySearch(source, search.value, (item) => [item.title, item.subtitle])
 })
+const categoryMap = computed(() => {
+  const map: Record<string, string> = {}
+  for (const category of treatmentCategoryStore.itemsActiveArray) {
+    map[category.id] = category.title
+  }
+  return map
+})
+
+const tableRows = computed(() => filteredItems.value.map((item) => ({
+  id: item.id,
+  title: item.title,
+  subtitle: item.subtitle,
+  duration: item.duration,
+  categoryLabel: categoryMap.value[item.categoryIds[0] ?? ''] ?? 'Trattamenti estetici',
+  price: item.price,
+  blockedNote: item.storeDisabeld,
+})))
+
+const pageTitle = computed(() => categoryId.value
+  ? `Trattamenti ${selectedCategory.value?.title ?? ''} | CNC Beauty`
+  : 'Catalogo Trattamenti con Prezzi | CNC Beauty')
+const pageDescription = computed(() => categoryId.value
+  ? `Trattamenti della categoria ${selectedCategory.value?.title ?? 'selezionata'} con prezzo e dettagli.`
+  : 'Catalogo trattamenti CNC Beauty con prezzi, durata e categorie in formato leggibile.')
+usePublicSeo(pageTitle, pageDescription, {
+  canonicalPath: categoryId.value ? `/treatments/category/${categoryId.value}` : '/treatments/category',
+})
+
+const structuredData = computed(() => ({
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: 'Catalogo trattamenti CNC Beauty',
+  itemListElement: tableRows.value.map((item, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    url: `${window.location.origin}/treatment/${item.id}`,
+    item: {
+      '@type': 'Service',
+      name: item.title,
+      description: item.subtitle || undefined,
+      category: item.categoryLabel,
+      offers: typeof item.price === 'number'
+        ? {
+          '@type': 'Offer',
+          price: String(item.price),
+          priceCurrency: 'EUR',
+        }
+        : undefined,
+    },
+  })),
+}))
+useStructuredData('treatments-list-schema', structuredData)
 
 function goPageAdd() {
   router.push({ name: 'TreatmentEditView', params: { id: 'new' } })

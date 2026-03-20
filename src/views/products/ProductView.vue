@@ -9,6 +9,7 @@ import PublicSideNavigator from '../../components/public/PublicSideNavigator.vue
 import type { PublicSideLink } from '../../components/public/types'
 import { normalizeIdList } from '../../catalog/utils'
 import { usePublicSeo } from '../../composables/usePublicSeo'
+import { useStructuredData } from '../../composables/useStructuredData'
 import type { Product } from '../../models/Product'
 import { Auth } from '../../main'
 import { productCategoryStore } from '../../stores/productCategoryStore'
@@ -94,7 +95,10 @@ const pageDescription = computed(() =>
     : 'Dettaglio prodotto CNC Beauty con informazioni, categorie e trattamenti consigliati.',
 )
 
-usePublicSeo(pageTitle, pageDescription)
+usePublicSeo(pageTitle, pageDescription, {
+  canonicalPath: computed(() => item.value?.id ? `/product/${item.value.id}` : '/products'),
+  ogType: 'product',
+})
 
 const recommendedTreatments = computed(() => {
   const current = item.value
@@ -139,6 +143,40 @@ function formatPrice(value: number | undefined) {
   if (typeof value !== 'number' || Number.isNaN(value)) return '-'
   return priceFormatter.format(value)
 }
+
+const structuredData = computed(() => {
+  if (!item.value) return {}
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Product',
+        '@id': `${window.location.origin}/product/${item.value.id}#product`,
+        name: item.value.title,
+        description: item.value.subtitle || item.value.description || undefined,
+        category: itemCategoryLabels.value.join(', ') || undefined,
+        offers: typeof item.value.price === 'number'
+          ? {
+            '@type': 'Offer',
+            price: String(item.value.price),
+            priceCurrency: 'EUR',
+            availability: item.value.storeDisabeld ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+          }
+          : undefined,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: breadcrumbItems.value.map((crumb, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name: crumb.label,
+          item: crumb.to ? `${window.location.origin}${router.resolve(crumb.to).path}` : undefined,
+        })),
+      },
+    ],
+  }
+})
+useStructuredData('product-detail-schema', structuredData)
 
 function stopCarousel() {
   if (!carouselTimer) return
@@ -310,7 +348,7 @@ async function onDeleteItem() {
                 <p class="detail-kicker">Prodotto</p>
 
                 <div class="detail-heading">
-                  <h2 class="detail-title">{{ item.title }}</h2>
+                  <h1 class="detail-title">{{ item.title }}</h1>
                   <p class="detail-price">
                     {{ formatPrice(item.price) }}
                   </p>

@@ -52,6 +52,9 @@ import WhatsAppTemplatesView from './views/settings/WhatsAppTemplatesView.vue';
 import BonificoView from './views/payments/BonificoView.vue';
 import PriceListView from './views/price-list/PriceListView.vue';
 import RefreshHomeView from './views/tools/RefreshHomeView.vue';
+import PublicPriceListView from './views/public/PublicPriceListView.vue';
+import SeoExportView from './views/tools/SeoExportView.vue';
+import DailyNotesPdfView from './views/tools/DailyNotesPdfView.vue';
 
 
 // ===================================================================================================
@@ -146,6 +149,18 @@ export const routes: RouteRecordRaw[] = [
       description: 'Naviga tra le categorie prodotti CNC Beauty e trova la routine ideale per te.',
     },
   },
+  {
+    path: '/prezzi',
+    name: 'PublicPriceListView',
+    component: PublicPriceListView,
+    meta: {
+      publicRoute: true,
+      publicDepth: 1,
+      title: 'Prezzi Trattamenti e Prodotti | CNC Beauty',
+      description: 'Listino pubblico CNC Beauty con trattamenti, prodotti, categorie e prezzi in formato leggibile.',
+      robots: 'index,follow',
+    },
+  },
   { path: '/products/manage', name: 'ProductsManageView', component: ProductsManageView, meta: { loginStatus: true } },
   {
     path: '/products/category/:categoryId?',
@@ -227,6 +242,8 @@ export const routes: RouteRecordRaw[] = [
   { path: '/settings/catalog-backup', name: 'CatalogBackupView', component: CatalogBackupView, meta: { loginStatus: true, permission: defaultUserPermission.SUPERADMIN } },
   { path: '/settings/whatsapp-templates', name: 'WhatsAppTemplatesView', component: WhatsAppTemplatesView, meta: { loginStatus: true, permission: defaultUserPermission.ADMIN } },
   { path: '/tools/refresh-home', name: 'RefreshHomeView', component: RefreshHomeView, meta: { loginStatus: true } },
+  { path: '/tools/seo-export', name: 'SeoExportView', component: SeoExportView, meta: { loginStatus: true, permission: defaultUserPermission.SUPERADMIN } },
+  { path: '/tools/daily-notes-pdf', name: 'DailyNotesPdfView', component: DailyNotesPdfView, meta: { loginStatus: true, permission: defaultUserPermission.SUPERADMIN } },
   {
     path: '/ai/beauty-chat',
     name: 'AiBeautyChatView',
