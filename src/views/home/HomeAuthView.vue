@@ -13,6 +13,8 @@ function canOpenApp(app: HomeAppShortcut) {
 
 const SETTINGS_APP_ORDER = [
   'refresh-home',
+  'seo-export',
+  'daily-notes-pdf',
   'user-profile',
   'app-config',
   'agent-prompts',
