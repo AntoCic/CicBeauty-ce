@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useScroll, useWindowSize } from '@vueuse/core'
 import { usePublicSeo } from '../../composables/usePublicSeo'
+import { useStructuredData } from '../../composables/useStructuredData'
 import { usePrefersReducedMotion } from '../../home/composables/usePrefersReducedMotion'
 import HeroSection from '../../home/sections/HeroSection.vue'
 import ManifestoSection from '../../home/sections/ManifestoSection.vue'
@@ -16,11 +17,86 @@ import { buildHomeContent } from '../../home/homeContent'
 import '../../styles/home.scss'
 
 const homeContent = computed(() => buildHomeContent(appConfigStore.getConfigData()))
+const config = computed(() => appConfigStore.getConfigData())
+const brandName = computed(() => String(config.value.brandName ?? 'CNC Beauty').trim() || 'CNC Beauty')
+const officeAddress = computed(() => String(config.value.officeAddress ?? '').trim())
+const publicPhone = computed(() => String(config.value.publicPhone ?? '').trim())
+const privacyEmail = computed(() => String(config.value.privacyEmail ?? '').trim())
+const servicesSummary = computed(() => homeContent.value.services.items.map((item) => item.title))
+const localFaqItems = computed(() => [
+  {
+    question: `Dove si trova ${brandName.value}?`,
+    answer: officeAddress.value || 'La sede è comunicata direttamente dal centro.',
+  },
+  {
+    question: 'Come contattare il centro estetico?',
+    answer: publicPhone.value
+      ? `Telefono e WhatsApp: ${publicPhone.value}.`
+      : 'Contatto disponibile nella sezione dedicata ai contatti.',
+  },
+  {
+    question: 'Dove vedere listino prezzi e catalogo servizi?',
+    answer: 'Nella pagina Prezzi, nel catalogo Trattamenti e nel catalogo Prodotti del sito.',
+  },
+])
 
 usePublicSeo(
   computed(() => homeContent.value.seo.title),
   computed(() => homeContent.value.seo.description),
+  {
+    canonicalPath: '/',
+  },
 )
+
+const homeStructuredData = computed(() => ({
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'BeautySalon',
+      '@id': `${window.location.origin}/#beautysalon`,
+      name: brandName.value,
+      url: `${window.location.origin}/`,
+      telephone: publicPhone.value || undefined,
+      email: privacyEmail.value || undefined,
+      address: officeAddress.value
+        ? {
+          '@type': 'PostalAddress',
+          streetAddress: officeAddress.value,
+          addressCountry: 'IT',
+        }
+        : undefined,
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${window.location.origin}/#website`,
+      name: brandName.value,
+      url: `${window.location.origin}/`,
+      inLanguage: 'it-IT',
+    },
+    {
+      '@type': 'ItemList',
+      name: 'Servizi principali del centro estetico',
+      itemListElement: servicesSummary.value.map((name, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        name,
+      })),
+    },
+    {
+      '@type': 'FAQPage',
+      mainEntity: localFaqItems.value.map((item) => ({
+        '@type': 'Question',
+        name: item.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.answer,
+        },
+      })),
+    },
+  ],
+}))
+
+useStructuredData('home-business-schema', homeStructuredData)
 
 const year = new Date().getFullYear()
 

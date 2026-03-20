@@ -13,6 +13,7 @@ function canOpenApp(app: HomeAppShortcut) {
 
 const SETTINGS_APP_ORDER = [
   'refresh-home',
+  'seo-export',
   'user-profile',
   'app-config',
   'agent-prompts',

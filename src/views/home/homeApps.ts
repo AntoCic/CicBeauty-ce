@@ -40,6 +40,15 @@ export const AUTH_HOME_APPS: HomeAppShortcut[] = [
     group: 'settings',
   },
   {
+    id: 'seo-export',
+    title: 'Export Prezzi FAQ',
+    to: { name: 'SeoExportView' },
+    icon: 'download',
+    iconClass: 'app-icon-night',
+    permission: defaultUserPermission.SUPERADMIN,
+    group: 'settings',
+  },
+  {
     id: 'clients',
     title: 'Clienti',
     to: { name: 'ClientsView' },
