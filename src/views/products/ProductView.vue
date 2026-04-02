@@ -265,18 +265,19 @@ async function onDeleteItem() {
 </script>
 
 <template>
-  <div class="public-page" :style="bgStyle">
+  <div class="detail-view container-fluid pt-3 pt-md-4 overflow-auto vh-100" :style="bgStyle">
     <HeaderApp :to="{ name: 'home' }">
       <AppHeaderCatalogNav />
     </HeaderApp>
 
-    <main class="public-page__shell">
-      <div class="public-layout">
+    <div class="detail-shell">
+      <div class="detail-layout">
         <PublicSideNavigator
           title="Dettaglio prodotto"
           subtitle="Navigazione laterale rapida per tornare a categoria e catalogo."
           :breadcrumbs="breadcrumbItems"
           :links="sideLinks"
+          class="detail-side"
         />
 
         <section class="detail-panel">
@@ -301,6 +302,7 @@ async function onDeleteItem() {
                       :key="`${img}-${index}`"
                       :src="img"
                       :alt="`${item.title} ${index + 1}`"
+                      draggable="false"
                       class="detail-image"
                       :class="{ 'is-active': index === currentImageIndex }"
                     />
@@ -408,27 +410,31 @@ async function onDeleteItem() {
           <p v-if="!isLoading && !item" class="detail-state">Prodotto non trovato.</p>
         </section>
       </div>
-    </main>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.public-page {
+.detail-view {
   min-height: 100%;
+  height: 100svh;
+  height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
   background:
     radial-gradient(circle at 8% -8%, rgba(232, 179, 190, 0.2), transparent 48%),
     radial-gradient(circle at 96% 2%, rgba(226, 205, 177, 0.2), transparent 42%);
 }
 
-.public-page__shell {
-  width: min(1260px, calc(100% - 1rem));
+.detail-shell {
+  width: min(1260px, 100%);
   margin: 0 auto;
-  padding: 0.35rem 0 1.4rem;
+  padding: 0 0.2rem 1rem;
 }
 
-.public-layout {
+.detail-layout {
   display: grid;
   grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
   gap: 0.72rem;
@@ -502,6 +508,7 @@ async function onDeleteItem() {
   width: 100%;
   height: clamp(240px, 48vw, 420px);
   overflow: hidden;
+  touch-action: pan-y;
 }
 
 .detail-image {
@@ -684,9 +691,8 @@ async function onDeleteItem() {
 }
 
 @media (max-width: 575.98px) {
-  .public-page__shell {
-    width: calc(100% - 0.6rem);
-    padding-bottom: 1rem;
+  .detail-shell {
+    padding: 0 0.15rem 0.8rem;
   }
 
   .detail-card {
@@ -709,8 +715,13 @@ async function onDeleteItem() {
 }
 
 @media (max-width: 991.98px) {
-  .public-layout {
+  .detail-layout {
     grid-template-columns: 1fr;
+  }
+
+  .detail-layout :deep(.side-nav) {
+    display: none;
   }
 }
 </style>
+

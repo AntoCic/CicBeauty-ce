@@ -16,7 +16,6 @@ import { productStore } from '../../stores/productStore'
 import { treatmentCategoryStore } from '../../stores/treatmentCategoryStore'
 import { treatmentStore } from '../../stores/treatmentStore'
 
-
 const route = useRoute()
 const router = useRouter()
 const bgStyle = computed(() => cicKitStore.defaultViews.bgStyle())
@@ -116,6 +115,7 @@ const recommendedProducts = computed(() => {
       .filter((candidate) => candidate.storeVisible)
       .map((candidate) => [candidate.id, candidate]),
   )
+
   return legacyProductIds
     .map((id) => productById.get(id))
     .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate))
@@ -210,18 +210,19 @@ async function onDeleteItem() {
 </script>
 
 <template>
-  <div class="public-page" :style="bgStyle">
+  <div class="detail-view container-fluid pt-3 pt-md-4 overflow-auto vh-100" :style="bgStyle">
     <HeaderApp :to="{ name: 'home' }">
       <AppHeaderCatalogNav />
     </HeaderApp>
 
-    <main class="public-page__shell">
-      <div class="public-layout">
+    <div class="detail-shell">
+      <div class="detail-layout">
         <PublicSideNavigator
           title="Dettaglio trattamento"
           subtitle="Navigazione laterale rapida per tornare a categoria e catalogo."
           :breadcrumbs="breadcrumbItems"
           :links="sideLinks"
+          class="detail-side"
         />
 
         <section class="detail-panel">
@@ -238,7 +239,7 @@ async function onDeleteItem() {
 
           <article v-else-if="item" v-motion-fade-up class="detail-card">
             <div class="row g-4 g-xl-5 align-items-start">
-              <div class="col-12 d-flex flex-column">
+              <div class="col-12 col-xl-10 mx-auto d-flex flex-column">
                 <p class="detail-kicker">Trattamento</p>
 
                 <div class="detail-heading">
@@ -304,27 +305,31 @@ async function onDeleteItem() {
           <p v-if="!isLoading && !item" class="detail-state">Trattamento non trovato.</p>
         </section>
       </div>
-    </main>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.public-page {
+.detail-view {
   min-height: 100%;
+  height: 100svh;
+  height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
   background:
     radial-gradient(circle at 8% -8%, rgba(232, 179, 190, 0.2), transparent 48%),
     radial-gradient(circle at 96% 2%, rgba(226, 205, 177, 0.2), transparent 42%);
 }
 
-.public-page__shell {
-  width: min(1260px, calc(100% - 1rem));
+.detail-shell {
+  width: min(1260px, 100%);
   margin: 0 auto;
-  padding: 0.35rem 0 1.4rem;
+  padding: 0 0.2rem 1rem;
 }
 
-.public-layout {
+.detail-layout {
   display: grid;
   grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
   gap: 0.72rem;
@@ -490,9 +495,8 @@ async function onDeleteItem() {
 }
 
 @media (max-width: 575.98px) {
-  .public-page__shell {
-    width: calc(100% - 0.6rem);
-    padding-bottom: 1rem;
+  .detail-shell {
+    padding: 0 0.15rem 0.8rem;
   }
 
   .detail-card {
@@ -511,8 +515,13 @@ async function onDeleteItem() {
 }
 
 @media (max-width: 991.98px) {
-  .public-layout {
+  .detail-layout {
     grid-template-columns: 1fr;
+  }
+
+  .detail-layout :deep(.side-nav) {
+    display: none;
   }
 }
 </style>
+
